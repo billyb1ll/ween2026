@@ -256,7 +256,22 @@ a:hover {
     opacity: 1;
     transform: scale(1.03);
   }
+}/* Board Page — utility classes (replaces inline styles) */
+.anon-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--c-lagoon);
+  cursor: pointer;
 }
 
+.anon-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-muted);
+  cursor: pointer;
+}
 
+.spin-loader {
+  animation: spin 0.8s linear infinite;
+}
 
