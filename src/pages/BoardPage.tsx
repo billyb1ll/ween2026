@@ -592,23 +592,26 @@ interface Comment {
   }
 }
 
-function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
+interface CommentSectionProps {
+  post: DBPost
+  borderStyle?: string
+  avatarSize?: string
+  avatarFontSize?: string
+}
+
+function CommentSection({
+  post,
+  borderStyle = 'solid',
+  avatarSize = '28px',
+  avatarFontSize = '2xs'
+}: CommentSectionProps) {
   const { user } = useUser()
-  const liked = !!(user && post.liked_by?.includes(user.student_id))
-  const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [newCommentText, setNewCommentText] = useState('')
   const [submittingComment, setSubmittingComment] = useState(false)
 
-  const handleLike = () => {
-    onLike(post.id)
-  }
-
-  // Load and listen to comments in realtime when showComments is true
   useEffect(() => {
-    if (!showComments) return
-
     let active = true
 
     // 1. Fetch initial comments
@@ -646,7 +649,6 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           filter: 'post_id=eq.' + String(post.id),
         },
         async (payload) => {
-          // Fetch the author relation as realtime event payload doesn't include joins
           const { data, error } = await supabase
             .from('post_comments')
             .select('*, author:users(student_id, nickname, avatar_color, role)')
@@ -676,19 +678,13 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
         }
       )
 
-    channel.subscribe((status, err) => {
-      if (err) {
-        console.error('[Comments Realtime Error - Post ' + String(post.id) + ']:', err)
-      }
-      console.log('[Comments Realtime Status - Post ' + String(post.id) + ']:', status)
-    })
+    channel.subscribe()
 
     return () => {
       active = false
       supabase.removeChannel(channel)
-      setComments([])
     }
-  }, [post.id, showComments])
+  }, [post.id])
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -708,13 +704,15 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
 
       if (error) throw error
       if (data) {
-        setComments((prev) => [...prev, data])
+        setComments((prev) => {
+          if (prev.some((c) => c.id === data.id)) return prev
+          return [...prev, data as unknown as Comment]
+        })
         setNewCommentText('')
-        toaster.create({ title: 'Comment posted!', type: 'success' })
       }
     } catch (err) {
-      console.error('Error posting comment:', err)
-      toaster.create({ title: 'Failed to post comment', type: 'error' })
+      console.error('Error adding comment:', err)
+      toaster.create({ title: 'Failed to add comment', type: 'error' })
     } finally {
       setSubmittingComment(false)
     }
@@ -735,6 +733,122 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
       console.error('Error deleting comment:', err)
       toaster.create({ title: 'Failed to delete comment', type: 'error' })
     }
+  }
+
+  return (
+    <VStack align="stretch" gap={3} mt={4} pt={4} borderTop="1px" borderStyle={borderStyle} borderColor="border.subtle">
+      <Text fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em">
+        Comments ({post.comment_count})
+      </Text>
+      
+      {commentsLoading ? (
+        <Flex justify="center" py={2}>
+          <Spinner size="xs" color="var(--c-lagoon)" />
+        </Flex>
+      ) : comments.length === 0 ? (
+        <Text fontSize="xs" color="fg.subtle">No comments yet. Be the first to comment!</Text>
+      ) : (
+        <VStack align="stretch" gap={2}>
+          {comments.map((comment) => {
+            const isCommentStaff = comment.author?.role !== 'student'
+            const commentPrefix = isCommentStaff ? "P' " : ""
+            const isCommentAuthor = user && user.student_id === comment.student_id
+            const isUserStaffOrAdmin = user && user.role !== 'student'
+            
+            return (
+              <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
+                <Box
+                  w={avatarSize} h={avatarSize} borderRadius="full"
+                  bg={comment.author?.avatar_color || '#8c7b74'}
+                  color="white" display="flex" alignItems="center" justifyContent="center"
+                  fontSize={avatarFontSize} fontWeight="700" flexShrink={0}
+                >
+                  {getInitials(comment.author?.nickname || comment.student_id)}
+                </Box>
+                <VStack align="start" gap={0.5} flex={1}>
+                  <HStack gap={1.5} flexWrap="wrap">
+                    <Text fontSize="xs" fontWeight="700" color="fg.default">
+                      {commentPrefix}{comment.author?.nickname || 'Student'}
+                    </Text>
+                    <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
+                      {comment.author?.role || 'student'}
+                    </Badge>
+                    <Text fontSize="3xs" color="fg.subtle">
+                      {getRelativeTime(comment.created_at)}
+                    </Text>
+                  </HStack>
+                  <Text fontSize="xs" color="fg.default" lineHeight={1.4}>
+                    {comment.content}
+                  </Text>
+                </VStack>
+                
+                {(isCommentAuthor || isUserStaffOrAdmin) && (
+                  <Button
+                    type="button"
+                    onClick={() => handleDeleteComment(comment.id)}
+                    size="xs"
+                    variant="ghost"
+                    color="var(--c-error)"
+                    minH="32px"
+                    minW="32px"
+                    p={0}
+                    cursor="pointer"
+                  >
+                    <Box className="material-symbols-outlined" fontSize="sm">
+                      delete
+                    </Box>
+                  </Button>
+                )}
+              </Flex>
+            )
+          })}
+        </VStack>
+      )}
+      
+      {user ? (
+        <Flex as="form" onSubmit={handleAddComment} gap={2} align="center" mt={2}>
+          <Input
+            placeholder="Write a comment..."
+            value={newCommentText}
+            onChange={(e) => setNewCommentText(e.target.value)}
+            h="36px"
+            borderRadius="lg"
+            border="1px solid"
+            borderColor="border.subtle"
+            bg="bg.surface"
+            fontSize="xs"
+            _focus={{ borderColor: 'var(--c-lagoon)' }}
+            required
+          />
+          <Button
+            type="submit"
+            loading={submittingComment}
+            bg="accent.solid"
+            color="white"
+            h="36px"
+            px={4}
+            borderRadius="lg"
+            fontSize="xs"
+            fontWeight="700"
+            cursor="pointer"
+          >
+            Send
+          </Button>
+        </Flex>
+      ) : (
+        <Text fontSize="2xs" color="fg.subtle">Sign in to comment.</Text>
+      )}
+    </VStack>
+  )
+}
+
+function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
+  const { user } = useUser()
+  const liked = !!(user && post.liked_by?.includes(user.student_id))
+  const [showComments, setShowComments] = useState(false)
+
+  const handleLike = () => {
+    onLike(post.id)
   }
 
   const isAnon = post.is_anonymous
@@ -823,114 +937,12 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           <Box className="material-symbols-outlined" fontSize="lg">
             chat_bubble
           </Box>
-          <Text fontSize="xs" fontWeight="600">{comments.length}</Text>
+          <Text fontSize="xs" fontWeight="600">{post.comment_count}</Text>
         </Button>
       </Flex>
 
       {showComments && (
-        <VStack align="stretch" gap={3} mt={4} pt={4} borderTop="1px solid" borderColor="border.subtle">
-          <Text fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em">
-            Comments ({comments.length})
-          </Text>
-          
-          {commentsLoading ? (
-            <Flex justify="center" py={2}>
-              <Spinner size="xs" color="var(--c-lagoon)" />
-            </Flex>
-          ) : comments.length === 0 ? (
-            <Text fontSize="xs" color="fg.subtle">No comments yet. Be the first to comment!</Text>
-          ) : (
-            <VStack align="stretch" gap={2}>
-              {comments.map((comment) => {
-                const isCommentStaff = comment.author?.role !== 'student'
-                const commentPrefix = isCommentStaff ? "P' " : ""
-                const isCommentAuthor = user && user.student_id === comment.student_id
-                const isUserStaffOrAdmin = user && user.role !== 'student'
-                
-                return (
-                  <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
-                    <Box
-                      w="28px" h="28px" borderRadius="full"
-                      bg={comment.author?.avatar_color || '#8c7b74'}
-                      color="white" display="flex" alignItems="center" justifyContent="center"
-                      fontSize="2xs" fontWeight="700" flexShrink={0}
-                    >
-                      {getInitials(comment.author?.nickname || comment.student_id)}
-                    </Box>
-                    <VStack align="start" gap={0.5} flex={1}>
-                      <HStack gap={1.5} flexWrap="wrap">
-                        <Text fontSize="xs" fontWeight="700" color="fg.default">
-                          {commentPrefix}{comment.author?.nickname || 'Student'}
-                        </Text>
-                        <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
-                          {comment.author?.role || 'student'}
-                        </Badge>
-                        <Text fontSize="3xs" color="fg.subtle">
-                          {getRelativeTime(comment.created_at)}
-                        </Text>
-                      </HStack>
-                      <Text fontSize="xs" color="fg.default" lineHeight={1.4}>
-                        {comment.content}
-                      </Text>
-                    </VStack>
-                    
-                    {(isCommentAuthor || isUserStaffOrAdmin) && (
-                      <Button
-                        type="button"
-                        onClick={() => handleDeleteComment(comment.id)}
-                        size="xs"
-                        variant="ghost"
-                        color="var(--c-error)"
-                        minH="32px"
-                        minW="32px"
-                        p={0}
-                        cursor="pointer"
-                      >
-                        <Box className="material-symbols-outlined" fontSize="sm">
-                          delete
-                        </Box>
-                      </Button>
-                    )}
-                  </Flex>
-                )
-              })}
-            </VStack>
-          )}
-          
-          {user ? (
-            <Flex as="form" onSubmit={handleAddComment} gap={2} align="center" mt={2}>
-              <Input
-                placeholder="Write a comment..."
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                h="36px"
-                borderRadius="lg"
-                border="1px solid"
-                borderColor="border.subtle"
-                bg="bg.surface"
-                fontSize="xs"
-                _focus={{ borderColor: 'var(--c-lagoon)' }}
-                required
-              />
-              <Button
-                type="submit"
-                loading={submittingComment}
-                bg="accent.solid"
-                color="white"
-                h="36px"
-                px={4}
-                borderRadius="lg"
-                fontSize="xs"
-                fontWeight="700"
-                cursor="pointer"
-              >
-                Send
-              </Button>
-            </Flex>
-          ) : (
-            <Text fontSize="2xs" color="fg.subtle">Sign in to comment.</Text>
-          )}
-        </VStack>
+        <CommentSection post={post} borderStyle="solid" avatarSize="28px" avatarFontSize="2xs" />
       )}
     </Box>
   )
@@ -942,145 +954,9 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const { user } = useUser()
   const liked = !!(user && post.liked_by?.includes(user.student_id))
   const [showComments, setShowComments] = useState(false)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [commentsLoading, setCommentsLoading] = useState(false)
-  const [newCommentText, setNewCommentText] = useState('')
-  const [submittingComment, setSubmittingComment] = useState(false)
 
   const handleLike = () => {
     onLike(post.id)
-  }
-
-  // Load and listen to comments in realtime when showComments is true
-  useEffect(() => {
-    if (!showComments) return
-
-    let active = true
-
-    // 1. Fetch initial comments
-    const loadComments = async () => {
-      setCommentsLoading(true)
-      try {
-        const { data, error } = await supabase
-          .from('post_comments')
-          .select('*, author:users(student_id, nickname, avatar_color, role)')
-          .eq('post_id', post.id)
-          .order('created_at', { ascending: true })
-        if (error) throw error
-        if (active && data) {
-          setComments(data)
-        }
-      } catch (err) {
-        console.error(`Error loading comments for post ${post.id}:`, err)
-      } finally {
-        if (active) setCommentsLoading(false)
-      }
-    }
-
-    loadComments()
-
-    // 2. Realtime channel setup
-    const channelName = 'comments-' + String(post.id)
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'post_comments',
-          filter: 'post_id=eq.' + String(post.id),
-        },
-        async (payload) => {
-          // Fetch the author relation as realtime event payload doesn't include joins
-          const { data, error } = await supabase
-            .from('post_comments')
-            .select('*, author:users(student_id, nickname, avatar_color, role)')
-            .eq('id', payload.new.id)
-            .single()
-
-          if (!error && data && active) {
-            setComments((prev) => {
-              if (prev.some((c) => c.id === data.id)) return prev
-              return [...prev, data as unknown as Comment]
-            })
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'post_comments',
-          filter: 'post_id=eq.' + String(post.id),
-        },
-        (payload) => {
-          if (active) {
-            setComments((prev) => prev.filter((c) => c.id !== payload.old.id))
-          }
-        }
-      )
-
-    channel.subscribe((status, err) => {
-      if (err) {
-        console.error('[Comments Realtime Error - Post ' + String(post.id) + ']:', err)
-      }
-      console.log('[Comments Realtime Status - Post ' + String(post.id) + ']:', status)
-    })
-
-    return () => {
-      active = false
-      supabase.removeChannel(channel)
-      setComments([])
-    }
-  }, [post.id, showComments])
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCommentText.trim() || !user) return
-
-    setSubmittingComment(true)
-    try {
-      const { data, error } = await supabase
-        .from('post_comments')
-        .insert({
-          post_id: post.id,
-          student_id: user.student_id,
-          content: newCommentText.trim()
-        })
-        .select('*, author:users(student_id, nickname, avatar_color, role)')
-        .single()
-
-      if (error) throw error
-      if (data) {
-        setComments((prev) => [...prev, data])
-        setNewCommentText('')
-        toaster.create({ title: 'Comment posted!', type: 'success' })
-      }
-    } catch (err) {
-      console.error('Error posting comment:', err)
-      toaster.create({ title: 'Failed to post comment', type: 'error' })
-    } finally {
-      setSubmittingComment(false)
-    }
-  }
-
-  const handleDeleteComment = async (commentId: number) => {
-    if (!user) return
-    try {
-      const { error } = await supabase.rpc('delete_comment_secure', {
-        p_comment_id: commentId,
-        p_student_id: user.student_id,
-        p_pin_hash: user.pin_hash || ''
-      })
-      if (error) throw error
-      setComments((prev) => prev.filter((c) => c.id !== commentId))
-      toaster.create({ title: 'Comment deleted', type: 'success' })
-    } catch (err) {
-      console.error('Error deleting comment:', err)
-      toaster.create({ title: 'Failed to delete comment', type: 'error' })
-    }
   }
 
   const rotations = [-2, 1.5, -1, 2, -0.5]
@@ -1171,111 +1047,12 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
           <Box className="material-symbols-outlined" fontSize="md">
             chat_bubble
           </Box>
-          <Text fontSize="2xs" fontWeight="600">{comments.length}</Text>
+          <Text fontSize="2xs" fontWeight="600">{post.comment_count}</Text>
         </Button>
       </Flex>
 
       {showComments && (
-        <VStack align="stretch" gap={3} mt={4} pt={4} borderTop="1px dashed" borderColor="border.subtle">
-          <Text fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em">
-            Comments ({comments.length})
-          </Text>
-          
-          {commentsLoading ? (
-            <Flex justify="center" py={2}>
-              <Spinner size="xs" color="var(--c-lagoon)" />
-            </Flex>
-          ) : comments.length === 0 ? (
-            <Text fontSize="xs" color="fg.subtle">No comments yet.</Text>
-          ) : (
-            <VStack align="stretch" gap={2}>
-              {comments.map((comment) => {
-                const isCommentStaff = comment.author?.role !== 'student'
-                const commentPrefix = isCommentStaff ? "P' " : ""
-                const isCommentAuthor = user && user.student_id === comment.student_id
-                const isUserStaffOrAdmin = user && user.role !== 'student'
-                
-                return (
-                  <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
-                    <Box
-                      w="24px" h="24px" borderRadius="full"
-                      bg={comment.author?.avatar_color || '#8c7b74'}
-                      color="white" display="flex" alignItems="center" justifyContent="center"
-                      fontSize="3xs" fontWeight="700" flexShrink={0}
-                    >
-                      {getInitials(comment.author?.nickname || comment.student_id)}
-                    </Box>
-                    <VStack align="start" gap={0.5} flex={1}>
-                      <HStack gap={1.5} flexWrap="wrap">
-                        <Text fontSize="xs" fontWeight="700" color="fg.default">
-                          {commentPrefix}{comment.author?.nickname || 'Student'}
-                        </Text>
-                        <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
-                          {comment.author?.role || 'student'}
-                        </Badge>
-                      </HStack>
-                      <Text fontSize="xs" color="fg.default" lineHeight={1.4}>
-                        {comment.content}
-                      </Text>
-                    </VStack>
-                    
-                    {(isCommentAuthor || isUserStaffOrAdmin) && (
-                      <Button
-                        type="button"
-                        onClick={() => handleDeleteComment(comment.id)}
-                        size="xs"
-                        variant="ghost"
-                        color="var(--c-error)"
-                        minH="32px"
-                        minW="32px"
-                        p={0}
-                        cursor="pointer"
-                      >
-                        <Box className="material-symbols-outlined" fontSize="sm">
-                          delete
-                        </Box>
-                      </Button>
-                    )}
-                  </Flex>
-                )
-              })}
-            </VStack>
-          )}
-          
-          {user ? (
-            <Flex as="form" onSubmit={handleAddComment} gap={2} align="center" mt={2}>
-              <Input
-                placeholder="Write a comment..."
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                h="36px"
-                borderRadius="lg"
-                border="1px solid"
-                borderColor="border.subtle"
-                bg="bg.surface"
-                fontSize="xs"
-                _focus={{ borderColor: 'var(--c-lagoon)' }}
-                required
-              />
-              <Button
-                type="submit"
-                loading={submittingComment}
-                bg="accent.solid"
-                color="white"
-                h="36px"
-                px={4}
-                borderRadius="lg"
-                fontSize="xs"
-                fontWeight="700"
-                cursor="pointer"
-              >
-                Send
-              </Button>
-            </Flex>
-          ) : (
-            <Text fontSize="2xs" color="fg.subtle">Sign in to comment.</Text>
-          )}
-        </VStack>
+        <CommentSection post={post} borderStyle="dashed" avatarSize="24px" avatarFontSize="3xs" />
       )}
     </Box>
   )

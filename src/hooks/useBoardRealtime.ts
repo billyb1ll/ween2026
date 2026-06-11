@@ -250,6 +250,8 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'post_comments' },
         (payload) => {
+          const commentId = payload.old.id
+          console.log('[Realtime global comment delete] ID:', commentId)
           const postId = Number(payload.old.post_id)
           setPosts((prev) =>
             prev.map((p) =>
