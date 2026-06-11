@@ -1,43 +1,58 @@
-import { Box, Flex, HStack, Text, Button, VStack, Portal } from '@chakra-ui/react'
-import { NavLink, Link } from 'react-router-dom'
-import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { getImmichConfig } from '../utils/immich'
-import { toaster } from './ui/toaster'
-import { useUser } from '../context/UserContext'
-import type { User } from '../context/UserContext'
-import { motion, useReducedMotion } from 'framer-motion'
+import {
+  Box,
+  Flex,
+  HStack,
+  Text,
+  Button,
+  VStack,
+  Portal,
+} from "@chakra-ui/react";
+import { NavLink, Link } from "react-router-dom";
+import {
+  type ReactNode,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import { getImmichConfig } from "../utils/immich";
+import { toaster } from "./ui/toaster";
+import { useUser } from "../context/UserContext";
+import type { User } from "../context/UserContext";
+import { motion, useReducedMotion } from "framer-motion";
 
 interface NavItemProps {
-  to: string
-  children: ReactNode
-  icon?: string
+  to: string;
+  children: ReactNode;
+  icon?: string;
 }
 
 const getInitials = (name: string) => {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 function NavItem({ to, children, icon }: NavItemProps) {
-  const isGallery = to === '/gallery'
-  const immich = getImmichConfig()
+  const isGallery = to === "/gallery";
+  const immich = getImmichConfig();
 
   const handleClick = (e: React.MouseEvent) => {
     if (isGallery) {
       if (!immich.isConfigured || !immich.url) {
-        e.preventDefault()
+        e.preventDefault();
         toaster.create({
           title: "Gallery Warming Up",
-          description: "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+          description:
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
           type: "info",
           closable: true,
           duration: 5000,
-        })
+        });
       }
     }
-  }
+  };
 
   const navContent = (isActive: boolean) => (
     <Flex
@@ -50,61 +65,61 @@ function NavItem({ to, children, icon }: NavItemProps) {
       fontWeight="600"
       letterSpacing="0.05em"
       transition="all 0.3s var(--ease-out-quart)"
-      bg={isActive ? 'rgba(var(--c-white-rgb), 0.5)' : 'transparent'}
-      color={isActive ? 'accent.solid' : 'fg.subtle'}
-      boxShadow={isActive ? 'var(--shadow-ambient)' : 'none'}
+      bg={isActive ? "rgba(var(--c-white-rgb), 0.5)" : "transparent"}
+      color={isActive ? "accent.solid" : "fg.subtle"}
+      boxShadow={isActive ? "var(--shadow-ambient)" : "none"}
       _hover={{
-        color: 'accent.solid',
+        color: "accent.solid",
       }}
       position="relative"
     >
       {icon && (
         <Box
           as="span"
-          display={{ base: 'block', md: 'none' }}
+          display={{ base: "block", md: "none" }}
           className="material-symbols-outlined"
           fontSize="xl"
         >
           {icon}
         </Box>
       )}
-      <Text display={{ base: 'none', md: 'block' }}>{children}</Text>
+      <Text display={{ base: "none", md: "block" }}>{children}</Text>
     </Flex>
-  )
+  );
 
   if (isGallery && immich.isConfigured && immich.url) {
     return (
-      <a
-        href={immich.url}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+      <a href={immich.url} target="_blank" rel="noopener noreferrer">
         {navContent(false)}
       </a>
-    )
+    );
   }
 
   return (
     <NavLink to={to} onClick={handleClick}>
       {({ isActive }) => navContent(isActive)}
     </NavLink>
-  )
+  );
 }
 
 interface UserDropdownContentProps {
-  user: User | null
-  logout: () => void
-  onClose: () => void
+  user: User | null;
+  logout: () => void;
+  onClose: () => void;
 }
 
-const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps) => (
+const UserDropdownContent = ({
+  user,
+  logout,
+  onClose,
+}: UserDropdownContentProps) => (
   <VStack align="stretch" gap={3}>
     <Box>
       <Text fontWeight="700" color="var(--c-chocolate)" fontSize="sm">
-        {user?.nickname || 'Student'}
+        {user?.nickname || "Student"}
       </Text>
       <Text fontSize="xs" color="var(--c-muted)">
-        {user?.faculty || user?.major || 'Unassigned'}
+        {user?.faculty || user?.major || "Unassigned"}
       </Text>
       <Text fontSize="2xs" color="var(--c-outline)">
         ID: {user?.student_id}
@@ -112,7 +127,7 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
     </Box>
     <Box h="1px" bg="var(--c-lagoon-light)" />
     {user && (
-      <Link to="/profile-edit" onClick={onClose} style={{ width: '100%' }}>
+      <Link to="/profile-edit" onClick={onClose} style={{ width: "100%" }}>
         <Button
           size="sm"
           variant="ghost"
@@ -122,14 +137,17 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
           h="32px"
           w="100%"
           borderRadius="8px"
-          _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
+          _hover={{
+            bg: "rgba(73, 98, 104, 0.05)",
+            color: "var(--c-chocolate)",
+          }}
         >
           Edit Profile
         </Button>
       </Link>
     )}
-    {user && (user.role === 'superadmin' || user.role === 'media_admin') && (
-      <Link to="/admin" onClick={onClose} style={{ width: '100%' }}>
+    {user && (user.role === "superadmin" || user.role === "media_admin") && (
+      <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
         <Button
           size="sm"
           variant="ghost"
@@ -139,14 +157,17 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
           h="32px"
           w="100%"
           borderRadius="8px"
-          _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
+          _hover={{
+            bg: "rgba(73, 98, 104, 0.05)",
+            color: "var(--c-chocolate)",
+          }}
         >
           Admin Dashboard
         </Button>
       </Link>
     )}
-    {user && (user.role === 'superadmin' || user.role === 'staff') && (
-      <Link to="/staff" onClick={onClose} style={{ width: '100%' }}>
+    {user && (user.role === "superadmin" || user.role === "staff") && (
+      <Link to="/staff" onClick={onClose} style={{ width: "100%" }}>
         <Button
           size="sm"
           variant="ghost"
@@ -156,7 +177,10 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
           h="32px"
           w="100%"
           borderRadius="8px"
-          _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
+          _hover={{
+            bg: "rgba(73, 98, 104, 0.05)",
+            color: "var(--c-chocolate)",
+          }}
         >
           Staff Dashboard
         </Button>
@@ -170,121 +194,125 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
       px={2}
       h="32px"
       borderRadius="8px"
-      _hover={{ bg: 'rgba(var(--c-error-rgb), 0.05)' }}
+      _hover={{ bg: "rgba(var(--c-error-rgb), 0.05)" }}
       onClick={() => {
-        logout()
-        onClose()
+        logout();
+        onClose();
       }}
     >
       Log Out
     </Button>
   </VStack>
-)
+);
 
 export function Navbar() {
-  const { user, logout } = useUser()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
-  const desktopDropdownRef = useRef<HTMLDivElement>(null)
-  const mobileDropdownRef = useRef<HTMLDivElement>(null)
-  const desktopPortalRef = useRef<HTMLDivElement>(null)
-  const mobilePortalRef = useRef<HTMLDivElement>(null)
+  const { user, logout } = useUser();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement>(null);
+  const desktopPortalRef = useRef<HTMLDivElement>(null);
+  const mobilePortalRef = useRef<HTMLDivElement>(null);
 
-  const [desktopCoords, setDesktopCoords] = useState<{ top: number; right: number } | null>(null)
-  const [mobileCoords, setMobileCoords] = useState<{ top: number; right: number } | null>(null)
+  const [desktopCoords, setDesktopCoords] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const [mobileCoords, setMobileCoords] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
 
   const updateDesktopCoords = useCallback(() => {
     if (desktopDropdownRef.current) {
-      const rect = desktopDropdownRef.current.getBoundingClientRect()
+      const rect = desktopDropdownRef.current.getBoundingClientRect();
       setDesktopCoords({
         top: rect.bottom + 8,
         right: Math.max(16, window.innerWidth - rect.right),
-      })
+      });
     }
-  }, [])
+  }, []);
 
   const updateMobileCoords = useCallback(() => {
     if (mobileDropdownRef.current) {
-      const rect = mobileDropdownRef.current.getBoundingClientRect()
+      const rect = mobileDropdownRef.current.getBoundingClientRect();
       setMobileCoords({
         top: rect.bottom + 8,
         right: Math.max(16, window.innerWidth - rect.right),
-      })
+      });
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (dropdownOpen) {
-      updateDesktopCoords()
-      window.addEventListener('resize', updateDesktopCoords)
-      window.addEventListener('scroll', updateDesktopCoords, true)
+      updateDesktopCoords();
+      window.addEventListener("resize", updateDesktopCoords);
+      window.addEventListener("scroll", updateDesktopCoords, true);
       return () => {
-        window.removeEventListener('resize', updateDesktopCoords)
-        window.removeEventListener('scroll', updateDesktopCoords, true)
-      }
+        window.removeEventListener("resize", updateDesktopCoords);
+        window.removeEventListener("scroll", updateDesktopCoords, true);
+      };
     }
-  }, [dropdownOpen, updateDesktopCoords])
+  }, [dropdownOpen, updateDesktopCoords]);
 
   useEffect(() => {
     if (mobileDropdownOpen) {
-      updateMobileCoords()
-      window.addEventListener('resize', updateMobileCoords)
-      window.addEventListener('scroll', updateMobileCoords, true)
+      updateMobileCoords();
+      window.addEventListener("resize", updateMobileCoords);
+      window.addEventListener("scroll", updateMobileCoords, true);
       return () => {
-        window.removeEventListener('resize', updateMobileCoords)
-        window.removeEventListener('scroll', updateMobileCoords, true)
-      }
+        window.removeEventListener("resize", updateMobileCoords);
+        window.removeEventListener("scroll", updateMobileCoords, true);
+      };
     }
-  }, [mobileDropdownOpen, updateMobileCoords])
+  }, [mobileDropdownOpen, updateMobileCoords]);
 
   // Close dropdown on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setDropdownOpen(false)
-      setMobileDropdownOpen(false)
+    if (e.key === "Escape") {
+      setDropdownOpen(false);
+      setMobileDropdownOpen(false);
     }
-  }, [])
+  }, []);
 
   // Close dropdown on outside click (exclude portal content)
   const handleOutsideClick = useCallback((e: MouseEvent) => {
-    const target = e.target as Node
-    const inDesktopTrigger = desktopDropdownRef.current?.contains(target)
-    const inDesktopPortal = desktopPortalRef.current?.contains(target)
+    const target = e.target as Node;
+    const inDesktopTrigger = desktopDropdownRef.current?.contains(target);
+    const inDesktopPortal = desktopPortalRef.current?.contains(target);
     if (!inDesktopTrigger && !inDesktopPortal) {
-      setDropdownOpen(false)
+      setDropdownOpen(false);
     }
-    const inMobileTrigger = mobileDropdownRef.current?.contains(target)
-    const inMobilePortal = mobilePortalRef.current?.contains(target)
+    const inMobileTrigger = mobileDropdownRef.current?.contains(target);
+    const inMobilePortal = mobilePortalRef.current?.contains(target);
     if (!inMobileTrigger && !inMobilePortal) {
-      setMobileDropdownOpen(false)
+      setMobileDropdownOpen(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (dropdownOpen || mobileDropdownOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      document.addEventListener('mousedown', handleOutsideClick)
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("mousedown", handleOutsideClick);
       return () => {
-        document.removeEventListener('keydown', handleKeyDown)
-        document.removeEventListener('mousedown', handleOutsideClick)
-      }
+        document.removeEventListener("keydown", handleKeyDown);
+        document.removeEventListener("mousedown", handleOutsideClick);
+      };
     }
-  }, [dropdownOpen, mobileDropdownOpen, handleKeyDown, handleOutsideClick])
-
-
+  }, [dropdownOpen, mobileDropdownOpen, handleKeyDown, handleOutsideClick]);
 
   return (
     <>
       {/* Desktop: Sticky top bar */}
       <Box
-        display={{ base: 'none', md: 'block' }}
+        display={{ base: "none", md: "block" }}
         position="fixed"
         top={6}
         left="50%"
         transform="translateX(-50%)"
         zIndex={50}
         w="auto"
-        maxW="2xl"
+        maxW="4xl"
       >
         <Flex
           as="nav"
@@ -303,7 +331,6 @@ export function Navbar() {
           <NavLink to="/">
             <Text
               fontFamily="heading"
-              color="accent.solid"
               fontSize="xl"
               fontWeight="700"
               letterSpacing="0.1em"
@@ -311,7 +338,10 @@ export function Navbar() {
               transition="opacity 0.2s"
               _hover={{ opacity: 0.8 }}
             >
-              Baan 7
+              <Flex>
+                <Text color="red">Very</Text>
+                <Text color="orange">Ween</Text>
+              </Flex>
             </Text>
           </NavLink>
 
@@ -344,7 +374,7 @@ export function Navbar() {
                 cursor="pointer"
                 boxShadow="var(--shadow-ambient)"
                 transition="all 0.2s"
-                _hover={{ transform: 'scale(1.05)' }}
+                _hover={{ transform: "scale(1.05)" }}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 {getInitials(user.nickname || user.student_id)}
@@ -368,7 +398,11 @@ export function Navbar() {
                     animation="scale-in 0.2s var(--ease-out-quart)"
                     role="menu"
                   >
-                    <UserDropdownContent user={user} logout={logout} onClose={() => setDropdownOpen(false)} />
+                    <UserDropdownContent
+                      user={user}
+                      logout={logout}
+                      onClose={() => setDropdownOpen(false)}
+                    />
                   </Box>
                 </Portal>
               )}
@@ -391,10 +425,10 @@ export function Navbar() {
                   transition="all 0.3s var(--ease-out-quart)"
                   boxShadow="0 4px 14px rgba(124, 86, 63, 0.2)"
                   _hover={{
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(124, 86, 63, 0.3)',
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 6px 20px rgba(124, 86, 63, 0.3)",
                   }}
-                  _active={{ transform: 'scale(0.97)' }}
+                  _active={{ transform: "scale(0.97)" }}
                 >
                   Join Now
                 </Box>
@@ -406,7 +440,7 @@ export function Navbar() {
 
       {/* Mobile: Dock bottom bar */}
       <Box
-        display={{ base: 'block', md: 'none' }}
+        display={{ base: "block", md: "none" }}
         position="fixed"
         bottom={0}
         left={0}
@@ -436,7 +470,7 @@ export function Navbar() {
 
       {/* Mobile top bar with brand */}
       <Box
-        display={{ base: 'block', md: 'none' }}
+        display={{ base: "block", md: "none" }}
         position="sticky"
         top={0}
         zIndex={40}
@@ -480,7 +514,7 @@ export function Navbar() {
                 cursor="pointer"
                 boxShadow="var(--shadow-ambient)"
                 transition="all 0.2s"
-                _hover={{ transform: 'scale(1.05)' }}
+                _hover={{ transform: "scale(1.05)" }}
                 onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
               >
                 {getInitials(user.nickname || user.student_id)}
@@ -504,7 +538,11 @@ export function Navbar() {
                     animation="scale-in 0.2s var(--ease-out-quart)"
                     role="menu"
                   >
-                    <UserDropdownContent user={user} logout={logout} onClose={() => setMobileDropdownOpen(false)} />
+                    <UserDropdownContent
+                      user={user}
+                      logout={logout}
+                      onClose={() => setMobileDropdownOpen(false)}
+                    />
                   </Box>
                 </Portal>
               )}
@@ -523,7 +561,7 @@ export function Navbar() {
                 borderRadius="full"
                 bg="bg.hero"
                 transition="background 0.2s"
-                _hover={{ bg: 'bg.elevated' }}
+                _hover={{ bg: "bg.elevated" }}
               >
                 person
               </Box>
@@ -532,28 +570,37 @@ export function Navbar() {
         </Flex>
       </Box>
     </>
-  )
+  );
 }
 
-function MobileDockItem({ to, icon, label }: { to: string; icon: string; label: string }) {
-  const isGallery = to === '/gallery'
-  const immich = getImmichConfig()
-  const shouldReduceMotion = useReducedMotion() ?? false
+function MobileDockItem({
+  to,
+  icon,
+  label,
+}: {
+  to: string;
+  icon: string;
+  label: string;
+}) {
+  const isGallery = to === "/gallery";
+  const immich = getImmichConfig();
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const handleClick = (e: React.MouseEvent) => {
     if (isGallery) {
       if (!immich.isConfigured || !immich.url) {
-        e.preventDefault()
+        e.preventDefault();
         toaster.create({
           title: "Gallery Warming Up",
-          description: "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+          description:
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
           type: "info",
           closable: true,
           duration: 5000,
-        })
+        });
       }
     }
-  }
+  };
 
   const dockContent = (isActive: boolean) => (
     <Flex
@@ -564,7 +611,7 @@ function MobileDockItem({ to, icon, label }: { to: string; icon: string; label: 
       py={1}
       borderRadius="xl"
       transition="all 0.2s"
-      color={isActive ? 'accent.solid' : 'fg.subtle'}
+      color={isActive ? "accent.solid" : "fg.subtle"}
       bg="transparent"
       /* Touch target: min 44x44 */
       minW="44px"
@@ -576,24 +623,36 @@ function MobileDockItem({ to, icon, label }: { to: string; icon: string; label: 
         <motion.div
           layoutId="activeGlow"
           style={{
-            position: 'absolute',
+            position: "absolute",
             inset: 0,
-            backgroundColor: 'var(--chakra-colors-accent-subtle)',
-            borderRadius: '12px',
+            backgroundColor: "var(--chakra-colors-accent-subtle)",
+            borderRadius: "12px",
             zIndex: 0,
           }}
-          transition={shouldReduceMotion ? { duration: 0.1 } : {
-            type: "spring",
-            stiffness: 380,
-            damping: 30,
-          }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0.1 }
+              : {
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 30,
+                }
+          }
         />
       )}
       <VStack align="center" gap={0.5} zIndex={1} position="relative">
         <motion.div
-          animate={isActive && !shouldReduceMotion ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+          animate={
+            isActive && !shouldReduceMotion
+              ? { scale: [1, 1.25, 1] }
+              : { scale: 1 }
+          }
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
           <Box
             className="material-symbols-outlined"
@@ -603,26 +662,24 @@ function MobileDockItem({ to, icon, label }: { to: string; icon: string; label: 
             {icon}
           </Box>
         </motion.div>
-        <Text fontSize="2xs" fontWeight="600">{label}</Text>
+        <Text fontSize="2xs" fontWeight="600">
+          {label}
+        </Text>
       </VStack>
     </Flex>
-  )
+  );
 
   if (isGallery && immich.isConfigured && immich.url) {
     return (
-      <a
-        href={immich.url}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+      <a href={immich.url} target="_blank" rel="noopener noreferrer">
         {dockContent(false)}
       </a>
-    )
+    );
   }
 
   return (
     <NavLink to={to} onClick={handleClick}>
       {({ isActive }) => dockContent(isActive)}
     </NavLink>
-  )
+  );
 }

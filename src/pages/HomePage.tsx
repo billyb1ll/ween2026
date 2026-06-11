@@ -1,53 +1,67 @@
-import { Box, Flex, Heading, HStack, Text, VStack, Button } from '@chakra-ui/react'
-import { Link } from 'react-router-dom'
-import { useEffect, useRef, useState, lazy, Suspense } from 'react'
-import { getImmichConfig } from '../utils/immich'
-import { toaster } from '../components/ui/toaster'
-import { motion, useReducedMotion } from 'framer-motion'
-import type { Variants } from 'framer-motion'
+import {
+  Box,
+  Flex,
+  Heading,
+  HStack,
+  Text,
+  VStack,
+  Button,
+} from "@chakra-ui/react";
+import { Link } from "react-router-dom";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { getImmichConfig } from "../utils/immich";
+import { toaster } from "../components/ui/toaster";
+import { motion, useReducedMotion } from "framer-motion";
+import type { Variants } from "framer-motion";
 
-const ThreeBlob = lazy(() => import('../components/ThreeBlob').then(module => ({ default: module.ThreeBlob })))
+const ThreeBlob = lazy(() =>
+  import("../components/ThreeBlob").then((module) => ({
+    default: module.ThreeBlob,
+  })),
+);
 
 const features = [
   {
-    title: 'Vibe Check',
-    description: 'Swipe to match with your Baan 7 friends and staff. Break the ice and build connections instantly.',
-    icon: 'waving_hand',
-    color: 'var(--c-lagoon-light)',
-    textColor: 'var(--c-lagoon)',
-    link: '/vibe-check',
-    size: 'large' as const,
-    avatars: ['B7', 'Fr', '+12'],
+    title: "Vibe Check",
+    description:
+      "Swipe to match with your Baan 7 friends and staff. Break the ice and build connections instantly.",
+    icon: "waving_hand",
+    color: "var(--c-lagoon-light)",
+    textColor: "var(--c-lagoon)",
+    link: "/vibe-check",
+    size: "large" as const,
+    avatars: ["B7", "Fr", "+12"],
   },
   {
-    title: 'Hype Board',
-    description: 'Drop a message, share the hype, and see what everyone is talking about in real-time.',
-    icon: 'campaign',
-    color: 'var(--c-chocolate)',
-    textColor: '#ffffff',
-    link: '/board',
-    size: 'wide' as const,
+    title: "Hype Board",
+    description:
+      "Drop a message, share the hype, and see what everyone is talking about in real-time.",
+    icon: "campaign",
+    color: "var(--c-chocolate)",
+    textColor: "#ffffff",
+    link: "/board",
+    size: "wide" as const,
   },
   {
-    title: 'Gallery',
-    description: 'Relive the moments and celebrate memories.',
-    icon: 'photo_library',
-    color: 'var(--c-white)',
-    textColor: 'var(--c-ink)',
-    link: '/gallery',
-    size: 'small' as const,
+    title: "Gallery",
+    description: "Relive the moments and celebrate memories.",
+    icon: "photo_library",
+    color: "var(--c-white)",
+    textColor: "var(--c-ink)",
+    link: "/gallery",
+    size: "small" as const,
   },
   {
-    title: 'Next Event',
-    subtitle: 'First Meet',
-    time: 'Today, 18:00',
-    icon: 'event',
-    color: 'var(--c-ivory)',
-    textColor: 'var(--c-ink)',
-    link: '/board',
-    size: 'small' as const,
+    title: "Next Event",
+    subtitle: "First Meet",
+    time: "Today, 18:00",
+    icon: "event",
+    color: "var(--c-ivory)",
+    textColor: "var(--c-ink)",
+    link: "/board",
+    size: "small" as const,
   },
-]
+];
 
 const containerVariants = {
   hidden: {},
@@ -56,7 +70,7 @@ const containerVariants = {
       staggerChildren: 0.1,
     },
   },
-}
+};
 
 const cardVariants = (shouldReduceMotion: boolean): Variants => ({
   hidden: {
@@ -68,52 +82,50 @@ const cardVariants = (shouldReduceMotion: boolean): Variants => ({
     opacity: 1,
     transition: shouldReduceMotion
       ? { duration: 0.2 }
-      : { type: 'spring', stiffness: 100, damping: 15 },
+      : { type: "spring", stiffness: 100, damping: 15 },
   },
-})
+});
 
 export function HomePage() {
-  const [onlineCount] = useState(42)
-  const lineRef = useRef<SVGPathElement>(null)
-  const [isMobile, setIsMobile] = useState(true)
-  const shouldReduceMotion = useReducedMotion() ?? false
-  const variants = cardVariants(shouldReduceMotion)
+  const [onlineCount] = useState(42);
+  const lineRef = useRef<SVGPathElement>(null);
+  const [isMobile, setIsMobile] = useState(true);
+  const shouldReduceMotion = useReducedMotion() ?? false;
+  const variants = cardVariants(shouldReduceMotion);
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
-    const path = lineRef.current
-    if (!path) return
-    const length = path.getTotalLength()
-    path.style.strokeDasharray = `${length}`
-    path.style.strokeDashoffset = `${length}`
+    const path = lineRef.current;
+    if (!path) return;
+    const length = path.getTotalLength();
+    path.style.strokeDasharray = `${length}`;
+    path.style.strokeDashoffset = `${length}`;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          path.style.animation = `draw-line 2s var(--ease-out-quart) forwards`
-          observer.disconnect()
+          path.style.animation = `draw-line 2s var(--ease-out-quart) forwards`;
+          observer.disconnect();
         }
       },
-      { threshold: 0.2 }
-    )
+      { threshold: 0.2 },
+    );
 
-    const parent = path.closest('svg')
-    if (parent) observer.observe(parent)
-    return () => observer.disconnect()
-  }, [])
+    const parent = path.closest("svg");
+    if (parent) observer.observe(parent);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Box position="relative">
-
-
       {/* 3D Canvas Background Scroll Animation (only on desktop) */}
       {!isMobile && (
         <Suspense fallback={null}>
@@ -148,7 +160,12 @@ export function HomePage() {
               borderRadius="full"
               animation="pulse-dot 2s infinite"
             />
-            <Text fontSize="xs" fontWeight="600" letterSpacing="0.05em" color="fg.subtle">
+            <Text
+              fontSize="xs"
+              fontWeight="600"
+              letterSpacing="0.05em"
+              color="fg.subtle"
+            >
               {onlineCount} Freshmen Online
             </Text>
           </HStack>
@@ -166,15 +183,17 @@ export function HomePage() {
           <Heading
             as="h1"
             fontFamily="heading"
-            fontSize={{ base: 'clamp(2rem, 8vw, 2.8rem)', md: 'clamp(3rem, 5vw, 4.5rem)' }}
+            fontSize={{
+              base: "clamp(2rem, 8vw, 2.8rem)",
+              md: "clamp(3rem, 5vw, 4.5rem)",
+            }}
             fontWeight={700}
             lineHeight={1.05}
             letterSpacing="-0.03em"
             color="fg.default"
             mb={{ base: 4, md: 6 }}
           >
-            Welcome to{' '}
-            <br />
+            Welcome to <br />
             <Text
               as="span"
               color="accent.solid"
@@ -186,7 +205,7 @@ export function HomePage() {
           </Heading>
 
           <Text
-            fontSize={{ base: 'md', md: 'xl' }}
+            fontSize={{ base: "md", md: "xl" }}
             color="fg.muted"
             maxW="xl"
             lineHeight={1.6}
@@ -213,10 +232,10 @@ export function HomePage() {
                 transition="all 0.3s var(--ease-out-quart)"
                 boxShadow="0 6px 20px rgba(124, 86, 63, 0.25)"
                 _hover={{
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 10px 30px rgba(124, 86, 63, 0.35)',
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 10px 30px rgba(124, 86, 63, 0.35)",
                 }}
-                _active={{ transform: 'scale(0.97)' }}
+                _active={{ transform: "scale(0.97)" }}
               >
                 <Text>Start Exploring</Text>
                 <Box className="material-symbols-outlined" fontSize="lg">
@@ -241,8 +260,8 @@ export function HomePage() {
                 gap={2}
                 transition="all 0.3s var(--ease-out-quart)"
                 _hover={{
-                  bg: 'bg.hero',
-                  transform: 'translateY(-1px)',
+                  bg: "bg.hero",
+                  transform: "translateY(-1px)",
                 }}
               >
                 <Text>Explore Features</Text>
@@ -261,7 +280,7 @@ export function HomePage() {
           maxW="100%"
           overflow="visible"
           my={-8}
-          display={{ base: 'none', md: 'block' }}
+          display={{ base: "none", md: "block" }}
         >
           <svg
             width="100%"
@@ -287,7 +306,7 @@ export function HomePage() {
           <Heading
             as="h2"
             fontFamily="heading"
-            fontSize={{ base: '1.5rem', md: '2rem' }}
+            fontSize={{ base: "1.5rem", md: "2rem" }}
             fontWeight={600}
             lineHeight={1.3}
             color="fg.default"
@@ -308,18 +327,26 @@ export function HomePage() {
           >
             <Box
               display="grid"
-              gridTemplateColumns={{ base: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }}
-              gridTemplateRows={{ base: 'auto', md: 'repeat(2, 1fr)' }}
+              gridTemplateColumns={{
+                base: "1fr",
+                sm: "repeat(2, 1fr)",
+                md: "repeat(4, 1fr)",
+              }}
+              gridTemplateRows={{ base: "auto", md: "repeat(2, 1fr)" }}
               gap={{ base: 3, md: 6 }}
-              minH={{ md: '600px' }}
+              minH={{ md: "600px" }}
             >
               {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
-              <Box gridColumn={{ md: 'span 2' }} gridRow={{ md: 'span 2' }} height="100%">
+              <Box
+                gridColumn={{ md: "span 2" }}
+                gridRow={{ md: "span 2" }}
+                height="100%"
+              >
                 <FeatureCardLarge feature={features[0]} variants={variants} />
               </Box>
 
               {/* Hype Board — spans 2 cols wide on desktop */}
-              <Box gridColumn={{ md: 'span 2' }} height="100%">
+              <Box gridColumn={{ md: "span 2" }} height="100%">
                 <FeatureCardWide feature={features[1]} variants={variants} />
               </Box>
 
@@ -337,30 +364,44 @@ export function HomePage() {
         </Box>
       </Box>
     </Box>
-  )
+  );
 }
 
-function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; variants: Variants }) {
-  const [tilt, setTilt] = useState(0)
-  const shouldReduceMotion = useReducedMotion() ?? false
+function FeatureCardLarge({
+  feature,
+  variants,
+}: {
+  feature: (typeof features)[0];
+  variants: Variants;
+}) {
+  const [tilt, setTilt] = useState(0);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const handleTapStart = () => {
     if (!shouldReduceMotion) {
-      setTilt((Math.random() - 0.5) * 1.0)
+      setTilt((Math.random() - 0.5) * 1.0);
     }
-  }
+  };
 
   return (
-    <Link to={feature.link} className="feature-card-large" style={{ display: 'block', height: '100%' }}>
+    <Link
+      to={feature.link}
+      className="feature-card-large"
+      style={{ display: "block", height: "100%" }}
+    >
       <motion.div
         variants={variants}
-        whileTap={shouldReduceMotion ? { opacity: 0.8 } : {
-          scale: 0.96,
-          rotate: tilt,
-          transition: { type: "spring", stiffness: 400, damping: 15 }
-        }}
+        whileTap={
+          shouldReduceMotion
+            ? { opacity: 0.8 }
+            : {
+                scale: 0.96,
+                rotate: tilt,
+                transition: { type: "spring", stiffness: 400, damping: 15 },
+              }
+        }
         onTapStart={handleTapStart}
-        style={{ height: '100%' }}
+        style={{ height: "100%" }}
       >
         <Box
           bg={feature.color}
@@ -368,8 +409,8 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
           borderRadius="2xl"
           position="relative"
           overflow="hidden"
-          h={{ base: 'auto', md: '100%' }}
-          minH={{ base: '200px', md: 'auto' }}
+          h={{ base: "auto", md: "100%" }}
+          minH={{ base: "200px", md: "auto" }}
           display="flex"
           flexDirection="column"
           justifyContent="space-between"
@@ -377,8 +418,8 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
           cursor="pointer"
           role="group"
           _hover={{
-            transform: 'translateY(-4px)',
-            boxShadow: '0 0 40px rgba(197, 224, 230, 0.4)',
+            transform: "translateY(-4px)",
+            boxShadow: "0 0 40px rgba(197, 224, 230, 0.4)",
           }}
         >
           {/* Ambient glow */}
@@ -386,16 +427,22 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
             position="absolute"
             top={-10}
             right={-10}
-            w={{ base: '160px', md: '256px' }}
-            h={{ base: '160px', md: '256px' }}
+            w={{ base: "160px", md: "256px" }}
+            h={{ base: "160px", md: "256px" }}
             bg="rgba(255,255,255,0.3)"
             borderRadius="full"
             filter="blur(48px)"
             transition="background 0.4s"
-            _groupHover={{ bg: 'rgba(255,255,255,0.4)' }}
+            _groupHover={{ bg: "rgba(255,255,255,0.4)" }}
           />
 
-          <VStack align="start" gap={{ base: 2, md: 4 }} position="relative" zIndex={1} flex={1}>
+          <VStack
+            align="start"
+            gap={{ base: 2, md: 4 }}
+            position="relative"
+            zIndex={1}
+            flex={1}
+          >
             <Box
               w={{ base: 12, md: 16 }}
               h={{ base: 12, md: 16 }}
@@ -407,21 +454,30 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
               boxShadow="var(--shadow-ambient)"
               mb={{ base: 2, md: 4 }}
             >
-              <Box className="material-symbols-outlined" fontSize={{ base: '2xl', md: '3xl' }} color={feature.textColor}>
+              <Box
+                className="material-symbols-outlined"
+                fontSize={{ base: "2xl", md: "3xl" }}
+                color={feature.textColor}
+              >
                 {feature.icon}
               </Box>
             </Box>
             <Heading
               as="h3"
               fontFamily="heading"
-              fontSize={{ base: '1.5rem', md: '2.5rem' }}
+              fontSize={{ base: "1.5rem", md: "2.5rem" }}
               fontWeight={700}
               lineHeight={1.1}
               color={feature.textColor}
             >
               {feature.title}
             </Heading>
-            <Text fontSize={{ base: 'sm', md: 'lg' }} color={feature.textColor} opacity={0.8} maxW="md">
+            <Text
+              fontSize={{ base: "sm", md: "lg" }}
+              color={feature.textColor}
+              opacity={0.8}
+              maxW="md"
+            >
               {feature.description}
             </Text>
           </VStack>
@@ -441,7 +497,13 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
                     w={{ base: 10, md: 12 }}
                     h={{ base: 10, md: 12 }}
                     borderRadius="full"
-                    bg={i === 0 ? 'white' : i === 1 ? 'var(--c-chocolate-light)' : 'var(--c-ivory)'}
+                    bg={
+                      i === 0
+                        ? "white"
+                        : i === 1
+                          ? "var(--c-chocolate-light)"
+                          : "var(--c-ivory)"
+                    }
                     border="2px solid"
                     borderColor={feature.color}
                     display="flex"
@@ -449,7 +511,7 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
                     justifyContent="center"
                     fontSize="xs"
                     fontWeight="700"
-                    color={i === 1 ? 'var(--c-chocolate)' : feature.textColor}
+                    color={i === 1 ? "var(--c-chocolate)" : feature.textColor}
                     ml={i > 0 ? -4 : 0}
                   >
                     {label}
@@ -459,11 +521,11 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
             )}
             <Box
               className="material-symbols-outlined"
-              fontSize={{ base: '3xl', md: '5xl' }}
+              fontSize={{ base: "3xl", md: "5xl" }}
               color={feature.textColor}
               opacity={0.2}
               transition="all 0.5s"
-              _groupHover={{ opacity: 0.4, transform: 'scale(1.1)' }}
+              _groupHover={{ opacity: 0.4, transform: "scale(1.1)" }}
             >
               favorite
             </Box>
@@ -471,30 +533,44 @@ function FeatureCardLarge({ feature, variants }: { feature: typeof features[0]; 
         </Box>
       </motion.div>
     </Link>
-  )
+  );
 }
 
-function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; variants: Variants }) {
-  const [tilt, setTilt] = useState(0)
-  const shouldReduceMotion = useReducedMotion() ?? false
+function FeatureCardWide({
+  feature,
+  variants,
+}: {
+  feature: (typeof features)[1];
+  variants: Variants;
+}) {
+  const [tilt, setTilt] = useState(0);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const handleTapStart = () => {
     if (!shouldReduceMotion) {
-      setTilt((Math.random() - 0.5) * 1.0)
+      setTilt((Math.random() - 0.5) * 1.0);
     }
-  }
+  };
 
   return (
-    <Link to={feature.link} className="feature-card-wide" style={{ display: 'block', height: '100%' }}>
+    <Link
+      to={feature.link}
+      className="feature-card-wide"
+      style={{ display: "block", height: "100%" }}
+    >
       <motion.div
         variants={variants}
-        whileTap={shouldReduceMotion ? { opacity: 0.8 } : {
-          scale: 0.96,
-          rotate: tilt,
-          transition: { type: "spring", stiffness: 400, damping: 15 }
-        }}
+        whileTap={
+          shouldReduceMotion
+            ? { opacity: 0.8 }
+            : {
+                scale: 0.96,
+                rotate: tilt,
+                transition: { type: "spring", stiffness: 400, damping: 15 },
+              }
+        }
         onTapStart={handleTapStart}
-        style={{ height: '100%' }}
+        style={{ height: "100%" }}
       >
         <Box
           bg={feature.color}
@@ -510,8 +586,8 @@ function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; v
           cursor="pointer"
           role="group"
           _hover={{
-            transform: 'translateY(-4px)',
-            boxShadow: '0 0 40px rgba(124, 86, 63, 0.3)',
+            transform: "translateY(-4px)",
+            boxShadow: "0 0 40px rgba(124, 86, 63, 0.3)",
           }}
         >
           {/* Dot pattern */}
@@ -522,7 +598,12 @@ function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; v
             bgSize="20px 20px"
             opacity={0.5}
           />
-          <Flex align="start" gap={{ base: 4, md: 6 }} position="relative" zIndex={1}>
+          <Flex
+            align="start"
+            gap={{ base: 4, md: 6 }}
+            position="relative"
+            zIndex={1}
+          >
             <Box
               w={{ base: 12, md: 14 }}
               h={{ base: 12, md: 14 }}
@@ -533,7 +614,11 @@ function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; v
               justifyContent="center"
               flexShrink={0}
             >
-              <Box className="material-symbols-outlined" fontSize={{ base: '2xl', md: '3xl' }} color={feature.textColor}>
+              <Box
+                className="material-symbols-outlined"
+                fontSize={{ base: "2xl", md: "3xl" }}
+                color={feature.textColor}
+              >
                 {feature.icon}
               </Box>
             </Box>
@@ -541,14 +626,18 @@ function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; v
               <Heading
                 as="h3"
                 fontFamily="heading"
-                fontSize={{ base: '1.25rem', md: '1.5rem' }}
+                fontSize={{ base: "1.25rem", md: "1.5rem" }}
                 fontWeight={600}
                 lineHeight={1.3}
                 color={feature.textColor}
               >
                 {feature.title}
               </Heading>
-              <Text fontSize={{ base: 'sm', md: 'md' }} color={feature.textColor} opacity={0.8}>
+              <Text
+                fontSize={{ base: "sm", md: "md" }}
+                color={feature.textColor}
+                opacity={0.8}
+              >
                 {feature.description}
               </Text>
             </VStack>
@@ -556,46 +645,57 @@ function FeatureCardWide({ feature, variants }: { feature: typeof features[1]; v
         </Box>
       </motion.div>
     </Link>
-  )
+  );
 }
 
-function FeatureCardSmall({ feature, variants }: { feature: typeof features[2]; variants: Variants }) {
-  const isGallery = feature.title === 'Gallery'
-  const immich = getImmichConfig()
-  const [tilt, setTilt] = useState(0)
-  const shouldReduceMotion = useReducedMotion() ?? false
+function FeatureCardSmall({
+  feature,
+  variants,
+}: {
+  feature: (typeof features)[2];
+  variants: Variants;
+}) {
+  const isGallery = feature.title === "Gallery";
+  const immich = getImmichConfig();
+  const [tilt, setTilt] = useState(0);
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const handleTapStart = () => {
     if (!shouldReduceMotion) {
-      setTilt((Math.random() - 0.5) * 1.0)
+      setTilt((Math.random() - 0.5) * 1.0);
     }
-  }
+  };
 
   const handleClick = (e: React.MouseEvent) => {
     if (isGallery) {
       if (!immich.isConfigured || !immich.url) {
-        e.preventDefault()
+        e.preventDefault();
         toaster.create({
           title: "Gallery Warming Up",
-          description: "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+          description:
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
           type: "info",
           closable: true,
           duration: 5000,
-        })
+        });
       }
     }
-  }
+  };
 
   const cardContent = (
     <motion.div
       variants={variants}
-      whileTap={shouldReduceMotion ? { opacity: 0.8 } : {
-        scale: 0.96,
-        rotate: tilt,
-        transition: { type: "spring", stiffness: 400, damping: 15 }
-      }}
+      whileTap={
+        shouldReduceMotion
+          ? { opacity: 0.8 }
+          : {
+              scale: 0.96,
+              rotate: tilt,
+              transition: { type: "spring", stiffness: 400, damping: 15 },
+            }
+      }
       onTapStart={handleTapStart}
-      style={{ height: '100%' }}
+      style={{ height: "100%" }}
     >
       <Box
         bg={feature.color}
@@ -613,8 +713,8 @@ function FeatureCardSmall({ feature, variants }: { feature: typeof features[2]; 
         cursor="pointer"
         role="group"
         _hover={{
-          transform: 'translateY(-4px)',
-          boxShadow: 'var(--shadow-card-hover)',
+          transform: "translateY(-4px)",
+          boxShadow: "var(--shadow-card-hover)",
         }}
       >
         <Box
@@ -627,16 +727,20 @@ function FeatureCardSmall({ feature, variants }: { feature: typeof features[2]; 
           justifyContent="center"
           mb={{ base: 3, md: 6 }}
           transition="transform 0.3s"
-          _groupHover={{ transform: 'scale(1.1)' }}
+          _groupHover={{ transform: "scale(1.1)" }}
         >
-          <Box className="material-symbols-outlined" fontSize={{ base: '2xl', md: '3xl' }} color="brand.fg">
+          <Box
+            className="material-symbols-outlined"
+            fontSize={{ base: "2xl", md: "3xl" }}
+            color="brand.fg"
+          >
             {feature.icon}
           </Box>
         </Box>
         <Heading
           as="h3"
           fontFamily="heading"
-          fontSize={{ base: '1.15rem', md: '1.5rem' }}
+          fontSize={{ base: "1.15rem", md: "1.5rem" }}
           fontWeight={600}
           lineHeight={1.3}
           color={feature.textColor}
@@ -644,10 +748,12 @@ function FeatureCardSmall({ feature, variants }: { feature: typeof features[2]; 
         >
           {feature.title}
         </Heading>
-        <Text fontSize={{ base: 'xs', md: 'sm' }} color="fg.subtle">{feature.description}</Text>
+        <Text fontSize={{ base: "xs", md: "sm" }} color="fg.subtle">
+          {feature.description}
+        </Text>
       </Box>
     </motion.div>
-  )
+  );
 
   if (isGallery && immich.isConfigured && immich.url) {
     return (
@@ -656,28 +762,34 @@ function FeatureCardSmall({ feature, variants }: { feature: typeof features[2]; 
         target="_blank"
         rel="noopener noreferrer"
         className="feature-card-small-link"
-        style={{ display: 'block', height: '100%' }}
+        style={{ display: "block", height: "100%" }}
       >
         {cardContent}
       </a>
-    )
+    );
   }
 
   return (
     <Link
       to={feature.link}
       onClick={handleClick}
-      style={{ display: 'block', height: '100%' }}
+      style={{ display: "block", height: "100%" }}
     >
       {cardContent}
     </Link>
-  )
+  );
 }
 
-function FeatureCardEvent({ feature, variants }: { feature: typeof features[3]; variants: Variants }) {
+function FeatureCardEvent({
+  feature,
+  variants,
+}: {
+  feature: (typeof features)[3];
+  variants: Variants;
+}) {
   return (
-    <Link to={feature.link} style={{ display: 'block', height: '100%' }}>
-      <motion.div variants={variants} style={{ height: '100%' }}>
+    <Link to={feature.link} style={{ display: "block", height: "100%" }}>
+      <motion.div variants={variants} style={{ height: "100%" }}>
         <Box
           bg={feature.color}
           p={{ base: 5, md: 8 }}
@@ -692,12 +804,18 @@ function FeatureCardEvent({ feature, variants }: { feature: typeof features[3]; 
           cursor="pointer"
           role="group"
           _hover={{
-            transform: 'translateY(-4px)',
-            boxShadow: 'var(--shadow-card-hover)',
+            transform: "translateY(-4px)",
+            boxShadow: "var(--shadow-card-hover)",
           }}
         >
           <Flex justify="space-between" align="start">
-            <Text fontSize="xs" fontWeight="600" letterSpacing="0.1em" textTransform="uppercase" color="fg.subtle">
+            <Text
+              fontSize="xs"
+              fontWeight="600"
+              letterSpacing="0.1em"
+              textTransform="uppercase"
+              color="fg.subtle"
+            >
               {feature.title}
             </Text>
             <Box className="material-symbols-outlined" color="fg.subtle">
@@ -708,14 +826,16 @@ function FeatureCardEvent({ feature, variants }: { feature: typeof features[3]; 
             <Heading
               as="h3"
               fontFamily="heading"
-              fontSize={{ base: '1.15rem', md: '1.5rem' }}
+              fontSize={{ base: "1.15rem", md: "1.5rem" }}
               fontWeight={600}
               lineHeight={1.3}
               color={feature.textColor}
             >
               {feature.subtitle}
             </Heading>
-            <Text fontSize="sm" color="fg.subtle">{feature.time}</Text>
+            <Text fontSize="sm" color="fg.subtle">
+              {feature.time}
+            </Text>
           </VStack>
           <Button
             type="button"
@@ -730,7 +850,7 @@ function FeatureCardEvent({ feature, variants }: { feature: typeof features[3]; 
             color="brand.fg"
             boxShadow="var(--shadow-ambient)"
             transition="all 0.2s"
-            _hover={{ bg: 'brand.muted' }}
+            _hover={{ bg: "brand.muted" }}
             minH="44px"
           >
             Join Now
@@ -738,5 +858,5 @@ function FeatureCardEvent({ feature, variants }: { feature: typeof features[3]; 
         </Box>
       </motion.div>
     </Link>
-  )
+  );
 }
