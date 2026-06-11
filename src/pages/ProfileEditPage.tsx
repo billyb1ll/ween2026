@@ -11,18 +11,11 @@ import {
   HStack,
   Flex,
   Image,
+  NativeSelect,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
 import { toaster } from '../components/ui/toaster'
-
-const SelectBox = Box as unknown as React.ComponentType<
-  React.ComponentProps<typeof Box> & {
-    value?: string;
-    required?: boolean;
-    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  }
->
 
 const PRESET_COLORS = [
   '#496268', // Lagoon
@@ -226,32 +219,33 @@ export function ProfileEditPage() {
                 <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
                   <label htmlFor="edit-faculty">Faculty (คณะ) <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
-                <SelectBox
-                  as="select"
-                  id="edit-faculty"
-                  aria-label="Faculty (คณะ)"
-                  title="Faculty (คณะ)"
-                  value={faculty}
-                  onChange={(e) => setFaculty((e.target as unknown as HTMLSelectElement).value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="bg.hero"
-                  _focus={{ borderColor: 'accent.solid' }}
-                  h="48px"
-                  fontSize="sm"
-                  px={4}
-                  required
-                >
-                  <option value="">Select Faculty...</option>
-                  {THAI_FACULTIES.map((fac) => {
-                    const cleanVal = fac.split(' (')[0]
-                    return (
-                      <option key={fac} value={cleanVal}>
-                        {fac}
-                      </option>
-                    )
-                  })}
-                </SelectBox>
+                <NativeSelect.Root width="100%">
+                  <NativeSelect.Field
+                    id="edit-faculty"
+                    aria-label="Faculty (คณะ)"
+                    title="Faculty (คณะ)"
+                    value={faculty}
+                    onChange={(e) => setFaculty(e.currentTarget.value)}
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    bg="bg.hero"
+                    _focus={{ borderColor: 'accent.solid' }}
+                    h="48px"
+                    fontSize="sm"
+                    px={4}
+                  >
+                    <option value="">Select Faculty...</option>
+                    {THAI_FACULTIES.map((fac) => {
+                      const cleanVal = fac.split(' (')[0]
+                      return (
+                        <option key={fac} value={cleanVal}>
+                          {fac}
+                        </option>
+                      )
+                    })}
+                  </NativeSelect.Field>
+                  <NativeSelect.Indicator />
+                </NativeSelect.Root>
               </VStack>
 
               {/* Major / Staff Position */}
@@ -265,28 +259,30 @@ export function ProfileEditPage() {
                   </label>
                 </Box>
                 {isStaff ? (
-                  <SelectBox
-                    as="select"
-                    id="edit-major"
-                    aria-label="Staff Position (ตำแหน่ง)"
-                    title="Staff Position (ตำแหน่ง)"
-                    value={major}
-                    onChange={(e) => setMajor((e.target as unknown as HTMLSelectElement).value)}
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="bg.hero"
-                    _focus={{ borderColor: 'accent.solid' }}
-                    h="48px"
-                    fontSize="sm"
-                    px={4}
-                  >
-                    <option value="">Select Position...</option>
-                    {STAFF_ROLES.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
-                      </option>
-                    ))}
-                  </SelectBox>
+                  <NativeSelect.Root width="100%">
+                    <NativeSelect.Field
+                      id="edit-major"
+                      aria-label="Staff Position (ตำแหน่ง)"
+                      title="Staff Position (ตำแหน่ง)"
+                      value={major}
+                      onChange={(e) => setMajor(e.currentTarget.value)}
+                      borderRadius="xl"
+                      border="1.5px solid var(--c-outline)"
+                      bg="bg.hero"
+                      _focus={{ borderColor: 'accent.solid' }}
+                      h="48px"
+                      fontSize="sm"
+                      px={4}
+                    >
+                      <option value="">Select Position...</option>
+                      {STAFF_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
                 ) : (
                   <Input
                     id="edit-major"
