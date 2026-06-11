@@ -26,29 +26,56 @@ const PRESET_COLORS = [
 ]
 
 const THAI_FACULTIES = [
-  'วิศวกรรมศาสตร์ (Engineering)',
-  'วิทยาศาสตร์ (Science)',
-  'อักษรศาสตร์ (Arts)',
-  'รัฐศาสตร์ (Political Science)',
-  'พาณิชยศาสตร์และการบัญชี (Business/Accounting)',
-  'สถาปัตยกรรมศาสตร์ (Architecture)',
-  'ศิลปกรรมศาสตร์ (Fine Arts)',
-  'นิเทศศาสตร์ (Communication Arts)',
-  'เศรษฐศาสตร์ (Economics)',
-  'นิติศาสตร์ (Law)',
-  'เวชศาสตร์ / แพทยศาสตร์ (Medicine)',
-  'สัตวแพทยศาสตร์ (Veterinary Science)',
-  'ทันตแพทยศาสตร์ (Dentistry)',
-  'เภสัชศาสตร์ (Pharmaceutical Sciences)',
-  'ครุศาสตร์ (Education)',
-  'พยาบาลศาสตร์ (Nursing)',
-  'สหเวชศาสตร์ (Allied Health Sciences)',
-  'จิตวิทยา (Psychology)',
+  'แพทยศาสตร์ศิริราชพยาบาล (SI)',
+  'วิทยาศาสตร์ (SC)',
+  'แพทยศาสตร์โรงพยาบาลรามาฯ (RA)',
+  'ทันตแพทยศาสตร์ (DT)',
+  'เทคนิคการแพทย์ (MT)',
+  'สาธารณสุขศาสตร์ (PH)',
+  'พยาบาลศาสตร์ (NS)',
+  'กายภาพบำบัด (PT)',
+  'โรงเรียนพยาบาลรามาธิบดี (NR)',
+  'วิศวกรรมศาสตร์ (EG)',
+  'สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)',
+  'วิทยาเขตกาญจนบุรี (KA)',
+  'สัตวแพทยศาสตร์ (VS)',
+  'หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)',
+  'สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)',
+  'โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)',
+  'โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)',
+  'ศิลปศาสตร์ (LA)',
+  'วิทยาลัยศาสนศึกษา (CRS)',
+  'วิทยาลัยนานาชาติ (IC)',
+  'เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)',
+  'โรงเรียนกายอุปกรณ์สิรินธร (PO)',
+  'วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)',
+  'คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)',
+  'วิทยาลับดุริยางคศิลป์ (MS)',
+  'วิทยาลัยราชสุดา (RS)',
+  'เภสัชศาสตร์ (PY)',
+  'เวชศาสตร์เขตร้อน (TM)'
+]
+
+const STAFF_ROLES = [
+  'ประธาน',
+  'เลขา',
+  'เหรัญญิก',
+  'ประสานงาน',
+  'Timer',
+  'Creative & Art',
+  'โสต',
+  'สวัสดิการและพัสดุ',
+  'พยาบาล',
+  'สถานที่',
+  'สันทนาการ',
+  'พี่กลุ่ม',
+  'ทะเบียน'
 ]
 
 export function ProfileEditPage() {
   const navigate = useNavigate()
   const { user, updateProfile } = useUser()
+  const isStaff = user?.role && user.role !== 'student'
 
   const [nickname, setNickname] = useState(user?.nickname || '')
   const [faculty, setFaculty] = useState(user?.faculty || '')
@@ -212,14 +239,20 @@ export function ProfileEditPage() {
                 </datalist>
               </VStack>
 
-              {/* Major */}
+              {/* Major / Staff Position */}
               <VStack align="stretch" gap={1.5}>
                 <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
-                  <label htmlFor="edit-major">Major (สาขา) <Text as="span" color="fg.subtle" fontSize="2xs" fontWeight="normal">(Optional)</Text></label>
+                  <label htmlFor="edit-major">
+                    {isStaff ? 'Staff Position (ตำแหน่ง)' : 'Major (สาขา)'}{' '}
+                    <Text as="span" color="fg.subtle" fontSize="2xs" fontWeight="normal">
+                      (Optional)
+                    </Text>
+                  </label>
                 </Box>
                 <Input
                   id="edit-major"
-                  placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                  placeholder={isStaff ? 'e.g. พี่กลุ่ม, Creative & Art' : 'e.g. วิทยาการคอมพิวเตอร์'}
+                  list={isStaff ? 'staff-roles-list' : undefined}
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
                   borderRadius="xl"
@@ -229,6 +262,13 @@ export function ProfileEditPage() {
                   h="48px"
                   fontSize="sm"
                 />
+                {isStaff && (
+                  <datalist id="staff-roles-list">
+                    {STAFF_ROLES.map((role) => (
+                      <option key={role} value={role} />
+                    ))}
+                  </datalist>
+                )}
                 <Text fontSize="2xs" color="fg.subtle" mt={1}>
                   Only visible to verified Baan 7 freshmen
                 </Text>

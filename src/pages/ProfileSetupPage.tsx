@@ -23,29 +23,56 @@ const PRESET_COLORS = [
 ]
 
 const THAI_FACULTIES = [
-  'วิศวกรรมศาสตร์ (Engineering)',
-  'วิทยาศาสตร์ (Science)',
-  'อักษรศาสตร์ (Arts)',
-  'รัฐศาสตร์ (Political Science)',
-  'พาณิชยศาสตร์และการบัญชี (Business/Accounting)',
-  'สถาปัตยกรรมศาสตร์ (Architecture)',
-  'ศิลปกรรมศาสตร์ (Fine Arts)',
-  'นิเทศศาสตร์ (Communication Arts)',
-  'เศรษฐศาสตร์ (Economics)',
-  'นิติศาสตร์ (Law)',
-  'เวชศาสตร์ / แพทยศาสตร์ (Medicine)',
-  'สัตวแพทยศาสตร์ (Veterinary Science)',
-  'ทันตแพทยศาสตร์ (Dentistry)',
-  'เภสัชศาสตร์ (Pharmaceutical Sciences)',
-  'ครุศาสตร์ (Education)',
-  'พยาบาลศาสตร์ (Nursing)',
-  'สหเวชศาสตร์ (Allied Health Sciences)',
-  'จิตวิทยา (Psychology)',
+  'แพทยศาสตร์ศิริราชพยาบาล (SI)',
+  'วิทยาศาสตร์ (SC)',
+  'แพทยศาสตร์โรงพยาบาลรามาฯ (RA)',
+  'ทันตแพทยศาสตร์ (DT)',
+  'เทคนิคการแพทย์ (MT)',
+  'สาธารณสุขศาสตร์ (PH)',
+  'พยาบาลศาสตร์ (NS)',
+  'กายภาพบำบัด (PT)',
+  'โรงเรียนพยาบาลรามาธิบดี (NR)',
+  'วิศวกรรมศาสตร์ (EG)',
+  'สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)',
+  'วิทยาเขตกาญจนบุรี (KA)',
+  'สัตวแพทยศาสตร์ (VS)',
+  'หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)',
+  'สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)',
+  'โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)',
+  'โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)',
+  'ศิลปศาสตร์ (LA)',
+  'วิทยาลัยศาสนศึกษา (CRS)',
+  'วิทยาลัยนานาชาติ (IC)',
+  'เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)',
+  'โรงเรียนกายอุปกรณ์สิรินธร (PO)',
+  'วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)',
+  'คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)',
+  'วิทยาลับดุริยางคศิลป์ (MS)',
+  'วิทยาลัยราชสุดา (RS)',
+  'เภสัชศาสตร์ (PY)',
+  'เวชศาสตร์เขตร้อน (TM)'
+]
+
+const STAFF_ROLES = [
+  'ประธาน',
+  'เลขา',
+  'เหรัญญิก',
+  'ประสานงาน',
+  'Timer',
+  'Creative & Art',
+  'โสต',
+  'สวัสดิการและพัสดุ',
+  'พยาบาล',
+  'สถานที่',
+  'สันทนาการ',
+  'พี่กลุ่ม',
+  'ทะเบียน'
 ]
 
 export function ProfileSetupPage() {
   const navigate = useNavigate()
   const { user, updateProfile } = useUser()
+  const isStaff = user?.role && user.role !== 'student'
 
   // Initialize state directly from user context to avoid useEffect cascade renders
   const [nickname, setNickname] = useState(user?.nickname || '')
@@ -201,7 +228,7 @@ export function ProfileSetupPage() {
                 </datalist>
               </VStack>
 
-              {/* Major */}
+              {/* Major / Staff Position */}
               <VStack align="stretch" gap={1.5}>
                 <Box
                   fontSize="xs"
@@ -210,11 +237,17 @@ export function ProfileSetupPage() {
                   textTransform="uppercase"
                   letterSpacing="0.05em"
                 >
-                  <label htmlFor="setup-major">Major (สาขา) <Text as="span" color="var(--c-outline)" fontSize="2xs" fontWeight="normal">(Optional)</Text></label>
+                  <label htmlFor="setup-major">
+                    {isStaff ? 'Staff Position (ตำแหน่ง)' : 'Major (สาขา)'}{' '}
+                    <Text as="span" color="var(--c-outline)" fontSize="2xs" fontWeight="normal">
+                      (Optional)
+                    </Text>
+                  </label>
                 </Box>
                 <Input
                   id="setup-major"
-                  placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                  placeholder={isStaff ? 'e.g. พี่กลุ่ม, Creative & Art' : 'e.g. วิทยาการคอมพิวเตอร์'}
+                  list={isStaff ? 'staff-roles-list' : undefined}
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
                   borderRadius="xl"
@@ -228,6 +261,13 @@ export function ProfileSetupPage() {
                   h="48px"
                   fontSize="sm"
                 />
+                {isStaff && (
+                  <datalist id="staff-roles-list">
+                    {STAFF_ROLES.map((role) => (
+                      <option key={role} value={role} />
+                    ))}
+                  </datalist>
+                )}
               </VStack>
 
               {/* Instagram Account */}
