@@ -1,0 +1,30 @@
+/* App-level styles */
+
+/* Feature Grid: mobile-first, stacks by default */
+.feature-card-large,
+.feature-card-wide {
+  /* Mobile: single column, natural flow */
+}
+
+/* Tablet/Desktop: grid spans */
+@media (min-width: 768px) {
+  .feature-card-large {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .feature-card-wide {
+    grid-column: span 2;
+  }
+}
+
+/* Gallery card: always show caption on touch devices */
+@media (hover: none) {
+  .gallery-card-overlay {
+    opacity: 1 !important;
+  }
+}
+
+/* Gallery image hover scale */
+.gallery-card:hover .gallery-img {
+  transform: scale(1.05);
+}

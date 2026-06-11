@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Baan 7 - Memory Board</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=Playfair+Display:wght@600;700&amp;family=Caveat:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b0cbd1",
+                        "on-surface": "#1b1c1c",
+                        "tertiary-container": "#dbdbd8",
+                        "on-primary-fixed": "#041f24",
+                        "outline": "#72787a",
+                        "on-primary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#e2e3e0",
+                        "secondary-container": "#fdcaad",
+                        "on-tertiary-fixed": "#1a1c1b",
+                        "surface-variant": "#e4e2e1",
+                        "tertiary": "#5d5f5d",
+                        "inverse-on-surface": "#f3f0f0",
+                        "surface": "#fcf9f8",
+                        "primary-fixed": "#cce7ed",
+                        "primary-container": "#c5e0e6",
+                        "surface-bright": "#fcf9f8",
+                        "on-secondary-fixed-variant": "#613f29",
+                        "primary": "#496268",
+                        "on-primary-fixed-variant": "#324b50",
+                        "on-error": "#ffffff",
+                        "on-background": "#1b1c1c",
+                        "background": "#fcf9f8",
+                        "surface-container-high": "#eae7e7",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#2f1504",
+                        "on-secondary-container": "#79533c",
+                        "outline-variant": "#c2c7c9",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#5e605e",
+                        "inverse-surface": "#303030",
+                        "secondary-fixed": "#ffdbc8",
+                        "surface-container": "#f0eded",
+                        "inverse-primary": "#b0cbd1",
+                        "tertiary-fixed-dim": "#c6c7c4",
+                        "surface-container-low": "#f6f3f2",
+                        "on-primary-container": "#4b6469",
+                        "surface-tint": "#496268",
+                        "secondary-fixed-dim": "#eebca0",
+                        "on-tertiary-fixed-variant": "#454745",
+                        "surface-dim": "#dcd9d9",
+                        "surface-container-highest": "#e4e2e1",
+                        "secondary": "#7c563f",
+                        "on-surface-variant": "#424849",
+                        "error-container": "#ffdad6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "stack-md": "24px",
+                        "stack-sm": "12px",
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "container-max": "1200px",
+                        "stack-lg": "48px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Playfair Display"],
+                        "display-lg": ["Playfair Display"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "display-lg-mobile": ["Playfair Display"],
+                        "headline-sm": ["Playfair Display"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "handwriting": ["Caveat", "cursive"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "500" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["36px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "headline-sm": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "handwriting": ["22px", { "lineHeight": "1.4", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Corkboard background */
+        body {
+            background-color: #d1bfae;
+            background-image: radial-gradient(#a38b75 1px, transparent 1px), radial-gradient(#a38b75 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            background-attachment: fixed;
+        }
+
+        /* Polaroid / Scrapbook Card */
+        .polaroid-card {
+            background: #ffffff;
+            border: 1px solid #e0d8d0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            padding: 16px 16px 40px 16px;
+            position: relative;
+        }
+
+        /* Push Pin */
+        .push-pin {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 16px;
+            background: #d32f2f;
+            border-radius: 50%;
+            box-shadow: 2px 4px 6px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(0,0,0,0.2), inset 2px 2px 4px rgba(255,255,255,0.4);
+            z-index: 20;
+        }
+        .push-pin::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+
+        /* Washi Tape */
+        .washi-tape {
+            position: absolute;
+            width: 80px;
+            height: 24px;
+            background-color: rgba(255, 240, 150, 0.8);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            z-index: 20;
+            opacity: 0.9;
+            mix-blend-mode: multiply;
+            border-left: 2px dashed rgba(0,0,0,0.05);
+            border-right: 2px dashed rgba(0,0,0,0.05);
+        }
+        .tape-tl { top: -10px; left: -20px; transform: rotate(-30deg); }
+        .tape-tr { top: -10px; right: -20px; transform: rotate(30deg); background-color: rgba(180, 220, 255, 0.8); }
+
+        /* Floating Animation */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1.5) rotate(10deg); opacity: 0; }
+        }
+        .cheer-emoji {
+            position: fixed;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 100;
+        }
+
+        /* Note style */
+        .sticky-note {
+            background-color: #fef08a;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col antialiased">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#efe9e1] border-b border-[#d1bfae] shadow-md">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="text-headline-sm font-headline-sm text-secondary font-bold font-handwriting text-3xl">Baan 7</div>
+<div class="hidden md:flex space-x-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:scale-105 duration-200 font-label-md text-label-md" href="#">Home</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 hover:scale-105 duration-200 font-label-md text-label-md" href="#">Activities</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors hover:scale-105 duration-200 font-label-md text-label-md" href="#">Gallery</a>
+</div>
+<button class="bg-secondary text-on-secondary px-6 py-2 rounded-sm shadow-md transition-all font-label-md text-label-md hover:-translate-y-0.5">Join Now</button>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow pt-32 pb-margin-desktop px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto w-full relative">
+<!-- Hero Section -->
+<header class="text-center mb-stack-lg bg-[#fefcf8] p-8 rounded-sm shadow-lg max-w-3xl mx-auto border-4 border-[#e0d8d0] rotate-1 relative">
+<div class="push-pin" style="background: #1976d2;"></div>
+<div class="washi-tape tape-tl"></div>
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-secondary mb-stack-sm">The Memory Board</h1>
+<p class="font-handwriting text-handwriting text-on-surface-variant max-w-2xl mx-auto">Share the excitement, cheer on your peers, and build the Baan 7 community spirit!</p>
+</header>
+<div class="flex flex-col lg:flex-row gap-8">
+<!-- Left / Main Feed Area -->
+<div class="flex-grow w-full lg:w-3/4">
+<div class="mb-stack-md flex items-center gap-4 overflow-x-auto pb-2 sticky-note p-3 rounded-sm rotate-[-1deg] shadow-md inline-flex w-full">
+<span class="font-handwriting text-xl text-on-surface-variant flex-shrink-0">Filter by:</span>
+<div class="flex gap-2">
+<button class="px-4 py-1 border-2 border-dashed border-secondary text-secondary font-handwriting text-lg bg-white/50 hover:bg-white transition-all shadow-sm">All</button>
+<button class="px-4 py-1 border-2 border-dashed border-outline-variant text-on-surface font-handwriting text-lg bg-white/50 hover:bg-white transition-all shadow-sm">Orientation</button>
+<button class="px-4 py-1 border-2 border-dashed border-outline-variant text-on-surface font-handwriting text-lg bg-white/50 hover:bg-white transition-all shadow-sm">Events</button>
+<button class="px-4 py-1 border-2 border-dashed border-outline-variant text-on-surface font-handwriting text-lg bg-white/50 hover:bg-white transition-all shadow-sm">Q&amp;A</button>
+<button class="px-4 py-1 border-2 border-dashed border-outline-variant text-on-surface font-handwriting text-lg bg-white/50 hover:bg-white transition-all shadow-sm">Social</button>
+</div>
+</div>
+<!-- Floating Quick Post Widget -->
+<section class="mb-stack-lg sticky top-24 z-30">
+<div class="bg-white p-4 md:p-6 rounded-sm shadow-xl border-t-[12px] border-[#3b82f6] rotate-1">
+<div class="push-pin" style="top: -20px; background: #eab308;"></div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-fixed overflow-hidden flex-shrink-0 border-2 border-[#e0d8d0] shadow-sm">
+<img alt="Current user avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlxAjylXEcHhVUimaMdlVSi40KbrzadTmHvBE_azeWHUuiMA44HawtHhQc7eFTwZi5DwlSJxbWabXJVuMz8agYPAVZrSsM4uZ7XyUPk8pL7F3cD_4V4TKodVxAyTXU18Fa7hBOzou2ORyyZWYvnURnt2k1sY7kmwDboBuqCEZbB2ABWfwbLEZItlFVkm2i65VB8o8iGMrGySoQ5AasKGqXn-Ya4kXCLaKUq1ENX3vzwhbJwYG4OOfp6sH55vBz5svJhrhKTmXO9CM"/>
+</div>
+<div class="flex-grow relative">
+<textarea class="w-full bg-[#faf9f6] border border-[#e0d8d0] rounded-sm p-4 min-h-[80px] resize-none focus:ring-2 focus:ring-primary/50 text-on-surface placeholder-on-surface-variant font-handwriting text-handwriting shadow-inner transition-all bg-[linear-gradient(transparent_27px,#e5e7eb_28px)] bg-[size:100%_28px] leading-[28px] pt-[2px]" placeholder="Pin something new to the board..."></textarea>
+<div class="flex justify-between items-center mt-3 flex-col md:flex-row items-start md:items-center">
+<div class="flex gap-2">
+<button aria-label="Add image" class="p-2 text-primary hover:bg-[#f0eadd] rounded-sm transition-colors flex items-center justify-center border border-transparent hover:border-[#d1bfae]">
+<span class="material-symbols-outlined">add_photo_alternate</span>
+</button>
+<button aria-label="Add emoji" class="p-2 text-primary hover:bg-[#f0eadd] rounded-sm transition-colors flex items-center justify-center border border-transparent hover:border-[#d1bfae]">
+<span class="material-symbols-outlined">add_reaction</span>
+</button>
+</div>
+<div class="flex items-center gap-4 mt-3 md:mt-0">
+<label class="flex items-center gap-2 cursor-pointer group/anon">
+<div class="relative">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-9 h-5 bg-surface-container-high rounded-full peer peer-checked:bg-primary transition-colors"></div>
+<div class="absolute left-[2px] top-[2px] bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4 shadow-sm"></div>
+</div>
+<span class="font-handwriting text-lg text-on-surface-variant group-hover/anon:text-primary transition-colors">Anon</span>
+</label>
+<button class="bg-secondary text-on-secondary px-6 py-2 rounded-sm shadow-md hover:shadow-lg transition-all font-handwriting text-xl hover:-translate-y-0.5 transform rotate-[-2deg]">Pin it!</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Hype Feed (Masonry-like Grid) -->
+<section class="columns-1 md:columns-2 gap-8 space-y-8">
+<!-- Card 1 -->
+<article class="break-inside-avoid polaroid-card -rotate-2 hover:rotate-0 transition-transform duration-300">
+<div class="push-pin"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full border border-[#e0d8d0] shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHvvAy29tT_PdlaGgz_wF_nF4dAucFRG5oYwaGNS2VBjcPn9z06PqH25aY-YJmpchxMFTN4u5obZaZ1EfxYnjr7d_fImgVQ20M3THlWGyDqQ80NtXoMZl39W_NU3AtsjD0MbfdOfzkspaAHESJ-WCwgz1uAYZ2vCnHKZDcEbfHzzQkiNrrjw-QytXsIi0-Deg9QLoLZpTpe3dVRcIeWtvP1213ulq-QvM91hWX_HF-zWepcSeG2EP3S5eJs9n937WLhv9Iu6MClV8"/>
+<div>
+<h3 class="font-handwriting text-xl text-on-surface font-bold">Alex Mercer</h3>
+<p class="font-handwriting text-sm text-on-surface-variant">2 hours ago</p>
+</div>
+<span class="ml-auto bg-blue-100 text-blue-800 px-3 py-1 rounded-sm font-handwriting text-sm shadow-sm border border-blue-200 rotate-2">Orientation</span>
+</div>
+<p class="font-handwriting text-handwriting text-on-surface mb-6 leading-relaxed bg-[#fefcf8] p-3 rounded-sm border border-[#f0eadd]">Just finished the campus tour. The new science building looks amazing! Can't wait for classes to start. 🔥</p>
+<div class="flex items-center gap-4 text-on-surface-variant border-t-2 border-dashed border-[#e0d8d0] pt-3">
+<button class="like-btn flex items-center gap-1 hover:text-red-500 transition-colors group/btn">
+<span class="text-xl group-hover/btn:scale-110 transition-transform">🤍</span>
+<span class="font-handwriting text-lg">24</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="text-xl">📝</span>
+<span class="font-handwriting text-lg">5</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 2 (Image Card) -->
+<article class="break-inside-avoid polaroid-card rotate-1 hover:rotate-0 transition-transform duration-300 !pb-24">
+<div class="washi-tape tape-tr"></div>
+<div class="h-48 w-full bg-surface-container-high relative border border-[#e0d8d0] mb-4">
+<img alt="Group of students" class="w-full h-full object-cover grayscale-[20%] sepia-[20%]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0u7xtYa-Y2VofgH1hF-Wy1ss4YlHDNCRgWBOtG1iHWy16sj9vGAZZAbovtAZgfJC-9Cj3GAEGD65kvCW6ZQ9WF3mzZb_eIYcT2Qbwa5vcXVJioTS3s19DkwhnD-RH9cb97YAsPgiilH4wTanmJz6YhlycmiQuLCykD19aH-FzDzqGuBRX-XMhxn-f7EN30p91xzwN1vdMA29e0iexTQbKPh5YefzC8zDLQoIOdjcGUick9p_8CI6Wuudromjk35EZWV8AH5xsqwE"/>
+</div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-2">
+<img alt="Avatar" class="w-8 h-8 rounded-full border border-[#e0d8d0] shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQEylzIfkU8zhj9KU-lTeBntMhBtADl85XPfl77OGj5g3Fw7I2RHX-jaauqrZu4YS4lgQ2LOPjcXk1x1XrJNjW2CSSCCeYDB-AD2lPmRvBMwjJqhjYrUxrCl71laLDD_AJAspO2t8epBVOkHAfbWcPQkHa1xLVeAd8-pE8QG04jGTeqmeU76cxLaJv3hSYCAhQzXspzl7hVthchf6wbdZU_eSnaWqFlwPOAkpY2QJX8swg5XBFsR7fwCL2sn-GyXqoyuO9NpCjJ3g"/>
+<div>
+<h3 class="font-handwriting text-lg text-on-surface font-bold">Sarah Jenkins</h3>
+</div>
+<span class="ml-auto bg-pink-100 text-pink-800 px-3 py-1 rounded-sm font-handwriting text-sm shadow-sm border border-pink-200 -rotate-2">Social</span>
+</div>
+<p class="font-handwriting text-[24px] text-center text-on-surface mb-2 leading-tight">Met my roommate today and we already clicked! Baan 7 is definitely the best Baan. 💙</p>
+<div class="absolute bottom-[-30px] w-full left-0 px-4 flex items-center justify-between text-on-surface-variant">
+<button class="like-btn flex items-center gap-1 hover:text-red-500 transition-colors group/btn">
+<span class="text-xl group-hover/btn:scale-110 transition-transform">❤️</span>
+<span class="font-handwriting text-lg">56</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="text-xl">📝</span>
+<span class="font-handwriting text-lg">12</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 3 -->
+<article class="break-inside-avoid polaroid-card rotate-3 hover:rotate-0 transition-transform duration-300 bg-yellow-50">
+<div class="push-pin" style="background: #4caf50;"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full border border-[#e0d8d0] shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPJUAjMMqKo-urW4cDAW5YRhcUZe2vw0IJIfi83lfJqnvZCTv1N7v3hu_fvReR7eijHp146etOPEz5V8jnGi9yQYACE46iYSYrfC82lNQVBUd0YlPd4_2qTaHlqrI1jNKNE2FjlqDHBMdnCcR7cdopHD8xDSjvRuBirvk3NrF1ITrTjJZPK5Hg_c3cEMAoOc4y_3hX8Xkyn0qQX7ccbflB5b6ADH3F-S_nnnOtWmgKxymeVrKLJdjmU1joJPYlTLAyQ6d3PyZMdtw"/>
+<div>
+<h3 class="font-handwriting text-xl text-on-surface font-bold">Prof. Davis</h3>
+<p class="font-handwriting text-sm text-on-surface-variant">Yesterday</p>
+</div>
+<span class="ml-auto bg-green-100 text-green-800 px-3 py-1 rounded-sm font-handwriting text-sm shadow-sm border border-green-200 rotate-1">Staff</span>
+</div>
+<p class="font-handwriting text-handwriting text-on-surface mb-6 leading-relaxed">Welcome incoming freshmen! Make sure to attend the opening ceremony tomorrow at 9 AM in the main hall. It's going to be spectacular.</p>
+<div class="flex items-center gap-4 text-on-surface-variant border-t-2 border-dashed border-[#e0d8d0] pt-3">
+<button class="like-btn flex items-center gap-1 hover:text-red-500 transition-colors group/btn">
+<span class="text-xl group-hover/btn:scale-110 transition-transform">🤍</span>
+<span class="font-handwriting text-lg">102</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 4 -->
+<article class="break-inside-avoid polaroid-card -rotate-1 hover:rotate-0 transition-transform duration-300">
+<div class="washi-tape tape-tl" style="background-color: rgba(255, 180, 180, 0.8);"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-[#f0eadd] text-on-surface-variant flex items-center justify-center border border-[#e0d8d0] shadow-sm">
+<span class="material-symbols-outlined">person_off</span>
+</div>
+<div>
+<h3 class="font-handwriting text-xl text-on-surface font-bold">Anonymous</h3>
+<p class="font-handwriting text-sm text-on-surface-variant">Yesterday</p>
+</div>
+<span class="ml-auto bg-purple-100 text-purple-800 px-3 py-1 rounded-sm font-handwriting text-sm shadow-sm border border-purple-200 -rotate-3">Q&amp;A</span>
+</div>
+<p class="font-handwriting text-handwriting text-on-surface mb-6 leading-relaxed bg-[#fefcf8] p-3 rounded-sm border border-[#f0eadd]">Anyone down for a coffee run before the afternoon sessions? I'm heading to the campus cafe around 1:30! ☕️</p>
+<div class="flex items-center gap-4 text-on-surface-variant border-t-2 border-dashed border-[#e0d8d0] pt-3">
+<button class="like-btn flex items-center gap-1 hover:text-red-500 transition-colors group/btn">
+<span class="text-xl group-hover/btn:scale-110 transition-transform">🤍</span>
+<span class="font-handwriting text-lg">18</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="text-xl">📝</span>
+<span class="font-handwriting text-lg">3</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Card 5 -->
+<article class="break-inside-avoid polaroid-card rotate-2 hover:rotate-0 transition-transform duration-300">
+<div class="push-pin" style="background: #ff9800;"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Avatar" class="w-10 h-10 rounded-full border border-[#e0d8d0] shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkG4FCMCLs4ZWkkDSAR3UNRUYarAJx4Xjkl2NT7qFX4VQL0oKIXbBGDywHDywqiWJTHsS2sOk7FQv4SmFC4ahy3u9vYfljvrx4P4GFhvIkiymLgEMEMQ_Fa4sCcTngHbQYsN5ETIdWwUB08K4JIvuEhR4cOKVL8k99yiyZNYl_4GQnIE3tJVlvsvj4MB8IFrWjMRmP-X227tBfkNUAeA77Y-f99x1AN9C9Mh8aKtHPDxW5lsAyxsfaHK7_TCbeSPv7XmYoaL0aVTE"/>
+<div>
+<h3 class="font-handwriting text-xl text-on-surface font-bold">David Chen</h3>
+<p class="font-handwriting text-sm text-on-surface-variant">2 days ago</p>
+</div>
+<span class="ml-auto bg-orange-100 text-orange-800 px-3 py-1 rounded-sm font-handwriting text-sm shadow-sm border border-orange-200 rotate-2">Events</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-secondary mb-2 bg-[#fff9c4] inline-block px-2 transform -rotate-1 border border-[#e0d8d0]">Game Night!</h4>
+<p class="font-handwriting text-handwriting text-on-surface mb-6 leading-relaxed mt-2">Bringing my switch to the common room tonight. Smash Bros tournament, who is in?</p>
+<div class="flex items-center gap-4 text-on-surface-variant border-t-2 border-dashed border-[#e0d8d0] pt-3">
+<button class="like-btn flex items-center gap-1 hover:text-red-500 transition-colors group/btn">
+<span class="text-xl group-hover/btn:scale-110 transition-transform">🤍</span>
+<span class="font-handwriting text-lg">42</span>
+</button>
+<button class="flex items-center gap-1 hover:text-primary transition-colors">
+<span class="text-xl">📝</span>
+<span class="font-handwriting text-lg">15</span>
+</button>
+</div>
+</div>
+</article>
+</section>
+<!-- Load More -->
+<div class="mt-stack-lg flex justify-center pb-8">
+<button class="bg-[#fefcf8] border-2 border-dashed border-[#e0d8d0] text-secondary px-8 py-3 rounded-sm hover:bg-white transition-colors font-handwriting text-2xl flex items-center gap-2 shadow-sm rotate-[-1deg]">
+                Load More Memories
+                <span class="material-symbols-outlined">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Right / Sidebar Area -->
+<aside class="w-full lg:w-1/4 space-y-8">
+<!-- Trending Widget -->
+<div class="bg-[#fefcf8] p-6 rounded-sm border border-[#e0d8d0] shadow-lg relative rotate-1">
+<div class="washi-tape tape-tl" style="background-color: rgba(200, 255, 200, 0.8);"></div>
+<h3 class="font-headline-sm text-headline-sm text-secondary mb-4 flex items-center gap-2 border-b-2 border-secondary pb-2">
+<span class="text-2xl">📌</span>
+                Trending Topics
+            </h3>
+<ul class="space-y-4">
+<li class="group cursor-pointer">
+<p class="font-handwriting text-sm text-on-surface-variant mb-1">1. Orientation</p>
+<p class="font-handwriting text-xl text-on-surface group-hover:text-primary transition-colors font-bold">#Baan7Tour</p>
+<p class="font-handwriting text-sm text-on-surface-variant opacity-70">124 posts</p>
+</li>
+<li class="group cursor-pointer border-t border-dashed border-[#e0d8d0] pt-2">
+<p class="font-handwriting text-sm text-on-surface-variant mb-1">2. Social</p>
+<p class="font-handwriting text-xl text-on-surface group-hover:text-primary transition-colors font-bold">Game Night Invite</p>
+<p class="font-handwriting text-sm text-on-surface-variant opacity-70">89 posts</p>
+</li>
+<li class="group cursor-pointer border-t border-dashed border-[#e0d8d0] pt-2">
+<p class="font-handwriting text-sm text-on-surface-variant mb-1">3. Q&amp;A</p>
+<p class="font-handwriting text-xl text-on-surface group-hover:text-primary transition-colors font-bold">Course Registration</p>
+<p class="font-handwriting text-sm text-on-surface-variant opacity-70">45 posts</p>
+</li>
+</ul>
+</div>
+<!-- Active Baans Widget -->
+<div class="bg-[#fefcf8] p-6 rounded-sm border border-[#e0d8d0] shadow-lg relative -rotate-1">
+<div class="push-pin"></div>
+<h3 class="font-headline-sm text-headline-sm text-secondary mb-4 flex items-center gap-2 border-b-2 border-secondary pb-2">
+<span class="text-2xl">🔥</span>
+                Active Baans
+            </h3>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-2 rounded-sm bg-[#fff9c4] border border-[#e0d8d0]">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold font-handwriting text-lg border border-secondary/30">B7</div>
+<span class="font-handwriting text-xl text-on-surface font-bold">Baan 7</span>
+</div>
+<span class="text-sm font-handwriting text-primary bg-white px-2 py-1 rounded-sm border border-[#e0d8d0] shadow-sm">+45</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-sm hover:bg-[#f0eadd] transition-colors border border-transparent hover:border-[#e0d8d0]">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#e0d8d0] flex items-center justify-center text-on-surface-variant font-bold font-handwriting text-lg">B3</div>
+<span class="font-handwriting text-xl text-on-surface">Baan 3</span>
+</div>
+<span class="text-sm font-handwriting text-on-surface-variant bg-white px-2 py-1 rounded-sm border border-[#e0d8d0] shadow-sm">+22</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-sm hover:bg-[#f0eadd] transition-colors border border-transparent hover:border-[#e0d8d0]">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-[#e0d8d0] flex items-center justify-center text-on-surface-variant font-bold font-handwriting text-lg">B12</div>
+<span class="font-handwriting text-xl text-on-surface">Baan 12</span>
+</div>
+<span class="text-sm font-handwriting text-on-surface-variant bg-white px-2 py-1 rounded-sm border border-[#e0d8d0] shadow-sm">+18</span>
+</div>
+</div>
+<button class="w-full mt-4 text-center font-handwriting text-xl text-primary hover:underline italic">View Leaderboard...</button>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-stack-lg bg-[#efe9e1] border-t border-[#d1bfae] mt-auto relative z-20">
+<div class="flex flex-col md:flex-row justify-between items-center px-margin-mobile md:px-margin-desktop gap-gutter max-w-container-max mx-auto">
+<div class="text-label-md font-handwriting text-xl font-bold text-secondary">
+                © 2024 Baan 7 Orientation. All rights reserved.
+            </div>
+<div class="flex gap-6">
+<a class="font-handwriting text-lg text-on-tertiary-fixed-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Instagram</a>
+<a class="font-handwriting text-lg text-on-tertiary-fixed-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Facebook</a>
+<a class="font-handwriting text-lg text-on-tertiary-fixed-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Terms</a>
+<a class="font-handwriting text-lg text-on-tertiary-fixed-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Privacy</a>
+</div>
+</div>
+</footer>
+<script>
+    // Interactive Cheer Animation Script
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.like-btn');
+        if (btn) {
+            const emojis = ['❤️', '💙', '🎉', '✨', '👏'];
+            const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+            
+            const emojiEl = document.createElement('div');
+            emojiEl.innerHTML = randomEmoji;
+            emojiEl.className = 'cheer-emoji text-3xl drop-shadow-md';
+            
+            // Position near the click
+            emojiEl.style.left = (e.clientX - 15) + 'px';
+            emojiEl.style.top = (e.clientY - 20) + 'px';
+            
+            document.body.appendChild(emojiEl);
+            
+            // Clean up
+            setTimeout(() => {
+                emojiEl.remove();
+            }, 800);
+            
+            // Toggle active state
+            const heartSpan = btn.querySelector('span:first-child');
+            if(heartSpan) {
+                if (heartSpan.innerText === '🤍') {
+                    heartSpan.innerText = '❤️';
+                } else if (heartSpan.innerText === '❤️') {
+                    heartSpan.innerText = '🤍';
+                }
+            }
+        }
+    });
+</script>
+</body></html>

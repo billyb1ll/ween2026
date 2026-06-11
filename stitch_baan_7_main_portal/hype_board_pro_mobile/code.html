@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Baan 7 - Hype Board</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#ffffff",
+                      "tertiary-container": "#dbdbd8",
+                      "surface-container-high": "#eae7e7",
+                      "inverse-on-surface": "#f3f0f0",
+                      "outline": "#72787a",
+                      "on-background": "#1b1c1c",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#dcd9d9",
+                      "surface-container-lowest": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "error": "#ba1a1a",
+                      "outline-variant": "#c2c7c9",
+                      "on-tertiary-fixed-variant": "#454745",
+                      "surface-container": "#f0eded",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#e4e2e1",
+                      "secondary-fixed": "#ffdbc8",
+                      "on-surface": "#1b1c1c",
+                      "error-container": "#ffdad6",
+                      "primary-fixed": "#cce7ed",
+                      "on-secondary-container": "#79533c",
+                      "primary-fixed-dim": "#b0cbd1",
+                      "on-primary-fixed-variant": "#324b50",
+                      "tertiary-fixed": "#e2e3e0",
+                      "surface-container-highest": "#e4e2e1",
+                      "on-surface-variant": "#424849",
+                      "surface-container-low": "#f6f3f2",
+                      "on-error": "#ffffff",
+                      "background": "#fcf9f8",
+                      "on-tertiary-fixed": "#1a1c1b",
+                      "surface": "#fcf9f8",
+                      "secondary": "#7c563f",
+                      "secondary-fixed-dim": "#eebca0",
+                      "tertiary-fixed-dim": "#c6c7c4",
+                      "surface-bright": "#fcf9f8",
+                      "primary": "#496268",
+                      "tertiary": "#5d5f5d",
+                      "on-tertiary-container": "#5e605e",
+                      "on-secondary-fixed-variant": "#613f29",
+                      "primary-container": "#c5e0e6",
+                      "on-secondary-fixed": "#2f1504",
+                      "on-primary-fixed": "#041f24",
+                      "secondary-container": "#fdcaad",
+                      "inverse-surface": "#303030",
+                      "inverse-primary": "#b0cbd1",
+                      "on-primary-container": "#4b6469",
+                      "surface-tint": "#496268"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "margin-mobile": "20px",
+                      "unit": "8px",
+                      "container-max": "1200px",
+                      "stack-lg": "48px",
+                      "stack-sm": "12px",
+                      "stack-md": "24px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Playfair Display"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-sm": [
+                              "Playfair Display"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Playfair Display"
+                      ],
+                      "label-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg-mobile": [
+                              "Playfair Display"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-sm": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "36px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        .glow-effect:hover {
+            box-shadow: 0 0 40px rgba(197, 224, 230, 0.5); /* Primary container blueish glow */
+            transform: scale(1.02);
+            transition: all 0.3s ease;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative pb-[80px] pt-[64px]">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md shadow-sm bg-surface-container-low dark:bg-surface-container-lowest">
+<div class="flex justify-between items-center px-margin-mobile h-16 w-full max-w-container-max mx-auto">
+<button class="text-primary dark:text-primary-fixed-dim hover:scale-105 transition-transform duration-200 flex items-center justify-center p-2 rounded-full hover:bg-surface-variant/50">
+<span class="material-symbols-outlined text-2xl" data-icon="bubble_chart">bubble_chart</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim tracking-tight">Baan 7</h1>
+<button class="text-primary dark:text-primary-fixed-dim hover:scale-105 transition-transform duration-200 flex items-center justify-center p-2 rounded-full overflow-hidden w-10 h-10 bg-surface-variant">
+<img alt="Freshman Profile" class="w-full h-full object-cover" data-alt="A close-up portrait of a young student with a warm, welcoming smile, bathed in soft, natural sunlight against a minimalist light background. The lighting is bright and high-key, emphasizing a fresh, modern aesthetic consistent with a premium university portal. The color palette features neutral tones with subtle warmth. The mood is approachable, confident, and optimistic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1ECE0s9RZoqjdxb5wcT7bTpNSvBrJlFAUmRbyRkV1gXMyiXD725Fhb6JQ8s7TYlgZefqYpHARsVgl0rF_yVbd002XHm786Bbm-R6dD4MQ4Bq5T29gqBKh3uofwlQA7eqT8Pd_-2n1hHA6E65OGWCy2dVQ3-8698IaqWDYK0qZGrUAQC1YKDiyb1LhM4iQ6_IYncIUCtosCISDwYrQhexTIum6Z_W34xv8DvfyVoUlvE55svAj-sRq-WuG0MHR3XhsgBT2EWHN14c"/>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-margin-mobile flex flex-col gap-stack-md mt-stack-md relative z-10">
+<!-- Quick Post / Share Hype Area -->
+<section class="glass-card rounded-2xl p-4 w-full relative z-20">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-surface-variant">
+<img alt="Your Profile" class="w-full h-full object-cover" data-alt="A bright, cheerful portrait of a young student looking slightly off-camera, set against a clean, off-white background. The image is evenly lit with soft studio lighting, creating a polished, modern look. The subject wears casual but neat clothing in earthy tones, fitting a welcoming academic environment. The overall vibe is fresh, youthful, and engaging." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6aNOVfJhrmO2eX-Z_rxLcYUb2Zm_V2KD0cIAmqfCR5SRLqZACQ2k08tf7aBYihTaJPrkO7jZ7jHWIPGrELUxbVPDyw45DSx_PMKjzBTGvEV4KQO-Fz08mxOrvESYBZbYuTKvL713zquV_Q26XPSF_-ceVYyS2yjbDSGRMnQkf2nzXq-IvtetbGIlnZ3M0Lfo_LgSsQnBIP64wLD0Tb94Tx-CH4XumvYcp-3jTR4x9CWwPOb6AP4eA7fBAKYKvibQC9WNHjGkfpSw"/>
+</div>
+<div class="flex-grow">
+<input class="w-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface rounded-xl px-4 py-3 outline-none border-none focus:ring-2 focus:ring-primary-container text-body-md font-body-md shadow-inner" placeholder="Share the hype..." type="text"/>
+</div>
+<button class="bg-primary text-on-primary rounded-xl p-3 flex-shrink-0 glow-effect transition-all flex items-center justify-center hover:bg-primary/90">
+<span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+</div>
+</section>
+<!-- Trending Topics (Horizontal Scroll) -->
+<section class="w-full -mx-margin-mobile px-margin-mobile pb-2">
+<h2 class="font-label-md text-label-md text-on-surface-variant mb-3 px-1 uppercase tracking-wider">Trending Topics</h2>
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 pt-1 pl-1 pr-margin-mobile snap-x">
+<button class="snap-start flex-shrink-0 bg-primary-container/30 border border-primary-container text-on-primary-container rounded-full px-4 py-2 font-label-md text-label-md flex items-center gap-2 hover:bg-primary-container/50 transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="local_fire_department">local_fire_department</span>
+                    #Baan7Rules
+                </button>
+<button class="snap-start flex-shrink-0 bg-surface-container border border-surface-variant text-on-surface rounded-full px-4 py-2 font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="celebration">celebration</span>
+                    #FreshmanNight
+                </button>
+<button class="snap-start flex-shrink-0 bg-surface-container border border-surface-variant text-on-surface rounded-full px-4 py-2 font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="sports_esports">sports_esports</span>
+                    #GamingTournament
+                </button>
+<button class="snap-start flex-shrink-0 bg-surface-container border border-surface-variant text-on-surface rounded-full px-4 py-2 font-label-md text-label-md flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="restaurant">restaurant</span>
+                    #CanteenHacks
+                </button>
+</div>
+</section>
+<!-- Single Column Feed -->
+<div class="flex flex-col gap-stack-sm pb-10">
+<!-- Post Card 1: Image & Text -->
+<article class="glass-card rounded-2xl p-4 flex flex-col gap-3">
+<!-- Header -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-secondary-container">
+<img alt="User" class="w-full h-full object-cover" data-alt="A male student with dark hair wearing glasses, smiling gently in a well-lit indoor space with white walls and subtle warm lighting. The image has a clean, professional yet approachable feel, characteristic of a high-quality user profile picture for an academic community app. The colors are natural and balanced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt2xPEjwOjwxbH6BfowVzaAiL_azNBfgSl8D08ufnCfPHMlepB38Fx999cvICB_Ud5vBJTHEIj94C5jvGVnqiKBGKpIdo1daIYR54N2DndwPG-V1ouKS4YZI1A1TDSF7dIOHLzXwHi0Z8OeLW3sSbJNTBI-tT39JTx_4w96dR8lne7FjQztjXsYUGxAzCzm_cri8Yhf0S39P2DM9WIqW9vyspE5wRQ6HeiNkIdqsh65j9wGFL91OXzrrAIFjEg-HTNTofc7yd5aec"/>
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Alex Johnson</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">2 hours ago • Baan 7</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined" data-icon="more_horiz">more_horiz</span>
+</button>
+</div>
+<!-- Content -->
+<div class="flex flex-col gap-2">
+<p class="font-body-md text-body-md text-on-surface">Just finished setting up the decorations for tonight's orientation event! The team really pulled through. Who's excited? 🎉</p>
+<div class="rounded-xl overflow-hidden mt-2 h-48 bg-surface-container-high relative">
+<img alt="Event Decorations" class="w-full h-full object-cover" data-alt="A wide shot of a modern university common area decorated for a festive event. String lights hang elegantly from the high ceiling, casting a warm, inviting glow over sleek, minimalist furniture. The room is spacious with large windows letting in soft daylight that blends with the warm indoor lighting. The overall color palette features crisp whites, warm ivories, and subtle metallic accents, conveying a premium and celebratory atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoEv9WaFhlIYSDxoZaGXytdpAA8QvV5KOKa0lgBxOdQMkFpCMRNO33dag8KsAK2G7UTD0QQiSeDXGTR2dIPAAblbfQ3-TOzUGQ2Th9nvPXIa0JD6fVFalcGGggPRdWYdTE7xdDc-F8L46SwaD0NDnKtbTXXrtKUEAJFUWrpxCQwojF0UhgxhkFJ3CimGxvjX6HmvWF082BTGWV3bBDnERc_dcVgEnPNy9C1jYzNyVfVoNNx0D5YMmpWpX86xOQMIEGJ5XINdKU9rU"/>
+<!-- Decorative gradient overlay for depth -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+</div>
+<!-- Tags -->
+<div class="flex flex-wrap gap-2 mt-1">
+<span class="bg-primary-container/40 text-on-primary-container px-3 py-1 rounded-full font-label-sm text-label-sm border border-primary-container/50">Orientation</span>
+<span class="bg-secondary-container/40 text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm border border-secondary-container/50">Events</span>
+</div>
+<!-- Actions -->
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50 mt-1">
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors group">
+<span class="material-symbols-outlined group-hover:fill-primary group-hover:scale-110 transition-all" data-icon="favorite" data-weight="fill">favorite</span>
+<span class="font-label-md text-label-md">124</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-secondary transition-colors group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-all" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-label-md">32</span>
+</button>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant/30">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</button>
+</div>
+</article>
+<!-- Post Card 2: Text Only, Announcement style -->
+<article class="glass-card rounded-2xl p-4 flex flex-col gap-3 border-l-4 border-l-secondary">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="campaign" data-weight="fill">campaign</span>
+</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface font-bold">Baan Committee</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">4 hours ago • Announcement</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-2 bg-surface/50 p-3 rounded-xl">
+<p class="font-body-md text-body-md text-on-surface"><strong>Reminder:</strong> The campus tour starts exactly at 10:00 AM tomorrow at the main fountain. Don't forget to wear your Baan shirts! Water bottles will be provided.</p>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-surface-variant/50 mt-1">
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-1.5 text-primary group">
+<span class="material-symbols-outlined fill-current scale-110" data-icon="favorite" data-weight="fill">favorite</span>
+<span class="font-label-md text-label-md">256</span>
+</button>
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-secondary transition-colors group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-all" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-label-md text-label-md">8</span>
+</button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-container-lowest border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(73,98,104,0.1)]">
+<div class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 py-3 bg-surface dark:bg-surface-container-lowest">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1.5 hover:bg-primary-container/20 dark:hover:bg-primary-fixed/10 rounded-xl transition-all">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm-mobile">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant px-5 py-1.5 hover:bg-primary-container/20 dark:hover:bg-primary-fixed/10 rounded-xl transition-all">
+<span class="material-symbols-outlined mb-1" data-icon="event_upcoming">event_upcoming</span>
+<span class="font-label-sm text-label-sm-mobile">Activities</span>
+</button>
+<!-- Active State -->
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-secondary-fixed-variant text-on-secondary-container dark:text-on-secondary-fixed-variant rounded-full px-5 py-1.5 transition-all duration-300 scale-95">
+<span class="material-symbols-outlined mb-1" data-icon="groups" data-weight="fill">groups</span>
+<span class="font-label-sm text-label-sm-mobile font-bold">Community</span>
+</button>
+</div>
+</nav>
+</body></html>

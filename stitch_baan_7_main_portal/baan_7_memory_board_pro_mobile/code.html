@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Memory Board</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&amp;family=Indie+Flower&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#1a1c1b",
+                        "inverse-primary": "#b0cbd1",
+                        "inverse-on-surface": "#f3f0f0",
+                        "on-secondary-fixed": "#2f1504",
+                        "secondary": "#7c563f",
+                        "surface-bright": "#fcf9f8",
+                        "surface-container": "#f0eded",
+                        "surface-variant": "#e4e2e1",
+                        "secondary-fixed-dim": "#eebca0",
+                        "tertiary": "#5d5f5d",
+                        "on-error-container": "#93000a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#324b50",
+                        "secondary-container": "#fdcaad",
+                        "on-tertiary-container": "#5e605e",
+                        "primary-fixed-dim": "#b0cbd1",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#e4e2e1",
+                        "on-background": "#1b1c1c",
+                        "tertiary-fixed-dim": "#c6c7c4",
+                        "surface-container-low": "#f6f3f2",
+                        "on-secondary-container": "#79533c",
+                        "on-tertiary-fixed-variant": "#454745",
+                        "error-container": "#ffdad6",
+                        "background": "#fcf9f8",
+                        "outline": "#72787a",
+                        "tertiary-fixed": "#e2e3e0",
+                        "surface-tint": "#496268",
+                        "secondary-fixed": "#ffdbc8",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#4b6469",
+                        "on-surface": "#1b1c1c",
+                        "tertiary-container": "#dbdbd8",
+                        "surface-dim": "#dcd9d9",
+                        "primary": "#496268",
+                        "inverse-surface": "#303030",
+                        "on-secondary-fixed-variant": "#613f29",
+                        "on-secondary": "#ffffff",
+                        "surface-container-high": "#eae7e7",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#041f24",
+                        "surface": "#fcf9f8",
+                        "on-surface-variant": "#424849",
+                        "outline-variant": "#c2c7c9",
+                        "error": "#ba1a1a",
+                        "primary-container": "#c5e0e6",
+                        "primary-fixed": "#cce7ed"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "stack-sm": "12px",
+                        "gutter": "24px",
+                        "margin-desktop": "64px",
+                        "stack-lg": "48px",
+                        "container-max": "1200px",
+                        "stack-md": "24px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Playfair Display"],
+                        "headline-md": ["Playfair Display"],
+                        "display-lg-mobile": ["Playfair Display"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Playfair Display"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "handwriting": ["Caveat", "cursive"],
+                        "marker": ["Indie Flower", "cursive"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg-mobile": ["36px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-sm": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "500" }]
+                    },
+                    "boxShadow": {
+                        'polaroid': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                        'pin': '2px 4px 4px rgba(0,0,0,0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-image: url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100" height="100" fill="%23fcf9f8"/%3E%3Crect width="100" height="100" filter="url(%23noise)" opacity="0.08"/%3E%3C/svg%3E');
+            background-attachment: fixed;
+        }
+        
+        .washi-tape {
+            position: absolute;
+            width: 80px;
+            height: 24px;
+            background: rgba(253, 202, 173, 0.6); /* secondary-container */
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-2deg);
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .washi-tape-blue {
+            background: rgba(176, 203, 209, 0.6); /* inverse-primary */
+            transform: translateX(-50%) rotate(3deg);
+        }
+
+        .push-pin {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 16px;
+            background: radial-gradient(circle at 30% 30%, #ef4444, #991b1b);
+            border-radius: 50%;
+            box-shadow: 2px 4px 4px rgba(0,0,0,0.2), inset -2px -2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .push-pin::after {
+            content: '';
+            position: absolute;
+            top: 14px;
+            left: 7px;
+            width: 2px;
+            height: 10px;
+            background: #94a3b8;
+            z-index: -1;
+            transform: rotate(15deg);
+        }
+
+        .polaroid-image {
+            background-color: #000;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        .font-toggle-active .font-handwriting {
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            font-size: 1rem !important;
+            line-height: 1.6 !important;
+        }
+
+        /* Subtle organic rotations */
+        .rotate-p1 { transform: rotate(1deg); }
+        .rotate-m2 { transform: rotate(-2deg); }
+        .rotate-p2 { transform: rotate(2deg); }
+        .rotate-m1 { transform: rotate(-1deg); }
+        
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 80px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface antialiased min-h-screen relative" id="app-body">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim text-secondary dark:text-secondary-fixed-dim font-headline-sm text-headline-sm flex justify-between items-center w-full px-margin-mobile h-16 shadow-sm sticky top-0 z-40">
+<button class="material-symbols-outlined hover:scale-105 transition-transform duration-200" data-icon="menu">menu</button>
+<h1 class="font-bold font-display-lg-mobile text-display-lg-mobile tracking-tight">Memory Board</h1>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-high hover:scale-105 transition-transform duration-200" id="fontToggle">
+<span class="material-symbols-outlined" style="font-size: 20px;">text_fields</span>
+</button>
+<button class="material-symbols-outlined hover:scale-105 transition-transform duration-200" data-icon="account_circle">account_circle</button>
+</div>
+</header>
+<main class="px-margin-mobile pt-stack-md pb-safe max-w-md mx-auto space-y-stack-md">
+<!-- Create New Memory (Pinned Note) -->
+<div class="relative bg-secondary-fixed text-on-secondary-fixed p-6 rounded-sm shadow-md rotate-m1">
+<div class="push-pin"></div>
+<textarea class="w-full bg-transparent border-none focus:ring-0 resize-none font-handwriting text-2xl placeholder:text-on-secondary-fixed/50" placeholder="Pin a new memory..." rows="3"></textarea>
+<div class="flex justify-between items-center mt-4">
+<div class="flex gap-2">
+<button class="text-secondary hover:bg-secondary-fixed-dim/20 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">image</span>
+</button>
+<button class="text-secondary hover:bg-secondary-fixed-dim/20 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+</div>
+<button class="bg-secondary text-on-secondary px-6 py-2 rounded-full font-label-md hover:bg-on-secondary-container transition-colors shadow-sm">Post</button>
+</div>
+</div>
+<!-- Feed -->
+<div class="space-y-stack-lg mt-stack-lg">
+<!-- Polaroid 1 -->
+<article class="relative bg-white p-4 pb-8 shadow-polaroid rotate-p2">
+<div class="washi-tape"></div>
+<div class="mb-4">
+<div class="h-64 bg-surface-variant flex items-center justify-center relative overflow-hidden">
+<img alt="Group of diverse university students laughing and walking across a sunny green campus quad during orientation week. They are wearing casual clothes and carrying backpacks. Warm, bright light mode aesthetic with soft shadows." class="w-full h-full object-cover polaroid-image" data-alt="A candid photograph of a group of diverse university freshmen laughing and walking together across a vibrant, sunny green campus quad during orientation. The students are dressed in casual, modern clothing and carry backpacks. The scene is bathed in warm, bright sunlight, creating a cheerful, optimistic light-mode aesthetic with soft, natural shadows. The overall mood is welcoming and energetic, perfectly capturing the essence of new beginnings in a premium collegiate setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-EzDDZPWQceSQCU34P4sjIEjGWWdS5m8d5oz_dzg6oD4HB74cHQRUkuxugk4uon4004g-bJFWEFgICaSUvKM50_ssZlA53swr8mvBaoTvb78bvowvwBxZymjO0Rl-qEk5ZoHPnoZJIYqCO2yJbgaqDKnEgoLIr_0ETl_EmbUw9Lc6wEQl0TL8_7fJqr9WoovTeZzQxzBaMT2mX8fPXZS4YQSq4mJUUown92H_HWWkWD72t86_QCDxrFyvWYW7XqawsueBv86O8Ow"/>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<p class="font-handwriting text-3xl text-on-surface leading-tight pr-8">First day of Baan! So much energy 🎉</p>
+<button class="text-error mt-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<div class="font-label-sm text-on-surface-variant mt-2">2 hours ago • by Sarah J.</div>
+</article>
+<!-- Pinned Note 1 -->
+<article class="relative bg-primary-container text-on-primary-container p-6 rounded-sm shadow-md rotate-m2">
+<div class="push-pin"></div>
+<div class="font-handwriting text-2xl leading-relaxed mb-4">
+                    Reminder: Scavenger hunt starts at 2 PM at the main library steps. Don't forget your water bottles! 🏃‍♂️💧
+                </div>
+<div class="flex justify-between items-center border-t border-on-primary-container/20 pt-3">
+<div class="font-label-sm opacity-80">Baan 7 Leaders • 4 hours ago</div>
+<button class="text-on-primary-container opacity-60 hover:opacity-100">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</article>
+<!-- Polaroid 2 -->
+<article class="relative bg-white p-4 pb-8 shadow-polaroid rotate-p1">
+<div class="washi-tape washi-tape-blue"></div>
+<div class="mb-4">
+<div class="h-64 bg-surface-variant flex items-center justify-center relative overflow-hidden">
+<img alt="Close up of hands writing in a notebook on a wooden desk. A coffee cup and a laptop are visible in the background. Warm indoor lighting." class="w-full h-full object-cover polaroid-image" data-alt="A close-up, tactile photograph showing hands carefully writing notes in a sleek notebook resting on a warm wooden desk. In the softly blurred background, a modern laptop and a ceramic coffee cup are visible. The lighting is warm and inviting, typical of a cozy library or study lounge, enhancing the premium, light-mode aesthetic. The image conveys a sense of focused preparation and academic calm, fitting the transition to university life." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCxLmjMbRcU1ew9wPxXs3LRlEmFhEED-Iu7U2GkawuiM1W4tqLXO6nsUEi0GIsi7XAVVYAh9QsAtlymJGQFNBORUNPGL_ODzwuuyMy_epQKibWSCD7Qxsj8v9fIvCAWHl4oZSCKltlYQpIKFshXLFpgSf0oKz3aKzU1-e7VULu5bOOctISfWCA4LcF_c_bfvqfdUwV5_RD2llAbAm1S56GlsaVKSs5VkbRAVWEZ4xm1wtoR0Go-wPMTN3HkisJDJLjgF8yWjbfXjo"/>
+</div>
+</div>
+<div class="flex justify-between items-start">
+<p class="font-handwriting text-3xl text-on-surface leading-tight pr-8">Ice breakers actually weren't that bad 😅</p>
+<button class="text-on-surface-variant mt-2 hover:text-error transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="font-label-sm text-on-surface-variant mt-2">Yesterday • by Mike T.</div>
+</article>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-dim shadow-lg">
+<div class="fixed bottom-0 left-0 w-full flex justify-around items-center h-20 px-4 pb-safe border-t border-surface-container-high/50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-fixed-dim/20 transition-colors w-16 h-14 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-secondary-fixed-dim/20 transition-colors w-16 h-14 rounded-xl" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span class="font-label-sm text-label-sm">Activities</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 hover:bg-secondary-fixed-dim/20 transition-colors h-14" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label-sm text-label-sm font-bold">Community</span>
+</a>
+</div>
+</nav>
+<script>
+        // Toggle Font Functionality
+        const fontToggleBtn = document.getElementById('fontToggle');
+        const appBody = document.getElementById('app-body');
+
+        fontToggleBtn.addEventListener('click', () => {
+            appBody.classList.toggle('font-toggle-active');
+            const icon = fontToggleBtn.querySelector('span');
+            if (appBody.classList.contains('font-toggle-active')) {
+                icon.textContent = 'draw';
+                fontToggleBtn.classList.add('bg-primary-container', 'text-on-primary-container');
+                fontToggleBtn.classList.remove('bg-surface-container-high');
+            } else {
+                icon.textContent = 'text_fields';
+                fontToggleBtn.classList.remove('bg-primary-container', 'text-on-primary-container');
+                fontToggleBtn.classList.add('bg-surface-container-high');
+            }
+        });
+    </script>
+</body></html>

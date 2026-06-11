@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+<!-- STITCH_THREEJS_START:ANIMATION_2 class="fixed inset-0 w-full h-full bg-transparent" -->
+<div class="fixed inset-0 w-full h-full bg-transparent" style="display:block;">
+<script src="https://ajax.googleapis.com/ajax/libs/threejs/r125/three.min.js"></script>
+<div id="threejs-container-ANIMATION_2" style="width:100%;height:100%"></div>
+<script>
+(function() {
+  const container = document.getElementById('threejs-container-ANIMATION_2');
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  
+// The "Connecting Thread" - Interactive SVG Mouse Tracking
+// This script creates a fluid SVG path that follows the user's cursor
+// with a "magnetic" ribbon effect using cubic bezier curves.
+
+(function() {
+    const container = document.querySelector('.connecting-thread-container');
+    if (!container) return;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'fixed inset-0 w-full h-full pointer-events-none z-0');
+    svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    svg.style.position = 'fixed';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', '#4A2B17'); // Chocolate Fondant
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('opacity', '0.4');
+    
+    svg.appendChild(path);
+    container.appendChild(svg);
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let targetX = mouseX;
+    let targetY = mouseY;
+    
+    // Points along the line
+    const points = [];
+    const numPoints = 20;
+    for (let i = 0; i < numPoints; i++) {
+        points.push({ x: mouseX, y: mouseY });
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        targetX = e.clientX;
+        targetY = e.clientY;
+    });
+
+    window.addEventListener('resize', () => {
+        svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    });
+
+    function animate() {
+        // Smooth cursor follow for the first point
+        points[0].x += (targetX - points[0].x) * 0.15;
+        points[0].y += (targetY - points[0].y) * 0.15;
+
+        // Chain the rest of the points
+        for (let i = 1; i < numPoints; i++) {
+            const p = points[i];
+            const prev = points[i - 1];
+            p.x += (prev.x - p.x) * 0.2;
+            p.y += (prev.y - p.y) * 0.2;
+        }
+
+        // Draw the path using quadratic curves
+        let d = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < numPoints - 1; i++) {
+            const xc = (points[i].x + points[i + 1].x) / 2;
+            const yc = (points[i].y + points[i + 1].y) / 2;
+            d += ` Q ${points[i].x} ${points[i].y}, ${xc} ${yc}`;
+        }
+        
+        path.setAttribute('d', d);
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+})();
+
+})();
+</script>
+</div>
+<!-- STITCH_THREEJS_END:ANIMATION_2 -->
+</body>
+</html>

@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-10T21:28:00.000Z",
+  "title": "Design System: Baan 7 Main Portal",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Blue Lagoon",
+        "canonical": "oklch(43.83% 0.046 211.59)",
+        "tonalRamp": ["#0e1416", "#1e292c", "#2f3f44", "#3f545a", "#496268", "#6a858c", "#94abb1", "#c5e0e6"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Chocolate Fondant",
+        "canonical": "oklch(44.33% 0.091 46.54)",
+        "tonalRamp": ["#1e130c", "#382317", "#523321", "#6d442c", "#7c563f", "#9d765d", "#be987f", "#dfbfa9"]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Warm Ivory Canvas",
+        "canonical": "oklch(98.3% 0.005 45.0)",
+        "tonalRamp": ["#fcf9f8", "#f6f3f2", "#f0eded", "#eae7e7", "#e4e2e1", "#dcd9d9", "#bab8b8", "#787676"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Pure White Canvas",
+        "canonical": "oklch(100% 0.0 0.0)",
+        "tonalRamp": ["#ffffff", "#f8f9fa", "#e9ecef", "#dee2e6", "#ced4da", "#adb5bd", "#6c757d", "#343a40"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display Heading",
+        "purpose": "Hero headlines and main titles to capture prestige."
+      },
+      "headline": {
+        "displayName": "Section Headline",
+        "purpose": "Section dividers and headers."
+      },
+      "body": {
+        "displayName": "Body Text",
+        "purpose": "Standard reading text and instructions."
+      },
+      "label": {
+        "displayName": "Label & Button Text",
+        "purpose": "Interactive labels, metadata badges, and button text."
+      }
+    },
+    "shadows": [
+      {
+        "name": "glow-halo",
+        "value": "0 12px 40px rgba(73, 98, 104, 0.15)",
+        "purpose": "Diffused hover light halo using Blue Lagoon accent."
+      },
+      {
+        "name": "ambient-low",
+        "value": "0 4px 20px rgba(27, 28, 28, 0.04)",
+        "purpose": "Very soft drop shadow for floating navigation elements."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for micro-interactions and transitions."
+      },
+      {
+        "name": "draw-in",
+        "value": "stroke-dashoffset 2s ease-out",
+        "purpose": "Animation timeline for the connecting SVG line."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mobile",
+        "value": "768px"
+      },
+      {
+        "name": "desktop",
+        "value": "1200px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard call-to-action button in Chocolate Fondant.",
+      "html": "<button class=\"ds-btn-primary\">START BUILDING</button>",
+      "css": ".ds-btn-primary { background-color: #7c563f; color: #fcf9f8; padding: 12px 24px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border: none; border-radius: 24px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { transform: scale(1.02); box-shadow: 0 12px 40px rgba(73, 98, 104, 0.15); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ghost outlined button for secondary choices.",
+      "html": "<button class=\"ds-btn-secondary\">EXPLORE THEME</button>",
+      "css": ".ds-btn-secondary { background-color: transparent; color: #7c563f; border: 1px solid #7c563f; padding: 12px 24px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 24px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { transform: scale(1.02); }"
+    },
+    {
+      "name": "Orientation Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White card container used on Ivory background.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Theme System</h3><p class=\"ds-card-text\">A blue-forward theme with semantic tokens so light and dark surfaces stay consistent.</p></div>",
+      "css": ".ds-card { background-color: #ffffff; border: 1px solid rgba(114, 120, 122, 0.15); border-radius: 24px; padding: 24px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); } .ds-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(73, 98, 104, 0.15); } .ds-card-title { font-family: 'Playfair Display', Georgia, serif; font-size: 1.25rem; font-weight: 600; color: #7c563f; margin: 0 0 8px 0; } .ds-card-text { font-size: 1rem; color: #1b1c1c; margin: 0; line-height: 1.6; }"
+    },
+    {
+      "name": "Baan Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Lagoon blue categorization pill.",
+      "html": "<span class=\"ds-chip\">Baan 7</span>",
+      "css": ".ds-chip { display: inline-block; background-color: #c5e0e6; color: #7c563f; padding: 6px 12px; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 0.75rem; font-weight: 600; border-radius: 9999px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Playful Orientation Guide",
+    "overview": "The Baan 7 Main Portal design system balances the academic prestige of university life with the warmth of a welcoming student community. Built around the theme of \"New Beginnings,\" it rejects standard, clinical SaaS layouts in favor of an organic, tactile, and highly interactive digital space. By leveraging generous whitespace, high-contrast warm typography, and subtle micro-interactions, the interface aims to reduce \"freshman anxiety\" and encourage exploration. Every section and component is designed to feel custom-crafted, establishing a cohesive yet diverse ecosystem across the portal's sub-modules (Freshmen/Pro Portals, Memory Board, Hype Board, Vibe Check).",
+    "keyCharacteristics": [
+      "Organic color harmony featuring a warm Ivory canvas, rich Chocolate accents, and serene Lagoon Blue highlights.",
+      "Clear typographic contrast between the traditional elegance of Playfair Display and the contemporary legibility of Plus Jakarta Sans.",
+      "A tactile shape language utilizing soft 2xl rounded corners to reinforce friendliness and accessibility.",
+      "Fluid visual continuity guided by an interactive SVG line weaving between layout sections."
+    ],
+    "rules": [
+      {
+        "name": "The Ivory Canvas Rule",
+        "body": "All background surfaces default to Warm Ivory (#fcf9f8). Pure white is strictly reserved for nested card containers to create layered visual depth.",
+        "section": "colors"
+      },
+      {
+        "name": "The Accent Rarity Rule",
+        "body": "Blue Lagoon is used as a soft primary accent for backgrounds/glows (≤15% of screen area). Chocolate Fondant is reserved for primary actions and key typography.",
+        "section": "colors"
+      },
+      {
+        "name": "The Serif Headline Rule",
+        "body": "All display and headline elements must use Playfair Display. Do not use geometric sans for primary titles.",
+        "section": "typography"
+      },
+      {
+        "name": "The Line Length Rule",
+        "body": "Body copy must be clamped at a maximum width of 65-75ch to preserve readability.",
+        "section": "typography"
+      },
+      {
+        "name": "The Soft Glow Rule",
+        "body": "Do not use aggressive gray shadows. Convey depth using color boundaries (tonal shifts) or diffused Blue Lagoon halos behind featured cards.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do default to Warm Ivory (#fcf9f8) backgrounds with Pure White (#ffffff) card overlays.",
+      "Do clamp Playfair Display letter-spacing between -0.02em and -0.04em for headings.",
+      "Do support a prefers-reduced-motion CSS fallback by cross-fading elements or displaying them instantly.",
+      "Do use soft 2xl rounded corners (16px to 24px) for cards, buttons, and inputs."
+    ],
+    "donts": [
+      "Don't use standard SaaS templates (e.g., left-content / right-image layouts).",
+      "Don't use bento grids or glassmorphism as a default decoration.",
+      "Don't use tiny uppercase tracked eyebrows on every section (reach for alternative cadences).",
+      "Don't use purple, indigo, or default Tailwind blues.",
+      "Don't pair borders with shadows greater than 8px blur unless utilizing the Lagoon Halo Glow.",
+      "Don't allow long heading text to overflow containers on mobile (test clamps at all breakpoints)."
+    ]
+  }
+}
