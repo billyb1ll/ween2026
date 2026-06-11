@@ -13,6 +13,14 @@ import {
 import { useUser } from '../context/UserContext'
 import { toaster } from '../components/ui/toaster'
 
+const SelectBox = Box as unknown as React.ComponentType<
+  React.ComponentProps<typeof Box> & {
+    value?: string;
+    required?: boolean;
+    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  }
+>
+
 const PRESET_COLORS = [
   '#496268', // Lagoon
   '#7c563f', // Chocolate
@@ -192,7 +200,7 @@ export function ProfileSetupPage() {
                 />
               </VStack>
 
-              {/* Faculty Dropdown/Input */}
+              {/* Faculty Dropdown */}
               <VStack align="stretch" gap={1.5}>
                 <Box
                   fontSize="xs"
@@ -203,12 +211,13 @@ export function ProfileSetupPage() {
                 >
                   <label htmlFor="setup-faculty">Faculty (คณะ) <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
-                <Input
+                <SelectBox
+                  as="select"
                   id="setup-faculty"
-                  placeholder="e.g. วิศวกรรมศาสตร์"
-                  list="faculties-list"
+                  aria-label="Faculty (คณะ)"
+                  title="Faculty (คณะ)"
                   value={faculty}
-                  onChange={(e) => setFaculty(e.target.value)}
+                  onChange={(e) => setFaculty((e.target as unknown as HTMLSelectElement).value)}
                   borderRadius="xl"
                   border="1.5px solid var(--c-outline)"
                   bg="var(--c-ivory)"
@@ -219,13 +228,19 @@ export function ProfileSetupPage() {
                   }}
                   h="48px"
                   fontSize="sm"
+                  px={4}
                   required
-                />
-                <datalist id="faculties-list">
-                  {THAI_FACULTIES.map((fac) => (
-                    <option key={fac} value={fac.split(' (')[0]} />
-                  ))}
-                </datalist>
+                >
+                  <option value="">Select Faculty...</option>
+                  {THAI_FACULTIES.map((fac) => {
+                    const cleanVal = fac.split(' (')[0]
+                    return (
+                      <option key={fac} value={cleanVal}>
+                        {fac}
+                      </option>
+                    )
+                  })}
+                </SelectBox>
               </VStack>
 
               {/* Major / Staff Position */}
@@ -244,29 +259,50 @@ export function ProfileSetupPage() {
                     </Text>
                   </label>
                 </Box>
-                <Input
-                  id="setup-major"
-                  placeholder={isStaff ? 'e.g. พี่กลุ่ม, Creative & Art' : 'e.g. วิทยาการคอมพิวเตอร์'}
-                  list={isStaff ? 'staff-roles-list' : undefined}
-                  value={major}
-                  onChange={(e) => setMajor(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-ivory)"
-                  _focus={{
-                    borderColor: 'var(--c-lagoon)',
-                    boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                    bg: 'var(--c-white)',
-                  }}
-                  h="48px"
-                  fontSize="sm"
-                />
-                {isStaff && (
-                  <datalist id="staff-roles-list">
+                {isStaff ? (
+                  <SelectBox
+                    as="select"
+                    id="setup-major"
+                    aria-label="Staff Position (ตำแหน่ง)"
+                    title="Staff Position (ตำแหน่ง)"
+                    value={major}
+                    onChange={(e) => setMajor((e.target as unknown as HTMLSelectElement).value)}
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    bg="var(--c-ivory)"
+                    _focus={{
+                      borderColor: 'var(--c-lagoon)',
+                      boxShadow: '0 0 0 3px var(--c-lagoon-light)',
+                      bg: 'var(--c-white)',
+                    }}
+                    h="48px"
+                    fontSize="sm"
+                    px={4}
+                  >
+                    <option value="">Select Position...</option>
                     {STAFF_ROLES.map((role) => (
-                      <option key={role} value={role} />
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
                     ))}
-                  </datalist>
+                  </SelectBox>
+                ) : (
+                  <Input
+                    id="setup-major"
+                    placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                    value={major}
+                    onChange={(e) => setMajor(e.target.value)}
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    bg="var(--c-ivory)"
+                    _focus={{
+                      borderColor: 'var(--c-lagoon)',
+                      boxShadow: '0 0 0 3px var(--c-lagoon-light)',
+                      bg: 'var(--c-white)',
+                    }}
+                    h="48px"
+                    fontSize="sm"
+                  />
                 )}
               </VStack>
 
