@@ -36,7 +36,7 @@ export function LoginPage() {
     // If already logged in and has profile nickname, redirect to homepage
     if (user && !showCheckmark) {
       if (!user.nickname || !user.faculty) {
-        navigate('/profile-setup')
+        navigate('/profile-edit')
       } else {
         navigate('/')
       }
@@ -103,7 +103,7 @@ export function LoginPage() {
       setCheckmarkText('Setup Complete!')
       setShowCheckmark(true)
       setTimeout(() => {
-        navigate('/profile-setup')
+        navigate('/profile-edit')
       }, 1200)
     } else {
       toaster.create({

@@ -6,9 +6,17 @@ DROP TABLE IF EXISTS post_comments CASCADE;
 DROP TABLE IF EXISTS gallery_photos CASCADE;
 DROP TABLE IF EXISTS posts CASCADE;
 DROP TABLE IF EXISTS system_config CASCADE;
+DROP TABLE IF EXISTS event_config CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- 2. CREATE ENTITIES
+
+-- Event Configuration Table
+CREATE TABLE event_config (
+    key VARCHAR PRIMARY KEY,
+    title VARCHAR NOT NULL,
+    event_time TIMESTAMPTZ NOT NULL
+);
 
 -- Users Profile Table
 CREATE TABLE users (
@@ -140,6 +148,10 @@ INSERT INTO system_config (key, value) VALUES
 ('enable_hype_board', true),
 ('enable_memory_board', true);
 
+-- Seed Next Event config
+INSERT INTO event_config (key, title, event_time) VALUES
+('next_event', 'First Meet', NOW() + INTERVAL '1 day');
+
 -- Seed Initial Board Posts
 INSERT INTO posts (content, likes, type, is_anonymous, student_id, tags) VALUES
 ('Just finished the campus tour. The new science building looks amazing! Can''t wait for classes to start. 🔥', 24, 'hype', false, '6688222', ARRAY['#Ween2026']),
@@ -163,15 +175,18 @@ ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_config ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow all select" ON users FOR SELECT USING (true);
 CREATE POLICY "Allow all select" ON posts FOR SELECT USING (true);
 CREATE POLICY "Allow all select" ON post_comments FOR SELECT USING (true);
 CREATE POLICY "Allow all select" ON system_config FOR SELECT USING (true);
+CREATE POLICY "Allow all select" ON event_config FOR SELECT USING (true);
 
 CREATE POLICY "Allow insert/update users" ON users FOR ALL USING (true);
 CREATE POLICY "Allow insert posts" ON posts FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow insert comments" ON post_comments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow all for all config" ON event_config FOR ALL USING (true);
 
 CREATE OR REPLACE FUNCTION delete_post_secure(p_post_id bigint, p_student_id varchar, p_pin_hash varchar)
 RETURNS boolean AS $$

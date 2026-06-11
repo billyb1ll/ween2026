@@ -51,6 +51,9 @@ export function AdminDashboardPage() {
   const [newRole, setNewRole] = useState('student')
   const [enableHypeBoard, setEnableHypeBoard] = useState(true)
   const [enableMemoryBoard, setEnableMemoryBoard] = useState(true)
+  const [eventTitle, setEventTitle] = useState('First Meet')
+  const [eventTime, setEventTime] = useState('')
+  const [updatingEvent, setUpdatingEvent] = useState(false)
 
   // CSV States
   const [csvRecords, setCsvRecords] = useState<CSVRecord[]>([])
@@ -105,6 +108,21 @@ export function AdminDashboardPage() {
             ...prev,
             ping: 'Not Configured (Fallback Active)',
           }))
+        }
+
+        // 4. Fetch Next Event config
+        const { data: eventData } = await supabase
+          .from('event_config')
+          .select('*')
+          .eq('key', 'next_event')
+          .single()
+        if (!active) return
+        if (eventData) {
+          setEventTitle(eventData.title)
+          const d = new Date(eventData.event_time)
+          const pad = (n: number) => n.toString().padStart(2, '0')
+          const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+          setEventTime(localStr)
         }
       } catch (err) {
         console.error('Error fetching admin data:', err)
@@ -203,6 +221,36 @@ export function AdminDashboardPage() {
       })
       if (key === 'enable_hype_board') setEnableHypeBoard(currentVal)
       if (key === 'enable_memory_board') setEnableMemoryBoard(currentVal)
+    }
+  }
+
+  // Handle Event Config Update
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!eventTime) return
+    setUpdatingEvent(true)
+    try {
+      const isoString = new Date(eventTime).toISOString()
+      const { error } = await supabase
+        .from('event_config')
+        .update({ title: eventTitle, event_time: isoString })
+        .eq('key', 'next_event')
+
+      if (error) throw error
+
+      toaster.create({
+        title: 'Event Configured!',
+        description: `Event "${eventTitle}" updated successfully.`,
+        type: 'success',
+      })
+    } catch (err) {
+      console.error(err)
+      toaster.create({
+        title: 'Failed to configure event',
+        type: 'error',
+      })
+    } finally {
+      setUpdatingEvent(false)
     }
   }
 
@@ -496,6 +544,55 @@ export function AdminDashboardPage() {
                   {enableMemoryBoard ? 'ON (Open)' : 'OFF (Closed)'}
                 </Button>
               </Flex>
+            </VStack>
+          </Box>
+
+          {/* Event Configuration */}
+          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
+            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
+              Event Configuration (ตั้งค่ากิจกรรม)
+            </Heading>
+            <VStack as="form" onSubmit={handleUpdateEvent} gap={4} align="stretch">
+              <VStack align="start" gap={1.5}>
+                <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Event Title (ชื่อกิจกรรม)</Text>
+                <Input
+                  placeholder="e.g. First Meet"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  h="44px"
+                  borderRadius="xl"
+                  border="1.5px solid var(--c-outline)"
+                  bg="var(--c-ivory)"
+                  required
+                />
+              </VStack>
+              <VStack align="start" gap={1.5}>
+                <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Event Date & Time (วันเวลาที่จัดกิจกรรม)</Text>
+                <Input
+                  type="datetime-local"
+                  value={eventTime}
+                  onChange={(e) => setEventTime(e.target.value)}
+                  h="44px"
+                  borderRadius="xl"
+                  border="1.5px solid var(--c-outline)"
+                  bg="var(--c-ivory)"
+                  required
+                />
+              </VStack>
+              <Button
+                type="submit"
+                bg="var(--c-chocolate)"
+                color="white"
+                h="44px"
+                borderRadius="xl"
+                cursor="pointer"
+                _hover={{ bg: 'chocolate.600' }}
+                loading={updatingEvent}
+                w="100%"
+                mt={2}
+              >
+                Save Event Configuration
+              </Button>
             </VStack>
           </Box>
         </VStack>

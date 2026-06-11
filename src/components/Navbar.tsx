@@ -6,6 +6,7 @@ import {
   Button,
   VStack,
   Portal,
+  Image,
 } from "@chakra-ui/react";
 import { NavLink, Link } from "react-router-dom";
 import {
@@ -329,7 +330,7 @@ export function Navbar() {
           gap={2}
         >
           <NavLink to="/">
-            <Text
+            <Flex
               fontFamily="heading"
               fontSize="xl"
               fontWeight="700"
@@ -337,12 +338,11 @@ export function Navbar() {
               mr={8}
               transition="opacity 0.2s"
               _hover={{ opacity: 0.8 }}
+              gap={1}
             >
-              <Flex>
-                <Text color="red">Very</Text>
-                <Text color="orange">Ween</Text>
-              </Flex>
-            </Text>
+              <Text color="red">Very</Text>
+              <Text color="orange">Ween</Text>
+            </Flex>
           </NavLink>
 
           <HStack gap={1}>
@@ -364,7 +364,7 @@ export function Navbar() {
                 minW="40px"
                 p={0}
                 borderRadius="full"
-                bg={user.avatar_color}
+                bg={user.profile_pic_url ? "transparent" : user.avatar_color}
                 color="white"
                 display="flex"
                 alignItems="center"
@@ -377,7 +377,18 @@ export function Navbar() {
                 _hover={{ transform: "scale(1.05)" }}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
-                {getInitials(user.nickname || user.student_id)}
+                {user.profile_pic_url ? (
+                  <Image
+                    src={user.profile_pic_url}
+                    alt={user.nickname || "Avatar"}
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                    borderRadius="full"
+                  />
+                ) : (
+                  getInitials(user.nickname || user.student_id)
+                )}
               </Button>
 
               {dropdownOpen && desktopCoords && (
@@ -504,7 +515,7 @@ export function Navbar() {
                 minW="44px"
                 p={0}
                 borderRadius="full"
-                bg={user.avatar_color}
+                bg={user.profile_pic_url ? "transparent" : user.avatar_color}
                 color="white"
                 display="flex"
                 alignItems="center"
@@ -517,7 +528,18 @@ export function Navbar() {
                 _hover={{ transform: "scale(1.05)" }}
                 onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
               >
-                {getInitials(user.nickname || user.student_id)}
+                {user.profile_pic_url ? (
+                  <Image
+                    src={user.profile_pic_url}
+                    alt={user.nickname || "Avatar"}
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                    borderRadius="full"
+                  />
+                ) : (
+                  getInitials(user.nickname || user.student_id)
+                )}
               </Button>
 
               {mobileDropdownOpen && mobileCoords && (

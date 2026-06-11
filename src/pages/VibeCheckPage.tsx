@@ -1098,7 +1098,7 @@ export function VibeCheckPage() {
                     h="110px"
                     borderRadius="full"
                     border="4px solid white"
-                    bg={user?.avatar_color || "var(--c-chocolate)"}
+                    bg={user?.profile_pic_url ? "transparent" : (user?.avatar_color || "var(--c-chocolate)")}
                     color="white"
                     display="flex"
                     alignItems="center"
@@ -1106,8 +1106,19 @@ export function VibeCheckPage() {
                     fontSize="3xl"
                     fontWeight="bold"
                     boxShadow="var(--shadow-lagoon)"
+                    overflow="hidden"
                   >
-                    {user ? getInitials(user.nickname || user.student_id) : "U"}
+                    {user?.profile_pic_url ? (
+                      <Image
+                        src={user.profile_pic_url}
+                        alt={user.nickname || "Avatar"}
+                        w="100%"
+                        h="100%"
+                        objectFit="cover"
+                      />
+                    ) : (
+                      user ? getInitials(user.nickname || user.student_id) : "U"
+                    )}
                   </Box>
                 </motion.div>
 

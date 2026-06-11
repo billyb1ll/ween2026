@@ -24,6 +24,7 @@ export interface DBPost {
     nickname: string | null
     avatar_color: string
     role: string
+    profile_pic_url: string | null
   }
 }
 
@@ -59,6 +60,7 @@ function mapPost(p: any): DBPost {
       nickname: p.author?.nickname ?? 'Guest Whitelist',
       avatar_color: p.author?.avatar_color ?? '#496268',
       role: p.author?.role ?? 'student',
+      profile_pic_url: p.author?.profile_pic_url ?? null,
     },
   }
 }
@@ -97,7 +99,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         // Posts snapshot for current tab — include comment count via subquery
         const { data, error } = await supabase
           .from('posts')
-          .select('*, author:users(student_id, nickname, avatar_color, role), comment_count:post_comments(count)')
+          .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)')
           .eq('type', activeTab)
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
@@ -150,7 +152,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           // Fetch with author join (Realtime payload won't include joined relations)
           const { data } = await supabase
             .from('posts')
-            .select('*, author:users(student_id, nickname, avatar_color, role), comment_count:post_comments(count)')
+            .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)')
             .eq('id', payload.new.id)
             .single()
 
@@ -296,7 +298,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
             type: activeTab,
             is_anonymous: isAnon,
           })
-          .select('*, author:users(student_id, nickname, avatar_color, role)')
+          .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)')
           .single()
 
         if (error) throw error

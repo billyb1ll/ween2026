@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, HStack, Text, VStack, Button, Textarea, Spinner, Badge, Input } from '@chakra-ui/react'
+import { Box, Flex, Heading, HStack, Text, VStack, Button, Textarea, Spinner, Badge, Input, Image } from '@chakra-ui/react'
 import { useState, useEffect } from 'react'
 import { useUser } from '../context/UserContext'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
@@ -589,6 +589,7 @@ interface Comment {
     nickname: string | null
     avatar_color: string
     role: string
+    profile_pic_url: string | null
   }
 }
 
@@ -620,7 +621,7 @@ function CommentSection({
       try {
         const { data, error } = await supabase
           .from('post_comments')
-          .select('*, author:users(student_id, nickname, avatar_color, role)')
+          .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)')
           .eq('post_id', post.id)
           .order('created_at', { ascending: true })
         if (error) throw error
@@ -651,7 +652,7 @@ function CommentSection({
         async (payload) => {
           const { data, error } = await supabase
             .from('post_comments')
-            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)')
             .eq('id', payload.new.id)
             .single()
 
@@ -699,7 +700,7 @@ function CommentSection({
           student_id: user.student_id,
           content: newCommentText.trim()
         })
-        .select('*, author:users(student_id, nickname, avatar_color, role)')
+        .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)')
         .single()
 
       if (error) throw error
@@ -759,11 +760,22 @@ function CommentSection({
               <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
                 <Box
                   w={avatarSize} h={avatarSize} borderRadius="full"
-                  bg={comment.author?.avatar_color || '#8c7b74'}
+                  bg={comment.author?.profile_pic_url ? "transparent" : (comment.author?.avatar_color || '#8c7b74')}
                   color="white" display="flex" alignItems="center" justifyContent="center"
                   fontSize={avatarFontSize} fontWeight="700" flexShrink={0}
+                  overflow="hidden"
                 >
-                  {getInitials(comment.author?.nickname || comment.student_id)}
+                  {comment.author?.profile_pic_url ? (
+                    <Image
+                      src={comment.author.profile_pic_url}
+                      alt={comment.author.nickname || "Avatar"}
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                    />
+                  ) : (
+                    getInitials(comment.author?.nickname || comment.student_id)
+                  )}
                 </Box>
                 <VStack align="start" gap={0.5} flex={1}>
                   <HStack gap={1.5} flexWrap="wrap">
@@ -870,11 +882,22 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
       <Flex align="center" gap={3} mb={3}>
         <Box
           w={{ base: 8, md: 10 }} h={{ base: 8, md: 10 }}
-          borderRadius="full" bg={displayAvatarColor}
+          borderRadius="full" bg={(!isAnon && post.author.profile_pic_url) ? "transparent" : displayAvatarColor}
           display="flex" alignItems="center" justifyContent="center"
           fontSize="sm" fontWeight="700" color="white"
+          overflow="hidden"
         >
-          {displayAuthorInitials}
+          {!isAnon && post.author.profile_pic_url ? (
+            <Image
+              src={post.author.profile_pic_url}
+              alt={post.author.nickname || "Avatar"}
+              w="100%"
+              h="100%"
+              objectFit="cover"
+            />
+          ) : (
+            displayAuthorInitials
+          )}
         </Box>
         <VStack align="start" gap={0} flex={1}>
           <Text fontSize="sm" fontWeight="700" color="fg.default" display="inline-flex" gap={1} flexWrap="wrap">
@@ -987,11 +1010,22 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
       />
       <Flex align="center" gap={2} mb={3}>
         <Box
-          w={8} h={8} borderRadius="full" bg={displayAvatarColor}
+          w={8} h={8} borderRadius="full" bg={(!isAnon && post.author.profile_pic_url) ? "transparent" : displayAvatarColor}
           display="flex" alignItems="center" justifyContent="center"
           fontSize="xs" fontWeight="700" color="white"
+          overflow="hidden"
         >
-          {displayAuthorInitials}
+          {!isAnon && post.author.profile_pic_url ? (
+            <Image
+              src={post.author.profile_pic_url}
+              alt={post.author.nickname || "Avatar"}
+              w="100%"
+              h="100%"
+              objectFit="cover"
+            />
+          ) : (
+            displayAuthorInitials
+          )}
         </Box>
         <VStack align="start" gap={0} flex={1}>
           <Text fontSize="xs" fontWeight="700" color="fg.default" display="inline-flex" gap={1} flexWrap="wrap">

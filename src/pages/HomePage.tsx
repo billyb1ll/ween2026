@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { getImmichConfig } from "../utils/immich";
 import { toaster } from "../components/ui/toaster";
+import { supabase } from "../lib/supabase";
 import { motion, useReducedMotion } from "framer-motion";
 import type { Variants } from "framer-motion";
 
@@ -92,6 +93,65 @@ export function HomePage() {
   const [isMobile, setIsMobile] = useState(true);
   const shouldReduceMotion = useReducedMotion() ?? false;
   const variants = cardVariants(shouldReduceMotion);
+
+  const [nextEvent, setNextEvent] = useState({
+    title: 'First Meet',
+    isoTime: '',
+  })
+  const [countdownText, setCountdownText] = useState('')
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const { data } = await supabase
+          .from('event_config')
+          .select('*')
+          .eq('key', 'next_event')
+          .single()
+        if (data) {
+          setNextEvent({
+            title: data.title,
+            isoTime: data.event_time,
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching event config:', err)
+      }
+    }
+    fetchEvent()
+  }, [])
+
+  useEffect(() => {
+    if (!nextEvent.isoTime) return
+
+    const calculateCountdown = () => {
+      const target = new Date(nextEvent.isoTime).getTime()
+      const now = Date.now()
+      const diff = target - now
+
+      if (diff <= 0) {
+        setCountdownText('Event has started!')
+        return
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      let countdownStr = ''
+      if (days > 0) countdownStr += `${days}d `
+      countdownStr += `${hours.toString().padStart(2, '0')}h `
+      countdownStr += `${minutes.toString().padStart(2, '0')}m `
+      countdownStr += `${seconds.toString().padStart(2, '0')}s`
+
+      setCountdownText(`Starts in ${countdownStr}`)
+    }
+
+    calculateCountdown()
+    const timer = setInterval(calculateCountdown, 1000)
+    return () => clearInterval(timer)
+  }, [nextEvent.isoTime])
 
   useEffect(() => {
     const checkMobile = () => {
@@ -357,7 +417,12 @@ export function HomePage() {
 
               {/* Next Event — spans 1 col on desktop */}
               <Box height="100%">
-                <FeatureCardEvent feature={features[3]} variants={variants} />
+                <FeatureCardEvent
+                  feature={features[3]}
+                  eventTitle={nextEvent.title}
+                  countdownText={countdownText}
+                  variants={variants}
+                />
               </Box>
             </Box>
           </motion.div>
@@ -782,9 +847,13 @@ function FeatureCardSmall({
 
 function FeatureCardEvent({
   feature,
+  eventTitle,
+  countdownText,
   variants,
 }: {
   feature: (typeof features)[3];
+  eventTitle: string;
+  countdownText: string;
   variants: Variants;
 }) {
   return (
@@ -822,7 +891,7 @@ function FeatureCardEvent({
               {feature.icon}
             </Box>
           </Flex>
-          <VStack align="start" gap={1} mt={4}>
+          <VStack align="start" gap={1.5} mt={4}>
             <Heading
               as="h3"
               fontFamily="heading"
@@ -831,10 +900,10 @@ function FeatureCardEvent({
               lineHeight={1.3}
               color={feature.textColor}
             >
-              {feature.subtitle}
+              {eventTitle}
             </Heading>
-            <Text fontSize="sm" color="fg.subtle">
-              {feature.time}
+            <Text fontSize="sm" color="brand.fg" fontWeight="600">
+              {countdownText || 'Loading countdown...'}
             </Text>
           </VStack>
           <Button
