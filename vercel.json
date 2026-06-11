@@ -1,29 +1,12 @@
 {
   "cleanUrls": true,
-  "rewrites": [
+  "routes": [
     {
-      "source": "/admin",
-      "destination": "/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/vibe-check",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/board",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/gallery",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/profile-setup",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
