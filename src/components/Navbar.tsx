@@ -153,6 +153,8 @@ export function Navbar() {
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
   const desktopDropdownRef = useRef<HTMLDivElement>(null)
   const mobileDropdownRef = useRef<HTMLDivElement>(null)
+  const desktopPortalRef = useRef<HTMLDivElement>(null)
+  const mobilePortalRef = useRef<HTMLDivElement>(null)
 
   const [desktopCoords, setDesktopCoords] = useState<{ top: number; right: number } | null>(null)
   const [mobileCoords, setMobileCoords] = useState<{ top: number; right: number } | null>(null)
@@ -209,12 +211,17 @@ export function Navbar() {
     }
   }, [])
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click (exclude portal content)
   const handleOutsideClick = useCallback((e: MouseEvent) => {
-    if (desktopDropdownRef.current && !desktopDropdownRef.current.contains(e.target as Node)) {
+    const target = e.target as Node
+    const inDesktopTrigger = desktopDropdownRef.current?.contains(target)
+    const inDesktopPortal = desktopPortalRef.current?.contains(target)
+    if (!inDesktopTrigger && !inDesktopPortal) {
       setDropdownOpen(false)
     }
-    if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(e.target as Node)) {
+    const inMobileTrigger = mobileDropdownRef.current?.contains(target)
+    const inMobilePortal = mobilePortalRef.current?.contains(target)
+    if (!inMobileTrigger && !inMobilePortal) {
       setMobileDropdownOpen(false)
     }
   }, [])
@@ -312,6 +319,7 @@ export function Navbar() {
               {dropdownOpen && desktopCoords && (
                 <Portal>
                   <Box
+                    ref={desktopPortalRef}
                     position="fixed"
                     top={`${desktopCoords.top}px`}
                     right={`${desktopCoords.right}px`}
@@ -447,6 +455,7 @@ export function Navbar() {
               {mobileDropdownOpen && mobileCoords && (
                 <Portal>
                   <Box
+                    ref={mobilePortalRef}
                     position="fixed"
                     top={`${mobileCoords.top}px`}
                     right={`${mobileCoords.right}px`}
