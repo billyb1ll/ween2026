@@ -14,6 +14,9 @@ export interface User {
   avatar_color: string
   images: string[]
   tags: string[]
+  bio: string | null
+  profile_pic_url: string | null
+  photo_pool: string[]
   created_at: string
 }
 
@@ -29,6 +32,9 @@ interface UserContextType {
     major?: string
     ig?: string
     avatarColor?: string
+    bio?: string
+    profilePicUrl?: string
+    photoPool?: string[]
   }) => Promise<boolean>
   logout: () => void
 }
@@ -155,6 +161,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     major?: string
     ig?: string
     avatarColor?: string
+    bio?: string
+    profilePicUrl?: string
+    photoPool?: string[]
   }): Promise<boolean> => {
     if (!user) return false
 
@@ -164,6 +173,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         faculty: profile.faculty,
         major: profile.major || null,
         ig: profile.ig || null,
+        bio: profile.bio || null,
+        profile_pic_url: profile.profilePicUrl || null,
+        photo_pool: profile.photoPool || [],
       }
 
       if (profile.avatarColor) {

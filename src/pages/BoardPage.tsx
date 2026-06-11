@@ -1,8 +1,10 @@
-import { Box, Flex, Heading, HStack, Text, VStack, Button, Textarea, Spinner, Badge } from '@chakra-ui/react'
-import { useState } from 'react'
+import { Box, Flex, Heading, HStack, Text, VStack, Button, Textarea, Spinner, Badge, Input } from '@chakra-ui/react'
+import { useState, useEffect } from 'react'
 import { useUser } from '../context/UserContext'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useBoardRealtime, type DBPost, type BoardTab } from '../hooks/useBoardRealtime'
+import { supabase } from '../lib/supabase'
+import { toaster } from '../components/ui/toaster'
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -12,21 +14,13 @@ const trendingTopics = [
   { category: 'Q&A', tag: 'Course Registration', posts: 45 },
 ]
 
-const activeBaans = [
-  { code: 'B7', name: 'Baan 7', count: '+45', active: true },
-  { code: 'B3', name: 'Baan 3', count: '+23', active: false },
-  { code: 'B12', name: 'Baan 12', count: '+18', active: false },
-]
-
-const categories: { label: string; value: PostCategory }[] = [
+const categories = [
   { label: 'All', value: 'all' },
-  { label: 'Orientation', value: 'orientation' },
-  { label: 'Events', value: 'events' },
-  { label: 'Q&A', value: 'qa' },
-  { label: 'Social', value: 'social' },
+  { label: '#Hype', value: '#Hype' },
+  { label: '#Question', value: '#Question' },
+  { label: '#Memory', value: '#Memory' },
+  { label: '#Ween2026', value: '#Ween2026' },
 ]
-
-type PostCategory = 'all' | 'orientation' | 'events' | 'qa' | 'social'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,9 +100,10 @@ function LivePresenceBadge({ count }: { count: number }) {
 export function BoardPage() {
   const { user } = useUser()
   const [activeTab, setActiveTab] = useState<BoardTab>('hype')
-  const [activeCategory, setActiveCategory] = useState<PostCategory>('all')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
   const [newPostText, setNewPostText] = useState('')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(6)
   const [prevVisibleCount, setPrevVisibleCount] = useState(6)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
@@ -125,12 +120,14 @@ export function BoardPage() {
     handleLikePost,
   } = useBoardRealtime(activeTab, user)
 
+  const isMemoryAccessible = memoryActive || (user && user.role !== 'student')
+
   const handleSubmitPost = async () => {
-    if (!newPostText.trim()) return
-    const tags = activeCategory === 'all' ? 'orientation' : activeCategory
-    await handleCreatePost(newPostText.trim(), tags, isAnonymous)
+    if (!newPostText.trim() || !selectedTag) return
+    await handleCreatePost(newPostText.trim(), [selectedTag], isAnonymous)
     setNewPostText('')
     setIsAnonymous(false)
+    setSelectedTag(null)
   }
 
   const handleSwitchTab = (tab: BoardTab) => {
@@ -149,7 +146,7 @@ export function BoardPage() {
   }
 
   const filteredPosts = posts
-    .filter((p) => (activeCategory === 'all' ? true : p.tags === activeCategory))
+    .filter((p) => (activeCategory === 'all' ? true : p.tags && p.tags.includes(activeCategory)))
 
   const visiblePosts = filteredPosts.slice(0, visibleCount)
   const hasMore = filteredPosts.length > visibleCount
@@ -177,24 +174,24 @@ export function BoardPage() {
           color="accent.solid"
           textAlign="center"
         >
-          {!hypeActive && !memoryActive
+          {!hypeActive && !isMemoryAccessible
             ? 'Boards Closed'
             : `The ${activeTab === 'hype' ? 'Hype' : 'Memory'} Board`}
         </Heading>
         <Text color="fg.muted" fontSize={{ base: 'sm', md: 'lg' }} textAlign="center" maxW="lg">
-          {!hypeActive && !memoryActive
+          {!hypeActive && !isMemoryAccessible
             ? 'Orientation boards are currently closed by staff. Check back soon!'
             : 'Share the excitement, cheer on your peers, and build the Baan 7 community spirit!'}
         </Text>
 
         {/* Live Presence Badge */}
-        {(hypeActive || memoryActive) && (
+        {(hypeActive || isMemoryAccessible) && (
           <LivePresenceBadge count={onlineCount} />
         )}
       </VStack>
 
       {/* Tab Toggle */}
-      {hypeActive && memoryActive && (
+      {hypeActive && isMemoryAccessible && (
         <Flex justify="center" mb={{ base: 4, md: 8 }}>
           <HStack
             role="tablist"
@@ -253,40 +250,12 @@ export function BoardPage() {
                 <Text fontSize="2xs" color="fg.subtle">{topic.posts} posts</Text>
               </Box>
             ))}
-            {activeBaans.filter((b) => b.active).map((baan) => (
-              <Box
-                key={baan.code}
-                flexShrink={0}
-                bg="accent.subtle"
-                border="1px solid"
-                borderColor="accent.muted"
-                borderRadius="xl"
-                px={3}
-                py={2}
-                minW="100px"
-              >
-                <Flex align="center" gap={2}>
-                  <Box
-                    w={6} h={6} borderRadius="md"
-                    bg="accent.solid" color="white"
-                    display="flex" alignItems="center" justifyContent="center"
-                    fontSize="2xs" fontWeight="700"
-                  >
-                    {baan.code}
-                  </Box>
-                  <VStack align="start" gap={0}>
-                    <Text fontSize="xs" fontWeight="600" color="fg.default">{baan.name}</Text>
-                    <Text fontSize="2xs" color="fg.subtle">{baan.count} online</Text>
-                  </VStack>
-                </Flex>
-              </Box>
-            ))}
           </Flex>
         </Box>
       )}
 
       {/* Category Filters */}
-      {(hypeActive || memoryActive) && (
+      {(hypeActive || isMemoryAccessible) && (
         <Box
           bg="bg.hero"
           border="1px solid"
@@ -336,7 +305,7 @@ export function BoardPage() {
       )}
 
       {/* Main Grid */}
-      {(hypeActive || memoryActive) && (
+      {(hypeActive || isMemoryAccessible) && (
         <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 280px' }} gap={{ base: 4, md: 8 }}>
           {/* Posts Column */}
           <VStack align="stretch" gap={{ base: 4, md: 6 }}>
@@ -395,6 +364,39 @@ export function BoardPage() {
                     p={0}
                     mb={2}
                   />
+
+                  {user && (
+                    <VStack align="start" gap={2} my={3} w="100%">
+                      <Text fontSize="xs" fontWeight="700" color="fg.muted">
+                        Select a Tag (Required):
+                      </Text>
+                      <HStack gap={2} flexWrap="wrap">
+                        {['#Hype', '#Question', '#Memory', '#Ween2026'].map((tag) => {
+                          const isSelected = selectedTag === tag
+                          return (
+                            <Button
+                              key={tag}
+                              type="button"
+                              onClick={() => setSelectedTag(tag)}
+                              size="xs"
+                              borderRadius="full"
+                              bg={isSelected ? 'accent.solid' : 'bg.surface'}
+                              color={isSelected ? 'white' : 'fg.default'}
+                              border="1px solid"
+                              borderColor={isSelected ? 'accent.solid' : 'border.subtle'}
+                              h="32px"
+                              px={3}
+                              cursor="pointer"
+                              _hover={{ bg: isSelected ? 'accent.solid' : 'bg.hero' }}
+                            >
+                              {tag}
+                            </Button>
+                          )
+                        })}
+                      </HStack>
+                    </VStack>
+                  )}
+
                   <Flex justify="space-between" align="center" mt={2} flexWrap="wrap" gap={3}>
                     <HStack gap={3}>
                       {user && activeTab === 'hype' && (
@@ -425,7 +427,7 @@ export function BoardPage() {
                         cursor="pointer"
                         onClick={handleSubmitPost}
                         loading={submitting}
-                        disabled={!user || !newPostText.trim()}
+                        disabled={!user || !newPostText.trim() || !selectedTag}
                         _hover={{ boxShadow: '0 4px 14px rgba(124, 86, 63, 0.25)' }}
                         minH="44px"
                       >
@@ -543,48 +545,12 @@ export function BoardPage() {
                 ))}
               </VStack>
             </Box>
-
-            {/* Active Baans */}
-            <Box bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={5}>
-              <Flex align="center" gap={2} mb={4}>
-                <Box className="material-symbols-outlined" fontSize="lg" color="accent.solid">local_fire_department</Box>
-                <Heading as="h2" fontFamily="heading" fontSize="lg" fontWeight="600" color="fg.default">
-                  Active Baans
-                </Heading>
-              </Flex>
-              <VStack align="stretch" gap={2}>
-                {activeBaans.map((baan) => (
-                  <Flex
-                    key={baan.code}
-                    align="center" justify="space-between"
-                    p={3} borderRadius="xl"
-                    bg={baan.active ? 'accent.subtle' : 'transparent'}
-                    border={baan.active ? '1px solid' : '1px solid transparent'}
-                    borderColor={baan.active ? 'accent.muted' : 'transparent'}
-                  >
-                    <HStack gap={3}>
-                      <Box
-                        w={8} h={8} borderRadius="lg"
-                        bg={baan.active ? 'accent.solid' : 'bg.elevated'}
-                        color={baan.active ? 'white' : 'fg.default'}
-                        display="flex" alignItems="center" justifyContent="center"
-                        fontSize="xs" fontWeight="700"
-                      >
-                        {baan.code}
-                      </Box>
-                      <Text fontSize="sm" fontWeight="600" color="fg.default">{baan.name}</Text>
-                    </HStack>
-                    <Text fontSize="xs" fontWeight="600" color="fg.subtle">{baan.count}</Text>
-                  </Flex>
-                ))}
-              </VStack>
-            </Box>
           </VStack>
         </Box>
       )}
 
       {/* Load More */}
-      {(hypeActive || memoryActive) && (hasMore || isFetchingMore) && (
+      {(hypeActive || isMemoryAccessible) && (hasMore || isFetchingMore) && (
         <Flex justify="center" mt={{ base: 6, md: 12 }} minH="60px">
           <AnimatePresence mode="wait">
             {isFetchingMore ? (
@@ -677,16 +643,111 @@ function TabButton({ active, onClick, icon, label }: {
 
 interface HypeCardProps { post: DBPost; index: number; onLike: (id: number) => void; currentUserRole?: string }
 
+interface Comment {
+  id: number
+  post_id: number
+  student_id: string
+  content: string
+  created_at: string
+  author: {
+    student_id: string
+    nickname: string | null
+    avatar_color: string
+    role: string
+  }
+}
+
 function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
+  const { user } = useUser()
   const [liked, setLiked] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [newCommentText, setNewCommentText] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
 
   const handleLike = () => {
     setLiked(!liked)
     onLike(post.id)
   }
 
+  // Load comments
+  useEffect(() => {
+    let active = true
+    const loadComments = async () => {
+      setCommentsLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('post_comments')
+          .select('*, author:users(student_id, nickname, avatar_color, role)')
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: true })
+        if (error) throw error
+        if (active && data) {
+          setComments(data)
+        }
+      } catch (err) {
+        console.error('Error loading comments for post ' + post.id, err)
+      } finally {
+        if (active) setCommentsLoading(false)
+      }
+    }
+    loadComments()
+    return () => { active = false }
+  }, [post.id])
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCommentText.trim() || !user) return
+
+    setSubmittingComment(true)
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({
+          post_id: post.id,
+          student_id: user.student_id,
+          content: newCommentText.trim()
+        })
+        .select('*, author:users(student_id, nickname, avatar_color, role)')
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setComments((prev) => [...prev, data])
+        setNewCommentText('')
+        toaster.create({ title: 'Comment posted!', type: 'success' })
+      }
+    } catch (err) {
+      console.error('Error posting comment:', err)
+      toaster.create({ title: 'Failed to post comment', type: 'error' })
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!user) return
+    try {
+      const { error } = await supabase.rpc('delete_comment_secure', {
+        p_comment_id: commentId,
+        p_student_id: user.student_id,
+        p_pin_hash: user.pin_hash || ''
+      })
+      if (error) throw error
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      toaster.create({ title: 'Comment deleted', type: 'success' })
+    } catch (err) {
+      console.error('Error deleting comment:', err)
+      toaster.create({ title: 'Failed to delete comment', type: 'error' })
+    }
+  }
+
   const isAnon = post.is_anonymous
-  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : post.author.nickname || 'Guest Whitelist'
+  const isStaff = post.author.role !== 'student'
+  const prefix = isStaff ? "P' " : ""
+  
+  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
   const displayAuthorInitials = isAnon && currentUserRole !== 'superadmin' ? '?' : getInitials(displayAuthorName)
   const displayAvatarColor = isAnon && currentUserRole !== 'superadmin' ? '#8c7b74' : post.author.avatar_color
 
@@ -715,15 +776,20 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
                 Anonymous (ID: {post.student_id})
               </Badge>
             )}
+            {!isAnon && isStaff && (
+              <Badge colorPalette="teal" fontSize="3xs" alignSelf="center">
+                {post.author.role}
+              </Badge>
+            )}
           </Text>
           <Text fontSize="2xs" color="fg.subtle">{getRelativeTime(post.createdAt)}</Text>
         </VStack>
         <Box
           px={2.5} py={0.5} borderRadius="full" fontSize="2xs" fontWeight="600"
-          bg={post.tags === 'orientation' ? 'brand.muted' : post.tags === 'events' ? 'bg.hero' : post.tags === 'qa' ? 'brand.subtle' : 'accent.subtle'}
-          color={post.tags === 'orientation' ? 'brand.fg' : 'fg.default'}
+          bg={post.tags && post.tags.includes('#Hype') ? 'brand.muted' : post.tags && post.tags.includes('#Question') ? 'bg.hero' : post.tags && post.tags.includes('#Memory') ? 'brand.subtle' : 'accent.subtle'}
+          color={post.tags && post.tags.includes('#Hype') ? 'brand.fg' : 'fg.default'}
         >
-          {post.tags.charAt(0).toUpperCase() + post.tags.slice(1)}
+          {post.tags && post.tags.length > 0 ? post.tags.join(', ') : 'orientation'}
         </Box>
       </Flex>
       <Text fontSize="sm" color="fg.default" lineHeight={1.6} mb={3}>{post.content}</Text>
@@ -746,7 +812,132 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           </Box>
           <Text fontSize="xs" fontWeight="600">{post.likes}</Text>
         </Button>
+        <Button
+          type="button"
+          aria-label="Toggle comments"
+          onClick={() => setShowComments(!showComments)}
+          color="fg.subtle"
+          bg="transparent"
+          border="none"
+          p={1}
+          minH="44px"
+          minW="44px"
+          display="flex"
+          alignItems="center"
+          gap={1}
+        >
+          <Box className="material-symbols-outlined" fontSize="lg">
+            chat_bubble
+          </Box>
+          <Text fontSize="xs" fontWeight="600">{comments.length}</Text>
+        </Button>
       </Flex>
+
+      {showComments && (
+        <VStack align="stretch" gap={3} mt={4} pt={4} borderTop="1px solid" borderColor="border.subtle">
+          <Text fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em">
+            Comments ({comments.length})
+          </Text>
+          
+          {commentsLoading ? (
+            <Flex justify="center" py={2}>
+              <Spinner size="xs" color="var(--c-lagoon)" />
+            </Flex>
+          ) : comments.length === 0 ? (
+            <Text fontSize="xs" color="fg.subtle">No comments yet. Be the first to comment!</Text>
+          ) : (
+            <VStack align="stretch" gap={2}>
+              {comments.map((comment) => {
+                const isCommentStaff = comment.author?.role !== 'student'
+                const commentPrefix = isCommentStaff ? "P' " : ""
+                const isCommentAuthor = user && user.student_id === comment.student_id
+                const isUserStaffOrAdmin = user && user.role !== 'student'
+                
+                return (
+                  <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
+                    <Box
+                      w="28px" h="28px" borderRadius="full"
+                      bg={comment.author?.avatar_color || '#8c7b74'}
+                      color="white" display="flex" alignItems="center" justifyContent="center"
+                      fontSize="2xs" fontWeight="700" flexShrink={0}
+                    >
+                      {getInitials(comment.author?.nickname || comment.student_id)}
+                    </Box>
+                    <VStack align="start" gap={0.5} flex={1}>
+                      <HStack gap={1.5} flexWrap="wrap">
+                        <Text fontSize="xs" fontWeight="700" color="fg.default">
+                          {commentPrefix}{comment.author?.nickname || 'Student'}
+                        </Text>
+                        <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
+                          {comment.author?.role || 'student'}
+                        </Badge>
+                        <Text fontSize="3xs" color="fg.subtle">
+                          {getRelativeTime(comment.created_at)}
+                        </Text>
+                      </HStack>
+                      <Text fontSize="xs" color="fg.default" lineHeight={1.4}>
+                        {comment.content}
+                      </Text>
+                    </VStack>
+                    
+                    {(isCommentAuthor || isUserStaffOrAdmin) && (
+                      <Button
+                        type="button"
+                        onClick={() => handleDeleteComment(comment.id)}
+                        size="xs"
+                        variant="ghost"
+                        color="var(--c-error)"
+                        minH="32px"
+                        minW="32px"
+                        p={0}
+                        cursor="pointer"
+                      >
+                        <Box className="material-symbols-outlined" fontSize="sm">
+                          delete
+                        </Box>
+                      </Button>
+                    )}
+                  </Flex>
+                )
+              })}
+            </VStack>
+          )}
+          
+          {user ? (
+            <Flex as="form" onSubmit={handleAddComment} gap={2} align="center" mt={2}>
+              <Input
+                placeholder="Write a comment..."
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                h="36px"
+                borderRadius="lg"
+                border="1px solid"
+                borderColor="border.subtle"
+                bg="bg.surface"
+                fontSize="xs"
+                _focus={{ borderColor: 'var(--c-lagoon)' }}
+                required
+              />
+              <Button
+                type="submit"
+                loading={submittingComment}
+                bg="accent.solid"
+                color="white"
+                h="36px"
+                px={4}
+                borderRadius="lg"
+                fontSize="xs"
+                fontWeight="700"
+                cursor="pointer"
+              >
+                Send
+              </Button>
+            </Flex>
+          ) : (
+            <Text fontSize="2xs" color="fg.subtle">Sign in to comment.</Text>
+          )}
+        </VStack>
+      )}
     </Box>
   )
 }
@@ -754,18 +945,99 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
 interface MemoryCardProps { post: DBPost; index: number; onLike: (id: number) => void; currentUserRole?: string }
 
 function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
+  const { user } = useUser()
   const [liked, setLiked] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [newCommentText, setNewCommentText] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
 
   const handleLike = () => {
     setLiked(!liked)
     onLike(post.id)
   }
 
+  // Load comments
+  useEffect(() => {
+    let active = true
+    const loadComments = async () => {
+      setCommentsLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('post_comments')
+          .select('*, author:users(student_id, nickname, avatar_color, role)')
+          .eq('post_id', post.id)
+          .order('created_at', { ascending: true })
+        if (error) throw error
+        if (active && data) {
+          setComments(data)
+        }
+      } catch (err) {
+        console.error('Error loading comments for post ' + post.id, err)
+      } finally {
+        if (active) setCommentsLoading(false)
+      }
+    }
+    loadComments()
+    return () => { active = false }
+  }, [post.id])
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCommentText.trim() || !user) return
+
+    setSubmittingComment(true)
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({
+          post_id: post.id,
+          student_id: user.student_id,
+          content: newCommentText.trim()
+        })
+        .select('*, author:users(student_id, nickname, avatar_color, role)')
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setComments((prev) => [...prev, data])
+        setNewCommentText('')
+        toaster.create({ title: 'Comment posted!', type: 'success' })
+      }
+    } catch (err) {
+      console.error('Error posting comment:', err)
+      toaster.create({ title: 'Failed to post comment', type: 'error' })
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!user) return
+    try {
+      const { error } = await supabase.rpc('delete_comment_secure', {
+        p_comment_id: commentId,
+        p_student_id: user.student_id,
+        p_pin_hash: user.pin_hash || ''
+      })
+      if (error) throw error
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      toaster.create({ title: 'Comment deleted', type: 'success' })
+    } catch (err) {
+      console.error('Error deleting comment:', err)
+      toaster.create({ title: 'Failed to delete comment', type: 'error' })
+    }
+  }
+
   const rotations = [-2, 1.5, -1, 2, -0.5]
   const rotation = rotations[index % rotations.length]
 
   const isAnon = post.is_anonymous
-  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : post.author.nickname || 'Guest Whitelist'
+  const isStaff = post.author.role !== 'student'
+  const prefix = isStaff ? "P' " : ""
+  
+  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
   const displayAuthorInitials = isAnon && currentUserRole !== 'superadmin' ? '?' : getInitials(displayAuthorName)
   const displayAvatarColor = isAnon && currentUserRole !== 'superadmin' ? '#8c7b74' : post.author.avatar_color
 
@@ -800,6 +1072,11 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
                 Anonymous (ID: {post.student_id})
               </Badge>
             )}
+            {!isAnon && isStaff && (
+              <Badge colorPalette="teal" fontSize="3xs" alignSelf="center">
+                {post.author.role}
+              </Badge>
+            )}
           </Text>
           <Text fontSize="2xs" color="fg.subtle">{getRelativeTime(post.createdAt)}</Text>
         </VStack>
@@ -824,7 +1101,129 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
           </Box>
           <Text fontSize="2xs" fontWeight="600">{post.likes}</Text>
         </Button>
+        <Button
+          type="button"
+          aria-label="Toggle comments"
+          onClick={() => setShowComments(!showComments)}
+          color="fg.subtle"
+          bg="transparent"
+          border="none"
+          p={1}
+          minH="44px"
+          minW="44px"
+          display="flex"
+          alignItems="center"
+          gap={1}
+        >
+          <Box className="material-symbols-outlined" fontSize="md">
+            chat_bubble
+          </Box>
+          <Text fontSize="2xs" fontWeight="600">{comments.length}</Text>
+        </Button>
       </Flex>
+
+      {showComments && (
+        <VStack align="stretch" gap={3} mt={4} pt={4} borderTop="1px dashed" borderColor="border.subtle">
+          <Text fontSize="xs" fontWeight="700" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em">
+            Comments ({comments.length})
+          </Text>
+          
+          {commentsLoading ? (
+            <Flex justify="center" py={2}>
+              <Spinner size="xs" color="var(--c-lagoon)" />
+            </Flex>
+          ) : comments.length === 0 ? (
+            <Text fontSize="xs" color="fg.subtle">No comments yet.</Text>
+          ) : (
+            <VStack align="stretch" gap={2}>
+              {comments.map((comment) => {
+                const isCommentStaff = comment.author?.role !== 'student'
+                const commentPrefix = isCommentStaff ? "P' " : ""
+                const isCommentAuthor = user && user.student_id === comment.student_id
+                const isUserStaffOrAdmin = user && user.role !== 'student'
+                
+                return (
+                  <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
+                    <Box
+                      w="24px" h="24px" borderRadius="full"
+                      bg={comment.author?.avatar_color || '#8c7b74'}
+                      color="white" display="flex" alignItems="center" justifyContent="center"
+                      fontSize="3xs" fontWeight="700" flexShrink={0}
+                    >
+                      {getInitials(comment.author?.nickname || comment.student_id)}
+                    </Box>
+                    <VStack align="start" gap={0.5} flex={1}>
+                      <HStack gap={1.5} flexWrap="wrap">
+                        <Text fontSize="xs" fontWeight="700" color="fg.default">
+                          {commentPrefix}{comment.author?.nickname || 'Student'}
+                        </Text>
+                        <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
+                          {comment.author?.role || 'student'}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="xs" color="fg.default" lineHeight={1.4}>
+                        {comment.content}
+                      </Text>
+                    </VStack>
+                    
+                    {(isCommentAuthor || isUserStaffOrAdmin) && (
+                      <Button
+                        type="button"
+                        onClick={() => handleDeleteComment(comment.id)}
+                        size="xs"
+                        variant="ghost"
+                        color="var(--c-error)"
+                        minH="32px"
+                        minW="32px"
+                        p={0}
+                        cursor="pointer"
+                      >
+                        <Box className="material-symbols-outlined" fontSize="sm">
+                          delete
+                        </Box>
+                      </Button>
+                    )}
+                  </Flex>
+                )
+              })}
+            </VStack>
+          )}
+          
+          {user ? (
+            <Flex as="form" onSubmit={handleAddComment} gap={2} align="center" mt={2}>
+              <Input
+                placeholder="Write a comment..."
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                h="36px"
+                borderRadius="lg"
+                border="1px solid"
+                borderColor="border.subtle"
+                bg="bg.surface"
+                fontSize="xs"
+                _focus={{ borderColor: 'var(--c-lagoon)' }}
+                required
+              />
+              <Button
+                type="submit"
+                loading={submittingComment}
+                bg="accent.solid"
+                color="white"
+                h="36px"
+                px={4}
+                borderRadius="lg"
+                fontSize="xs"
+                fontWeight="700"
+                cursor="pointer"
+              >
+                Send
+              </Button>
+            </Flex>
+          ) : (
+            <Text fontSize="2xs" color="fg.subtle">Sign in to comment.</Text>
+          )}
+        </VStack>
+      )}
     </Box>
   )
 }

@@ -12,7 +12,7 @@ export interface DBPost {
   content: string
   createdAt: string
   likes: number
-  tags: string
+  tags: string[]
   is_anonymous: boolean
   is_hidden: boolean
   student_id: string
@@ -21,6 +21,7 @@ export interface DBPost {
     student_id: string
     nickname: string | null
     avatar_color: string
+    role: string
   }
 }
 
@@ -31,7 +32,7 @@ export interface UseBoardRealtimeReturn {
   hypeActive: boolean
   memoryActive: boolean
   onlineCount: number
-  handleCreatePost: (content: string, tags: string, isAnon: boolean) => Promise<void>
+  handleCreatePost: (content: string, tags: string[], isAnon: boolean) => Promise<void>
   handleLikePost: (postId: number) => Promise<void>
 }
 
@@ -44,7 +45,7 @@ function mapPost(p: any): DBPost {
     content: p.content,
     createdAt: p.created_at,
     likes: p.likes ?? 0,
-    tags: p.tags ?? 'orientation',
+    tags: Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : ['orientation']),
     is_anonymous: p.is_anonymous ?? false,
     is_hidden: p.is_hidden ?? false,
     student_id: p.student_id,
@@ -53,6 +54,7 @@ function mapPost(p: any): DBPost {
       student_id: p.author?.student_id ?? '',
       nickname: p.author?.nickname ?? 'Guest Whitelist',
       avatar_color: p.author?.avatar_color ?? '#496268',
+      role: p.author?.role ?? 'student',
     },
   }
 }
@@ -91,7 +93,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         // Posts snapshot for current tab
         const { data, error } = await supabase
           .from('posts')
-          .select('*, author:users(student_id, nickname, avatar_color)')
+          .select('*, author:users(student_id, nickname, avatar_color, role)')
           .eq('type', activeTab)
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
@@ -134,7 +136,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           // Fetch with author join (Realtime payload won't include joined relations)
           const { data } = await supabase
             .from('posts')
-            .select('*, author:users(student_id, nickname, avatar_color)')
+            .select('*, author:users(student_id, nickname, avatar_color, role)')
             .eq('id', payload.new.id)
             .single()
 
@@ -209,7 +211,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
 
   // ── Create post ───────────────────────────────────────────────────────────
   const handleCreatePost = useCallback(
-    async (content: string, tags: string, isAnon: boolean) => {
+    async (content: string, tags: string[], isAnon: boolean) => {
       if (!user) {
         toaster.create({
           title: 'Sign In Required',
@@ -230,7 +232,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
             type: activeTab,
             is_anonymous: isAnon,
           })
-          .select('*, author:users(student_id, nickname, avatar_color)')
+          .select('*, author:users(student_id, nickname, avatar_color, role)')
           .single()
 
         if (error) throw error

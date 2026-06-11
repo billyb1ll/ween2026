@@ -111,7 +111,24 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
       </Text>
     </Box>
     <Box h="1px" bg="var(--c-lagoon-light)" />
-    {user && user.role !== 'student' && (
+    {user && (
+      <Link to="/profile-edit" onClick={onClose} style={{ width: '100%' }}>
+        <Button
+          size="sm"
+          variant="ghost"
+          color="var(--c-chocolate)"
+          justifyContent="start"
+          px={2}
+          h="32px"
+          w="100%"
+          borderRadius="8px"
+          _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
+        >
+          Edit Profile
+        </Button>
+      </Link>
+    )}
+    {user && (user.role === 'superadmin' || user.role === 'media_admin') && (
       <Link to="/admin" onClick={onClose} style={{ width: '100%' }}>
         <Button
           size="sm"
@@ -125,6 +142,23 @@ const UserDropdownContent = ({ user, logout, onClose }: UserDropdownContentProps
           _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
         >
           Admin Dashboard
+        </Button>
+      </Link>
+    )}
+    {user && (user.role === 'superadmin' || user.role === 'staff') && (
+      <Link to="/staff" onClick={onClose} style={{ width: '100%' }}>
+        <Button
+          size="sm"
+          variant="ghost"
+          color="var(--c-chocolate)"
+          justifyContent="start"
+          px={2}
+          h="32px"
+          w="100%"
+          borderRadius="8px"
+          _hover={{ bg: 'rgba(73, 98, 104, 0.05)', color: 'var(--c-chocolate)' }}
+        >
+          Staff Dashboard
         </Button>
       </Link>
     )}

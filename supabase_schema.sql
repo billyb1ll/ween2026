@@ -2,6 +2,7 @@
 -- Run this script in the Supabase SQL Editor to initialize all tables, RLS policies, and seed data.
 
 -- 1. DROP EXISTING TABLES (IF RE-INITIALIZING)
+DROP TABLE IF EXISTS post_comments CASCADE;
 DROP TABLE IF EXISTS gallery_photos CASCADE;
 DROP TABLE IF EXISTS posts CASCADE;
 DROP TABLE IF EXISTS system_config CASCADE;
@@ -21,6 +22,9 @@ CREATE TABLE users (
     avatar_color VARCHAR DEFAULT '#496268',
     images TEXT[] DEFAULT '{}',
     tags TEXT[] DEFAULT '{}',
+    bio TEXT,
+    profile_pic_url TEXT,
+    photo_pool TEXT[] DEFAULT '{}'::text[],
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -33,7 +37,16 @@ CREATE TABLE posts (
     is_anonymous BOOLEAN DEFAULT false,
     is_hidden BOOLEAN DEFAULT false,
     student_id VARCHAR REFERENCES users(student_id) ON DELETE CASCADE,
-    tags VARCHAR DEFAULT '',
+    tags TEXT[] DEFAULT '{}'::text[],
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Post Comments Table
+CREATE TABLE post_comments (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    student_id VARCHAR NOT NULL REFERENCES users(student_id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -70,46 +83,56 @@ INSERT INTO users (student_id, role, nickname, faculty, major, pin_hash, avatar_
 ('6688220', 'student', 'First Junior', 'Science', 'Physics', '8d969ee76d243c509a8f3119717a286940004c4e15f226c70b8e4001b6579500', '#5b6c6b');
 
 -- Seed Vibe Check profiles (students who have completed profiles)
-INSERT INTO users (student_id, role, nickname, faculty, major, pin_hash, avatar_color, images, tags) VALUES
+INSERT INTO users (student_id, role, nickname, faculty, major, pin_hash, avatar_color, images, photo_pool, tags, bio) VALUES
 ('6688221', 'student', 'Elena', 'Architecture', 'Architecture Major', 'dummy_hash', '#496268', 
- ARRAY[
-   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&h=700&fit=crop'
- ], 
- ARRAY['Coffee ☕', 'Night Owl 🦉', 'Adventures']),
+  ARRAY['https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&h=700&fit=crop'],
+  ARRAY[
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&h=700&fit=crop'
+  ], 
+  ARRAY['Coffee ☕', 'Night Owl 🦉', 'Adventures'],
+  'Architect student who loves sketching buildings and exploring city life.'),
 
 ('6688222', 'student', 'Marcus', 'Engineering', 'Computer Science', 'dummy_hash', '#7c563f', 
- ARRAY[
-   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&h=700&fit=crop'
- ], 
- ARRAY['Music 🎸', 'Coding', 'Study Buddy']),
+  ARRAY['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=700&fit=crop'],
+  ARRAY[
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&h=700&fit=crop'
+  ], 
+  ARRAY['Music 🎸', 'Coding', 'Study Buddy'],
+  'Developer who spends too much time on side projects and listening to classic rock.'),
 
 ('6688223', 'student', 'Sophia', 'Fine Arts', 'Visual Arts', 'dummy_hash', '#8c7b74', 
- ARRAY[
-   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&h=700&fit=crop'
- ], 
- ARRAY['Art 🎨', 'Sketching', 'Creative']),
+  ARRAY['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop'],
+  ARRAY[
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&h=700&fit=crop'
+  ], 
+  ARRAY['Art 🎨', 'Sketching', 'Creative'],
+  'Fine arts student specializing in watercolor and portrait drawings.'),
 
 ('6688224', 'student', 'Kai', 'Science', 'Environmental Science', 'dummy_hash', '#9d806c', 
- ARRAY[
-   'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500&h=700&fit=crop'
- ], 
- ARRAY['Nature 🌿', 'Hiking', 'Plants']),
+  ARRAY['https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&h=700&fit=crop'],
+  ARRAY[
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=500&h=700&fit=crop'
+  ], 
+  ARRAY['Nature 🌿', 'Hiking', 'Plants'],
+  'Nature enthusiast, plant dad, and amateur photographer.'),
 
 ('6688225', 'staff', 'P'' Bell', 'Senior Staff', 'Senior Staff (Baan 7)', 'dummy_hash', '#a38c75', 
- ARRAY[
-   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&h=700&fit=crop',
-   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=700&fit=crop'
- ], 
- ARRAY['Staff 🧡', 'Mentor', 'Orientation']);
+  ARRAY['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop'],
+  ARRAY[
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&h=700&fit=crop',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&h=700&fit=crop'
+  ], 
+  ARRAY['Staff 🧡', 'Mentor', 'Orientation'],
+  'Orientation staff ready to answer all your questions and show you the best spots!');
 
 -- Seed Board Config toggles
 INSERT INTO system_config (key, value) VALUES
@@ -118,10 +141,10 @@ INSERT INTO system_config (key, value) VALUES
 
 -- Seed Initial Board Posts
 INSERT INTO posts (content, likes, type, is_anonymous, student_id, tags) VALUES
-('Just finished the campus tour. The new science building looks amazing! Can''t wait for classes to start. 🔥', 24, 'hype', false, '6688222', 'orientation'),
-('Welcome incoming freshmen! Make sure to attend the opening ceremony tomorrow at 9 AM in the main hall. It''s going to be spectacular.', 102, 'hype', false, '6688225', 'orientation'),
-('Look at the beautiful sunrise over the clock tower! Excited to capture more orientation photos.', 15, 'memory', false, '6688217', 'events'),
-('Feeling super pumped to meet everyone! Shoutout to the organizers! 🚀', 8, 'hype', true, '6688220', 'social');
+('Just finished the campus tour. The new science building looks amazing! Can''t wait for classes to start. 🔥', 24, 'hype', false, '6688222', ARRAY['#Ween2026']),
+('Welcome incoming freshmen! Make sure to attend the opening ceremony tomorrow at 9 AM in the main hall. It''s going to be spectacular.', 102, 'hype', false, '6688225', ARRAY['#Hype']),
+('Look at the beautiful sunrise over the clock tower! Excited to capture more orientation photos.', 15, 'memory', false, '6688217', ARRAY['#Memory']),
+('Feeling super pumped to meet everyone! Shoutout to the organizers! 🚀', 8, 'hype', true, '6688220', ARRAY['#Ween2026']);
 
 -- Seed Gallery Images
 INSERT INTO gallery_photos (src, caption, likes, student_id, author_name) VALUES
@@ -133,3 +156,58 @@ INSERT INTO gallery_photos (src, caption, likes, student_id, author_name) VALUES
 ('https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&h=400&fit=crop', 'Tech workshop', 67, '6688222', 'Marcus'),
 ('https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?w=600&h=400&fit=crop', 'Game night mayhem 🎮', 98, '6688220', 'First Junior'),
 ('https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop', 'Baan 7 forever!', 201, '6688223', 'Sophia');
+
+-- 4. ROW LEVEL SECURITY (RLS) & TRIGGERS CONFIG
+ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE system_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all select" ON users FOR SELECT USING (true);
+CREATE POLICY "Allow all select" ON posts FOR SELECT USING (true);
+CREATE POLICY "Allow all select" ON post_comments FOR SELECT USING (true);
+CREATE POLICY "Allow all select" ON system_config FOR SELECT USING (true);
+
+CREATE POLICY "Allow insert/update users" ON users FOR ALL USING (true);
+CREATE POLICY "Allow insert posts" ON posts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow insert comments" ON post_comments FOR INSERT WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION delete_post_secure(p_post_id bigint, p_student_id varchar, p_pin_hash varchar)
+RETURNS boolean AS $$
+DECLARE
+    v_role varchar;
+    v_post_author varchar;
+BEGIN
+    SELECT role INTO v_role FROM users WHERE student_id = p_student_id AND pin_hash = p_pin_hash;
+    IF v_role IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: Invalid student ID or PIN';
+    END IF;
+    SELECT student_id INTO v_post_author FROM posts WHERE id = p_post_id;
+    IF v_post_author = p_student_id OR v_role IN ('superadmin', 'media_admin', 'staff') THEN
+        DELETE FROM posts WHERE id = p_post_id;
+        RETURN true;
+    ELSE
+        RAISE EXCEPTION 'Unauthorized to delete this post';
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION delete_comment_secure(p_comment_id bigint, p_student_id varchar, p_pin_hash varchar)
+RETURNS boolean AS $$
+DECLARE
+    v_role varchar;
+    v_comment_author varchar;
+BEGIN
+    SELECT role INTO v_role FROM users WHERE student_id = p_student_id AND pin_hash = p_pin_hash;
+    IF v_role IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: Invalid student ID or PIN';
+    END IF;
+    SELECT student_id INTO v_comment_author FROM post_comments WHERE id = p_comment_id;
+    IF v_comment_author = p_student_id OR v_role IN ('superadmin', 'media_admin', 'staff') THEN
+        DELETE FROM post_comments WHERE id = p_comment_id;
+        RETURN true;
+    ELSE
+        RAISE EXCEPTION 'Unauthorized to delete this comment';
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

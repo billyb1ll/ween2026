@@ -1,10 +1,12 @@
-import { Box, Flex, HStack, Text } from '@chakra-ui/react'
+import { Box, Flex, HStack, Text, Link } from "@chakra-ui/react";
 
 const socialLinks = [
-  { name: 'Instagram', icon: 'photo_camera', href: '#' },
-  { name: 'Facebook', icon: 'group', href: '#' },
-  { name: 'Twitter', icon: 'tag', href: '#' },
-]
+  {
+    name: "Instagram",
+    icon: "photo_camera",
+    href: "https://www.instagram.com/veryween.mu?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
+  },
+];
 
 export function Footer() {
   return (
@@ -16,10 +18,10 @@ export function Footer() {
       borderTop="1px solid"
       borderColor="border.subtle"
       bg="bg.canvas"
-      pb={{ base: 'calc(var(--dock-height) + 32px)', md: 12 }}
+      pb={{ base: "calc(var(--dock-height) + 32px)", md: 12 }}
     >
       <Flex
-        direction={{ base: 'column', md: 'row' }}
+        direction={{ base: "column", md: "row" }}
         justify="space-between"
         align="center"
         maxW="var(--container-max)"
@@ -27,12 +29,33 @@ export function Footer() {
         px={{ base: 5, md: 16 }}
         gap={4}
       >
-        <Text fontFamily="heading" fontSize="lg" fontWeight="600" color="accent.solid">
+        <Text
+          fontFamily="heading"
+          fontSize="lg"
+          fontWeight="600"
+          color="accent.solid"
+        >
           Baan 7
         </Text>
 
-        <Text fontSize="sm" color="fg.subtle" textAlign={{ base: 'center', md: 'left' }}>
-          Made with 🤍 by Baan 7 Staff
+        <Text
+          fontSize="sm"
+          color="fg.subtle"
+          textAlign={{ base: "center", md: "left" }}
+        >
+          Developed by {` `}
+          <Link
+            href="https://www.instagram.com/billy.b1lll/"
+            target="_blank"
+            rel="noopener noreferrer"
+            color="accent.solid"
+            fontWeight="600"
+            _hover={{
+              textDecoration: "underline",
+            }}
+          >
+            P'Billy
+          </Link>
         </Text>
 
         <HStack gap={4}>
@@ -53,11 +76,11 @@ export function Footer() {
               <Box className="material-symbols-outlined" fontSize="md">
                 {icon}
               </Box>
-              <Text display={{ base: 'none', sm: 'block' }}>{name}</Text>
+              <Text display={{ base: "none", sm: "block" }}>{name}</Text>
             </Flex>
           ))}
         </HStack>
       </Flex>
     </Box>
-  )
+  );
 }

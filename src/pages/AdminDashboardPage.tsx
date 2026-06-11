@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Flex,
@@ -16,6 +16,7 @@ import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
 import { getImmichConfig } from '../utils/immich'
 import { toaster } from '../components/ui/toaster'
+import Papa from 'papaparse'
 
 interface DBUser {
   student_id: string
@@ -25,31 +26,21 @@ interface DBUser {
   created_at: string
 }
 
-interface DBPost {
-  id: number
-  content: string
-  likes: number
-  type: 'hype' | 'memory'
-  is_anonymous: boolean
-  is_hidden: boolean
+interface CSVRecord {
   student_id: string
-  tags: string
-  created_at: string
-  author: {
-    student_id: string
-    nickname: string | null
-    avatar_color: string
-  }
+  role: string
+  nickname: string | null
+  faculty: string | null
+  major: string | null
 }
 
 export function AdminDashboardPage() {
   const { user } = useUser()
 
   // Initialize tab directly from user role to avoid cascading useEffect renders
-  const [activeTab, setActiveTab] = useState<'superadmin' | 'media' | 'staff'>(() => {
+  const [activeTab, setActiveTab] = useState<'superadmin' | 'media'>(() => {
     if (user?.role === 'superadmin') return 'superadmin'
-    if (user?.role === 'media_admin') return 'media'
-    return 'staff'
+    return 'media'
   })
 
   const [loading, setLoading] = useState(true)
@@ -61,8 +52,11 @@ export function AdminDashboardPage() {
   const [enableHypeBoard, setEnableHypeBoard] = useState(true)
   const [enableMemoryBoard, setEnableMemoryBoard] = useState(true)
 
-  // Moderation States (Superadmin & Staff)
-  const [posts, setPosts] = useState<DBPost[]>([])
+  // CSV States
+  const [csvRecords, setCsvRecords] = useState<CSVRecord[]>([])
+  const [showCsvModal, setShowCsvModal] = useState(false)
+  const [upserting, setUpserting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Media Admin States
   const immichConfig = getImmichConfig()
@@ -73,12 +67,11 @@ export function AdminDashboardPage() {
     totalImages: 1452,
   })
 
-  // Fetch admin data on mount or user shift
   useEffect(() => {
-    if (!user) return
     let active = true
-
     const fetchAdminData = async () => {
+      if (!user) return
+      await Promise.resolve() // Defer synchronous state update inside effect
       setLoading(true)
       try {
         // 1. Fetch system configs
@@ -101,15 +94,7 @@ export function AdminDashboardPage() {
           if (usersData) setWhitelistedUsers(usersData as DBUser[])
         }
 
-        // 3. Fetch all posts (for Superadmin & Staff)
-        const { data: postsData } = await supabase
-          .from('posts')
-          .select('*, author:users(student_id, nickname, avatar_color)')
-          .order('created_at', { ascending: false })
-        if (!active) return
-        if (postsData) setPosts(postsData as unknown as DBPost[])
-
-        // 4. Simulated Immich Ping if config exists
+        // 3. Simulated Immich Ping if config exists
         if (immichConfig.isConfigured && immichConfig.url) {
           setImmichStatus((prev) => ({
             ...prev,
@@ -150,12 +135,6 @@ export function AdminDashboardPage() {
           .order('created_at', { ascending: false })
         if (usersData) setWhitelistedUsers(usersData as DBUser[])
       }
-
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('*, author:users(student_id, nickname, avatar_color)')
-        .order('created_at', { ascending: false })
-      if (postsData) setPosts(postsData as unknown as DBPost[])
     } catch (err) {
       console.error('Error refreshing admin dashboard data:', err)
     }
@@ -222,37 +201,65 @@ export function AdminDashboardPage() {
         title: 'Failed to update setting',
         type: 'error',
       })
-      // Rollback
       if (key === 'enable_hype_board') setEnableHypeBoard(currentVal)
       if (key === 'enable_memory_board') setEnableMemoryBoard(currentVal)
     }
   }
 
-  // Handle Post Hide Toggle (Moderation)
-  const handleToggleHidePost = async (postId: number, currentHidden: boolean) => {
-    const nextHidden = !currentHidden
+  // Handle CSV Parsing
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsed = (results.data as Array<Record<string, string | undefined>>).map((row) => ({
+          student_id: (row.student_id || row['Student ID'] || '').toString().trim(),
+          role: (row.role || row['Role'] || 'student').toString().trim().toLowerCase(),
+          nickname: (row.nickname || row['Nickname'] || '').toString().trim() || null,
+          faculty: (row.faculty || row['Faculty'] || '').toString().trim() || null,
+          major: (row.major || row['Major'] || '').toString().trim() || null,
+        })).filter((row) => row.student_id)
+
+        setCsvRecords(parsed)
+        setShowCsvModal(true)
+        if (fileInputRef.current) fileInputRef.current.value = '' // reset
+      },
+      error: (err) => {
+        console.error('CSV parse error:', err)
+        toaster.create({ title: 'CSV parsing failed', type: 'error' })
+      }
+    })
+  }
+
+  const isDuplicate = (studentId: string) => {
+    return whitelistedUsers.some((u) => u.student_id === studentId)
+  }
+
+  const handleBatchUpsert = async () => {
+    setUpserting(true)
     try {
       const { error } = await supabase
-        .from('posts')
-        .update({ is_hidden: nextHidden })
-        .eq('id', postId)
+        .from('users')
+        .upsert(csvRecords, { onConflict: 'student_id' })
 
       if (error) throw error
 
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, is_hidden: nextHidden } : p))
-      )
-
       toaster.create({
-        title: nextHidden ? 'Post Hidden' : 'Post Restored',
+        title: 'CSV Onboarded successfully!',
+        description: `Upserted ${csvRecords.length} student records.`,
         type: 'success',
       })
+      setShowCsvModal(false)
+      setCsvRecords([])
+      triggerRefresh()
     } catch (err) {
-      console.error(err)
-      toaster.create({
-        title: 'Moderation failed',
-        type: 'error',
-      })
+      console.error('Batch upsert failed:', err)
+      toaster.create({ title: 'Batch upsert failed', type: 'error' })
+    } finally {
+      setUpserting(false)
     }
   }
 
@@ -320,31 +327,42 @@ export function AdminDashboardPage() {
             Media Controls (โสต)
           </Button>
         )}
-        {(user?.role === 'superadmin' || user?.role === 'staff') && (
-          <Button
-            type="button"
-            variant={activeTab === 'staff' ? 'solid' : 'ghost'}
-            onClick={() => setActiveTab('staff')}
-            borderRadius="full"
-            px={5}
-            h="40px"
-            bg={activeTab === 'staff' ? 'var(--c-chocolate)' : 'transparent'}
-            color={activeTab === 'staff' ? 'white' : 'var(--c-muted)'}
-            cursor="pointer"
-          >
-            Staff Moderation (สตาฟบ้าน)
-          </Button>
-        )}
       </HStack>
 
       {/* TIER 1: Superadmin Panel */}
       {activeTab === 'superadmin' && user?.role === 'superadmin' && (
         <VStack align="stretch" gap={8}>
           {/* Whitelist Manager */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-ambient)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              Student ID Whitelisting
-            </Heading>
+          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
+            <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
+              <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)">
+                Student ID Whitelisting
+              </Heading>
+              
+              {/* CSV Upload Inputs */}
+              <Box>
+                <Input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  ref={fileInputRef}
+                  display="none"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  bg="var(--c-chocolate)"
+                  color="white"
+                  h="44px"
+                  px={6}
+                  borderRadius="xl"
+                  cursor="pointer"
+                  _hover={{ bg: 'chocolate.600' }}
+                >
+                  Upload CSV
+                </Button>
+              </Box>
+            </Flex>
+
             <Flex as="form" onSubmit={handleAddWhitelist} gap={3} flexWrap="wrap" align="end" mb={6}>
               <VStack align="start" gap={1}>
                 <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Student ID</Text>
@@ -437,7 +455,7 @@ export function AdminDashboardPage() {
           </Box>
 
           {/* Feature Toggles */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-ambient)">
+          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
             <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
               Portal Master Switches
             </Heading>
@@ -480,79 +498,13 @@ export function AdminDashboardPage() {
               </Flex>
             </VStack>
           </Box>
-
-          {/* Superadmin Moderation with Anonymity Bypass */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-ambient)">
-            <HStack mb={4} justify="space-between">
-              <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)">
-                Board Moderation (Anonymity Bypass active)
-              </Heading>
-              <Badge colorPalette="red">Anonymity Bypass</Badge>
-            </HStack>
-            <Text fontSize="xs" color="fg.muted" mb={4}>
-              Under Thai privacy compliance & security monitoring, Superadmins can view the underlying Student ID / Nickname of posts submitted anonymously.
-            </Text>
-            <Box overflowX="auto">
-              <Table.Root size="sm" variant="line">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>Post Details</Table.ColumnHeader>
-                    <Table.ColumnHeader>True Author</Table.ColumnHeader>
-                    <Table.ColumnHeader>Type</Table.ColumnHeader>
-                    <Table.ColumnHeader>Anonymity</Table.ColumnHeader>
-                    <Table.ColumnHeader>Actions</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {posts.map((p) => (
-                    <Table.Row key={p.id} bg={p.is_hidden ? 'rgba(186, 26, 26, 0.05)' : 'transparent'}>
-                      <Table.Cell maxW="300px">
-                        <Text fontWeight={p.is_hidden ? 'normal' : '500'} fontStyle={p.is_hidden ? 'italic' : 'normal'} color={p.is_hidden ? 'fg.muted' : 'fg.default'}>
-                          {p.content}
-                        </Text>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <VStack align="start" gap={0}>
-                          <Text fontSize="xs" fontWeight="700">{p.author?.nickname || 'Guest Whitelist'}</Text>
-                          <Text fontSize="2xs" color="fg.subtle">ID: {p.student_id}</Text>
-                        </VStack>
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Badge colorPalette={p.type === 'hype' ? 'cyan' : 'teal'}>{p.type}</Badge>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {p.is_anonymous ? (
-                          <Badge colorPalette="orange">Anonymous</Badge>
-                        ) : (
-                          <Badge colorPalette="gray">Public</Badge>
-                        )}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          borderColor={p.is_hidden ? 'var(--c-lagoon)' : 'var(--c-error)'}
-                          color={p.is_hidden ? 'var(--c-lagoon)' : 'var(--c-error)'}
-                          cursor="pointer"
-                          onClick={() => handleToggleHidePost(p.id, p.is_hidden)}
-                        >
-                          {p.is_hidden ? 'Restore' : 'Hide'}
-                        </Button>
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
-            </Box>
-          </Box>
         </VStack>
       )}
 
       {/* TIER 2: Media Admin Panel */}
       {activeTab === 'media' && (user?.role === 'superadmin' || user?.role === 'media_admin') && (
         <VStack align="stretch" gap={6}>
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-ambient)">
+          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
             <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
               Immich Photo Server Connectivity (โสต)
             </Heading>
@@ -590,62 +542,97 @@ export function AdminDashboardPage() {
         </VStack>
       )}
 
-      {/* TIER 3: Staff Moderation Panel */}
-      {activeTab === 'staff' && (user?.role === 'superadmin' || user?.role === 'staff') && (
-        <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-ambient)">
-          <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-            Live Hype & Memory Board Moderation Tracker
-          </Heading>
-          <Text fontSize="xs" color="fg.muted" mb={4}>
-            Under standard privacy policies, anonymous authors are masked for general Staff.
-          </Text>
-          <Box overflowX="auto">
-            <Table.Root size="sm" variant="line">
-              <Table.Header>
-                <Table.Row>
-                  <Table.ColumnHeader>Post Details</Table.ColumnHeader>
-                  <Table.ColumnHeader>Author</Table.ColumnHeader>
-                  <Table.ColumnHeader>Type</Table.ColumnHeader>
-                  <Table.ColumnHeader>Actions</Table.ColumnHeader>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {posts.map((p) => (
-                  <Table.Row key={p.id} bg={p.is_hidden ? 'rgba(186, 26, 26, 0.05)' : 'transparent'}>
-                    <Table.Cell maxW="400px">
-                      <Text fontWeight={p.is_hidden ? 'normal' : '500'} fontStyle={p.is_hidden ? 'italic' : 'normal'} color={p.is_hidden ? 'fg.muted' : 'fg.default'}>
-                        {p.content}
-                      </Text>
-                    </Table.Cell>
-                    <Table.Cell>
-                      {p.is_anonymous ? (
-                        <Badge colorPalette="orange">Anonymous</Badge>
-                      ) : (
-                        <Text fontSize="xs" fontWeight="700">
-                          {p.author?.nickname || 'Guest Whitelist'}
-                        </Text>
-                      )}
-                    </Table.Cell>
-                     <Table.Cell>
-                       <Badge colorPalette={p.type === 'hype' ? 'cyan' : 'teal'}>{p.type}</Badge>
-                     </Table.Cell>
-                    <Table.Cell>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        borderColor={p.is_hidden ? 'var(--c-lagoon)' : 'var(--c-error)'}
-                        color={p.is_hidden ? 'var(--c-lagoon)' : 'var(--c-error)'}
-                        cursor="pointer"
-                        onClick={() => handleToggleHidePost(p.id, p.is_hidden)}
-                      >
-                        {p.is_hidden ? 'Restore' : 'Hide'}
-                      </Button>
-                    </Table.Cell>
+      {/* CSV Preview Modal Workflow */}
+      {showCsvModal && (
+        <Box
+          position="fixed"
+          inset={0}
+          bg="rgba(0,0,0,0.5)"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={1000}
+          px={4}
+        >
+          <Box
+            bg="bg.surface"
+            borderRadius="2xl"
+            maxW="2xl"
+            w="100%"
+            maxH="80vh"
+            p={6}
+            boxShadow="xl"
+            display="flex"
+            flexDirection="column"
+            animation="scale-in 0.3s ease-out"
+          >
+            <Heading size="md" mb={2} color="var(--c-chocolate)">
+              CSV Upload Preview & Duplicate Validation
+            </Heading>
+            <Text fontSize="xs" color="fg.subtle" mb={4}>
+              Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
+            </Text>
+
+            <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
+              <Table.Root size="sm" variant="line">
+                <Table.Header>
+                  <Table.Row>
+                    <Table.ColumnHeader>Student ID</Table.ColumnHeader>
+                    <Table.ColumnHeader>Nickname</Table.ColumnHeader>
+                    <Table.ColumnHeader>Faculty</Table.ColumnHeader>
+                    <Table.ColumnHeader>Role</Table.ColumnHeader>
+                    <Table.ColumnHeader>Validation</Table.ColumnHeader>
                   </Table.Row>
-                ))}
-              </Table.Body>
-            </Table.Root>
+                </Table.Header>
+                <Table.Body>
+                  {csvRecords.map((row, idx) => {
+                    const dup = isDuplicate(row.student_id)
+                    return (
+                      <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
+                        <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
+                        <Table.Cell>{row.nickname || '-'}</Table.Cell>
+                        <Table.Cell>{row.faculty || '-'}</Table.Cell>
+                        <Table.Cell>
+                          <Badge colorPalette="gray">{row.role}</Badge>
+                        </Table.Cell>
+                        <Table.Cell>
+                          {dup ? (
+                            <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
+                          ) : (
+                            <Badge colorPalette="green">New Record</Badge>
+                          )}
+                        </Table.Cell>
+                      </Table.Row>
+                    )
+                  })}
+                </Table.Body>
+              </Table.Root>
+            </Box>
+
+            <HStack gap={3} justify="end">
+              <Button
+                variant="outline"
+                onClick={() => setShowCsvModal(false)}
+                h="44px"
+                borderRadius="xl"
+                cursor="pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                bg="accent.solid"
+                color="white"
+                onClick={handleBatchUpsert}
+                loading={upserting}
+                h="44px"
+                px={6}
+                borderRadius="xl"
+                cursor="pointer"
+                _hover={{ bg: '#603e2c' }}
+              >
+                Batch Upsert ({csvRecords.length} records)
+              </Button>
+            </HStack>
           </Box>
         </Box>
       )}
