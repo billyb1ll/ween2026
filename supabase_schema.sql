@@ -33,6 +33,7 @@ CREATE TABLE posts (
     id BIGSERIAL PRIMARY KEY,
     content TEXT NOT NULL,
     likes INTEGER DEFAULT 0,
+    liked_by TEXT[] DEFAULT '{}'::text[],
     type VARCHAR NOT NULL DEFAULT 'hype' CHECK (type IN ('hype', 'memory')),
     is_anonymous BOOLEAN DEFAULT false,
     is_hidden BOOLEAN DEFAULT false,

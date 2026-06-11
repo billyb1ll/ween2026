@@ -17,6 +17,7 @@ export interface DBPost {
   is_hidden: boolean
   student_id: string
   type: BoardTab
+  liked_by: string[]
   author: {
     student_id: string
     nickname: string | null
@@ -50,6 +51,7 @@ function mapPost(p: any): DBPost {
     is_hidden: p.is_hidden ?? false,
     student_id: p.student_id,
     type: p.type as BoardTab,
+    liked_by: Array.isArray(p.liked_by) ? p.liked_by : [],
     author: {
       student_id: p.author?.student_id ?? '',
       nickname: p.author?.nickname ?? 'Guest Whitelist',
@@ -171,7 +173,13 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
 
           setPosts((prev) =>
             prev.map((p) =>
-              p.id === updated.id ? { ...p, likes: updated.likes ?? p.likes } : p
+              p.id === updated.id
+                ? {
+                    ...p,
+                    likes: updated.likes ?? p.likes,
+                    liked_by: Array.isArray(updated.liked_by) ? updated.liked_by : p.liked_by,
+                  }
+                : p
             )
           )
         }
@@ -195,7 +203,11 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         setOnlineCount((prev) => Math.max(1, prev - leftPresences.length))
       })
-      .subscribe(async (status) => {
+      .subscribe(async (status, err) => {
+        if (err) {
+          console.error(`[Realtime Board Error - Tab ${activeTab}]:`, err)
+        }
+        console.log(`[Realtime Board Status - Tab ${activeTab}]:`, status)
         if (status === 'SUBSCRIBED' && user) {
           await channel.track({
             user_id: user.student_id,
@@ -261,16 +273,40 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     [user, activeTab]
   )
 
-  // ── Like post (optimistic) ────────────────────────────────────────────────
+  // ── Like post (optimistic & idempotent toggle) ─────────────────────────────
   const handleLikePost = useCallback(
     async (postId: number) => {
-      const match = posts.find((p) => p.id === postId)
+      if (!user) {
+        toaster.create({
+          title: 'Sign In Required',
+          description: 'Please sign in to like posts!',
+          type: 'warning',
+        })
+        return
+      }
+
+      let match: DBPost | undefined
+      setPosts((prev) => {
+        match = prev.find((p) => p.id === postId)
+        return prev
+      })
+
       if (!match) return
 
-      const nextLikes = match.likes + 1
+      const hasLiked = match.liked_by.includes(user.student_id)
+      const nextLikedBy = hasLiked
+        ? match.liked_by.filter((id) => id !== user.student_id)
+        : [...match.liked_by, user.student_id]
+      const nextLikes = hasLiked
+        ? Math.max(0, match.likes - 1)
+        : match.likes + 1
 
       // Optimistic local update
-      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: nextLikes } : p)))
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, likes: nextLikes, liked_by: nextLikedBy } : p
+        )
+      )
 
       // Mark as self-originated so the realtime UPDATE won't double-apply
       pendingLikes.current.add(postId)
@@ -278,21 +314,25 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       try {
         const { error } = await supabase
           .from('posts')
-          .update({ likes: nextLikes })
+          .update({
+            likes: nextLikes,
+            liked_by: nextLikedBy,
+          })
           .eq('id', postId)
 
-        if (error) {
-          // Roll back optimistic update
-          setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: match.likes } : p)))
-          pendingLikes.current.delete(postId)
-        }
+        if (error) throw error
       } catch (err) {
         console.error('[Board] Like error:', err)
-        setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes: match.likes } : p)))
+        // Rollback optimistic update
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId ? { ...p, likes: match!.likes, liked_by: match!.liked_by } : p
+          )
+        )
         pendingLikes.current.delete(postId)
       }
     },
-    [posts]
+    [user]
   )
 
   return {

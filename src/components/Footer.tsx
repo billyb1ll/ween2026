@@ -1,85 +1,70 @@
-import { Box, Flex, HStack, Text, Link } from "@chakra-ui/react";
-
-const socialLinks = [
-  {
-    name: "Instagram",
-    icon: "photo_camera",
-    href: "https://www.instagram.com/veryween.mu?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
-  },
-];
+import { Box, Flex, Text, Link } from "@chakra-ui/react";
 
 export function Footer() {
   return (
     <Box
       as="footer"
       w="100%"
-      py={{ base: 8, md: 12 }}
-      mt={{ base: 8, md: 20 }}
+      py={{ base: 6, md: 8 }}
+      mt={{ base: 8, md: 16 }}
       borderTop="1px solid"
-      borderColor="border.subtle"
-      bg="bg.canvas"
-      pb={{ base: "calc(var(--dock-height) + 32px)", md: 12 }}
+      borderColor="chocolate.100"
+      bg="chocolate.50"
+      pb={{ base: "calc(var(--dock-height) + 24px)", md: 8 }}
     >
       <Flex
-        direction={{ base: "column", md: "row" }}
+        direction={{ base: "column", sm: "row" }}
         justify="space-between"
         align="center"
         maxW="var(--container-max)"
         mx="auto"
-        px={{ base: 5, md: 16 }}
+        px={{ base: 6, md: 16 }}
         gap={4}
       >
         <Text
           fontFamily="heading"
-          fontSize="lg"
-          fontWeight="600"
-          color="accent.solid"
+          fontSize="md"
+          fontWeight="700"
+          color="chocolate.800"
         >
           Baan 7
         </Text>
 
         <Text
-          fontSize="sm"
-          color="fg.subtle"
-          textAlign={{ base: "center", md: "left" }}
+          fontSize="xs"
+          fontWeight="600"
+          color="chocolate.600"
+          textAlign={{ base: "center", sm: "right" }}
         >
-          Developed by {` `}
+          Developed by{" "}
           <Link
             href="https://www.instagram.com/billy.b1lll/"
             target="_blank"
             rel="noopener noreferrer"
-            color="accent.solid"
-            fontWeight="600"
+            color="chocolate.700"
+            fontWeight="700"
             _hover={{
+              color: "chocolate.900",
               textDecoration: "underline",
             }}
           >
             P'Billy
           </Link>
+          {" • "}
+          <Link
+            href="https://www.instagram.com/veryween.mu?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
+            target="_blank"
+            rel="noopener noreferrer"
+            color="chocolate.700"
+            fontWeight="700"
+            _hover={{
+              color: "chocolate.900",
+              textDecoration: "underline",
+            }}
+          >
+            @veryween.mu
+          </Link>
         </Text>
-
-        <HStack gap={4}>
-          {socialLinks.map(({ name, icon }) => (
-            <Flex
-              key={name}
-              as="span"
-              role="img"
-              aria-label={name}
-              align="center"
-              gap={1.5}
-              fontSize="xs"
-              fontWeight="600"
-              letterSpacing="0.05em"
-              color="fg.subtle"
-              cursor="default"
-            >
-              <Box className="material-symbols-outlined" fontSize="md">
-                {icon}
-              </Box>
-              <Text display={{ base: "none", sm: "block" }}>{name}</Text>
-            </Flex>
-          ))}
-        </HStack>
       </Flex>
     </Box>
   );

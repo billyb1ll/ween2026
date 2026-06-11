@@ -8,11 +8,7 @@ import { toaster } from '../components/ui/toaster'
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
-const trendingTopics = [
-  { category: 'Orientation', tag: '#Baan7Tour', posts: 124 },
-  { category: 'Social', tag: 'Game Night Invite', posts: 89 },
-  { category: 'Q&A', tag: 'Course Registration', posts: 45 },
-]
+
 
 const categories = [
   { label: 'All', value: 'all' },
@@ -219,40 +215,7 @@ export function BoardPage() {
         </Flex>
       )}
 
-      {/* Mobile: Trending Topics */}
-      {hypeActive && (
-        <Box display={{ base: 'block', lg: 'none' }} mb={4} mx={-4} px={4}>
-          <Flex
-            overflowX="auto"
-            gap={2}
-            pb={2}
-            css={{
-              '&::-webkit-scrollbar': { display: 'none' },
-              scrollbarWidth: 'none',
-            }}
-          >
-            {trendingTopics.map((topic) => (
-              <Box
-                key={topic.tag}
-                flexShrink={0}
-                bg="bg.surface"
-                border="1px solid"
-                borderColor="border.subtle"
-                borderRadius="xl"
-                px={3}
-                py={2}
-                minW="140px"
-              >
-                <Text fontSize="2xs" fontWeight="600" color="fg.subtle" textTransform="uppercase" letterSpacing="0.05em">
-                  {topic.category}
-                </Text>
-                <Text fontSize="xs" fontWeight="700" color="fg.default">{topic.tag}</Text>
-                <Text fontSize="2xs" color="fg.subtle">{topic.posts} posts</Text>
-              </Box>
-            ))}
-          </Flex>
-        </Box>
-      )}
+
 
       {/* Category Filters */}
       {(hypeActive || isMemoryAccessible) && (
@@ -304,9 +267,9 @@ export function BoardPage() {
         </Box>
       )}
 
-      {/* Main Grid */}
+      {/* Main Column */}
       {(hypeActive || isMemoryAccessible) && (
-        <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: '1fr 280px' }} gap={{ base: 4, md: 8 }}>
+        <Box maxW="4xl" mx="auto" w="100%">
           {/* Posts Column */}
           <VStack align="stretch" gap={{ base: 4, md: 6 }}>
             {/* Composer */}
@@ -518,34 +481,6 @@ export function BoardPage() {
               </Box>
             )}
           </VStack>
-
-          {/* Sidebar */}
-          <VStack
-            align="stretch" gap={6}
-            display={{ base: 'none', lg: 'flex' }}
-            animation="slide-in-right 0.6s var(--ease-out-expo) 0.3s both"
-          >
-            {/* Trending Topics */}
-            <Box bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={5}>
-              <Flex align="center" gap={2} mb={4}>
-                <Box className="material-symbols-outlined" fontSize="lg" color="accent.solid">push_pin</Box>
-                <Heading as="h2" fontFamily="heading" fontSize="lg" fontWeight="600" color="fg.default">
-                  Trending Topics
-                </Heading>
-              </Flex>
-              <VStack align="stretch" gap={3}>
-                {trendingTopics.map((topic, i) => (
-                  <Box key={topic.tag}>
-                    <Text fontSize="2xs" fontWeight="600" letterSpacing="0.05em" color="fg.subtle" textTransform="uppercase">
-                      {i + 1}. {topic.category}
-                    </Text>
-                    <Text fontSize="sm" fontWeight="700" color="fg.default">{topic.tag}</Text>
-                    <Text fontSize="2xs" color="fg.subtle">{topic.posts} posts</Text>
-                  </Box>
-                ))}
-              </VStack>
-            </Box>
-          </VStack>
         </Box>
       )}
 
@@ -659,7 +594,7 @@ interface Comment {
 
 function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
   const { user } = useUser()
-  const [liked, setLiked] = useState(false)
+  const [liked, setLiked] = useState(() => user ? post.liked_by?.includes(user.student_id) : false)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -667,13 +602,27 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
   const [submittingComment, setSubmittingComment] = useState(false)
 
   const handleLike = () => {
-    setLiked(!liked)
     onLike(post.id)
   }
 
-  // Load comments
   useEffect(() => {
+    if (user && post.liked_by) {
+      setLiked(post.liked_by.includes(user.student_id))
+    } else {
+      setLiked(false)
+    }
+  }, [post.liked_by, user])
+
+  // Load and listen to comments in realtime when showComments is true
+  useEffect(() => {
+    if (!showComments) {
+      setComments([])
+      return
+    }
+
     let active = true
+
+    // 1. Fetch initial comments
     const loadComments = async () => {
       setCommentsLoading(true)
       try {
@@ -687,14 +636,69 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           setComments(data)
         }
       } catch (err) {
-        console.error('Error loading comments for post ' + post.id, err)
+        console.error(`Error loading comments for post ${post.id}:`, err)
       } finally {
         if (active) setCommentsLoading(false)
       }
     }
+
     loadComments()
-    return () => { active = false }
-  }, [post.id])
+
+    // 2. Realtime channel setup
+    const channelName = `comments-${post.id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'post_comments',
+          filter: `post_id=eq.${post.id}`,
+        },
+        async (payload) => {
+          // Fetch the author relation as realtime event payload doesn't include joins
+          const { data, error } = await supabase
+            .from('post_comments')
+            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .eq('id', payload.new.id)
+            .single()
+
+          if (!error && data && active) {
+            setComments((prev) => {
+              if (prev.some((c) => c.id === data.id)) return prev
+              return [...prev, data as unknown as Comment]
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'post_comments',
+          filter: `post_id=eq.${post.id}`,
+        },
+        (payload) => {
+          if (active) {
+            setComments((prev) => prev.filter((c) => c.id !== payload.old.id))
+          }
+        }
+      )
+
+    channel.subscribe((status, err) => {
+      if (err) {
+        console.error(`[Comments Realtime Error - Post ${post.id}]:`, err)
+      }
+      console.log(`[Comments Realtime Status - Post ${post.id}]:`, status)
+    })
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [post.id, showComments])
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -946,7 +950,7 @@ interface MemoryCardProps { post: DBPost; index: number; onLike: (id: number) =>
 
 function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const { user } = useUser()
-  const [liked, setLiked] = useState(false)
+  const [liked, setLiked] = useState(() => user ? post.liked_by?.includes(user.student_id) : false)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -954,13 +958,27 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const [submittingComment, setSubmittingComment] = useState(false)
 
   const handleLike = () => {
-    setLiked(!liked)
     onLike(post.id)
   }
 
-  // Load comments
   useEffect(() => {
+    if (user && post.liked_by) {
+      setLiked(post.liked_by.includes(user.student_id))
+    } else {
+      setLiked(false)
+    }
+  }, [post.liked_by, user])
+
+  // Load and listen to comments in realtime when showComments is true
+  useEffect(() => {
+    if (!showComments) {
+      setComments([])
+      return
+    }
+
     let active = true
+
+    // 1. Fetch initial comments
     const loadComments = async () => {
       setCommentsLoading(true)
       try {
@@ -974,14 +992,69 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
           setComments(data)
         }
       } catch (err) {
-        console.error('Error loading comments for post ' + post.id, err)
+        console.error(`Error loading comments for post ${post.id}:`, err)
       } finally {
         if (active) setCommentsLoading(false)
       }
     }
+
     loadComments()
-    return () => { active = false }
-  }, [post.id])
+
+    // 2. Realtime channel setup
+    const channelName = `comments-${post.id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'post_comments',
+          filter: `post_id=eq.${post.id}`,
+        },
+        async (payload) => {
+          // Fetch the author relation as realtime event payload doesn't include joins
+          const { data, error } = await supabase
+            .from('post_comments')
+            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .eq('id', payload.new.id)
+            .single()
+
+          if (!error && data && active) {
+            setComments((prev) => {
+              if (prev.some((c) => c.id === data.id)) return prev
+              return [...prev, data as unknown as Comment]
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'post_comments',
+          filter: `post_id=eq.${post.id}`,
+        },
+        (payload) => {
+          if (active) {
+            setComments((prev) => prev.filter((c) => c.id !== payload.old.id))
+          }
+        }
+      )
+
+    channel.subscribe((status, err) => {
+      if (err) {
+        console.error(`[Comments Realtime Error - Post ${post.id}]:`, err)
+      }
+      console.log(`[Comments Realtime Status - Post ${post.id}]:`, status)
+    })
+
+    return () => {
+      active = false
+      supabase.removeChannel(channel)
+    }
+  }, [post.id, showComments])
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -6,7 +6,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_pic_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_pool TEXT[] DEFAULT '{}'::text[];
 
--- 2. ALTER POSTS TABLE (Migrate tags to text[])
+-- 2. ALTER POSTS TABLE (Migrate tags to text[] & add liked_by)
 -- Drop any default constraints on tags first to prevent type conversion failure
 ALTER TABLE posts ALTER COLUMN tags DROP DEFAULT;
 
@@ -19,6 +19,8 @@ ALTER TABLE posts ALTER COLUMN tags TYPE TEXT[] USING
 
 -- Set default to array format
 ALTER TABLE posts ALTER COLUMN tags SET DEFAULT '{}'::text[];
+
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS liked_by TEXT[] DEFAULT '{}'::text[];
 
 -- 3. CREATE POST COMMENTS TABLE
 CREATE TABLE IF NOT EXISTS post_comments (
@@ -56,14 +58,6 @@ BEGIN
     ELSE
         RAISE EXCEPTION 'Unauthorized to delete this post';
     END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION delete_comment_secure(p_comment_id bigint, p_student_id varchar, p_pin_hash varchar)
-RETURNS boolean AS $$
-DECLARE
-    v_role varchar;
-    v_comment_author varchar;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

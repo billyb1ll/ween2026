@@ -109,8 +109,114 @@ export function StaffDashboardPage() {
     }
 
     fetchDashboardData()
+
+    // Realtime channel setup for Staff Moderation
+    const channelName = 'staff-moderation'
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'posts' },
+        async (payload) => {
+          const { data, error } = await supabase
+            .from('posts')
+            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .eq('id', payload.new.id)
+            .single()
+
+          if (!error && data && active) {
+            setPosts((prev) => {
+              if (prev.some((p) => p.id === data.id)) return prev
+              return [data as unknown as DBPost, ...prev]
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'posts' },
+        (payload) => {
+          const updated = payload.new
+          if (active) {
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === updated.id
+                  ? {
+                      ...p,
+                      content: updated.content ?? p.content,
+                      is_hidden: updated.is_hidden ?? p.is_hidden,
+                      likes: updated.likes ?? p.likes,
+                      tags: Array.isArray(updated.tags) ? updated.tags : p.tags,
+                    }
+                  : p
+              )
+            )
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'posts' },
+        (payload) => {
+          if (active) {
+            setPosts((prev) => prev.filter((p) => p.id !== payload.old.id))
+            setCommentsMap((prev) => {
+              const next = { ...prev }
+              delete next[payload.old.id]
+              return next
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'post_comments' },
+        async (payload) => {
+          const { data, error } = await supabase
+            .from('post_comments')
+            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .eq('id', payload.new.id)
+            .single()
+
+          if (!error && data && active) {
+            setCommentsMap((prev) => {
+              const postId = data.post_id
+              const existing = prev[postId] || []
+              if (existing.some((c) => c.id === data.id)) return prev
+              return {
+                ...prev,
+                [postId]: [...existing, data as unknown as Comment],
+              }
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'post_comments' },
+        (payload) => {
+          if (active) {
+            setCommentsMap((prev) => {
+              const next = { ...prev }
+              for (const postId in next) {
+                next[postId] = next[postId].filter((c) => c.id !== payload.old.id)
+              }
+              return next
+            })
+          }
+        }
+      )
+
+    channel.subscribe((status, err) => {
+      if (err) {
+        console.error('[Staff Moderation Realtime Error]:', err)
+      }
+      console.log('[Staff Moderation Realtime Status]:', status)
+    })
+
     return () => {
       active = false
+      supabase.removeChannel(channel)
     }
   }, [user])
 
@@ -396,7 +502,7 @@ export function StaffDashboardPage() {
               h="44px"
               borderRadius="xl"
               cursor="pointer"
-              _hover={{ bg: '#603e2c' }}
+              _hover={{ bg: 'chocolate.600' }}
               loading={savingProfile}
             >
               Save Vibe Profile
