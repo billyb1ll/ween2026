@@ -594,7 +594,7 @@ interface Comment {
 
 function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
   const { user } = useUser()
-  const [liked, setLiked] = useState(() => user ? post.liked_by?.includes(user.student_id) : false)
+  const liked = !!(user && post.liked_by?.includes(user.student_id))
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -605,20 +605,9 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
     onLike(post.id)
   }
 
-  useEffect(() => {
-    if (user && post.liked_by) {
-      setLiked(post.liked_by.includes(user.student_id))
-    } else {
-      setLiked(false)
-    }
-  }, [post.liked_by, user])
-
   // Load and listen to comments in realtime when showComments is true
   useEffect(() => {
-    if (!showComments) {
-      setComments([])
-      return
-    }
+    if (!showComments) return
 
     let active = true
 
@@ -697,6 +686,7 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
     return () => {
       active = false
       supabase.removeChannel(channel)
+      setComments([])
     }
   }, [post.id, showComments])
 
@@ -950,7 +940,7 @@ interface MemoryCardProps { post: DBPost; index: number; onLike: (id: number) =>
 
 function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const { user } = useUser()
-  const [liked, setLiked] = useState(() => user ? post.liked_by?.includes(user.student_id) : false)
+  const liked = !!(user && post.liked_by?.includes(user.student_id))
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -961,20 +951,9 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
     onLike(post.id)
   }
 
-  useEffect(() => {
-    if (user && post.liked_by) {
-      setLiked(post.liked_by.includes(user.student_id))
-    } else {
-      setLiked(false)
-    }
-  }, [post.liked_by, user])
-
   // Load and listen to comments in realtime when showComments is true
   useEffect(() => {
-    if (!showComments) {
-      setComments([])
-      return
-    }
+    if (!showComments) return
 
     let active = true
 
@@ -1053,6 +1032,7 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
     return () => {
       active = false
       supabase.removeChannel(channel)
+      setComments([])
     }
   }, [post.id, showComments])
 

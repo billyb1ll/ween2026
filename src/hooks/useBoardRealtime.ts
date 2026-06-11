@@ -12,6 +12,7 @@ export interface DBPost {
   content: string
   createdAt: string
   likes: number
+  comment_count: number
   tags: string[]
   is_anonymous: boolean
   is_hidden: boolean
@@ -46,6 +47,7 @@ function mapPost(p: any): DBPost {
     content: p.content,
     createdAt: p.created_at,
     likes: p.likes ?? 0,
+    comment_count: Number(p.comment_count ?? 0),
     tags: Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : ['orientation']),
     is_anonymous: p.is_anonymous ?? false,
     is_hidden: p.is_hidden ?? false,
@@ -92,10 +94,10 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           if (memory) setMemoryActive(memory.value)
         }
 
-        // Posts snapshot for current tab
+        // Posts snapshot for current tab — include comment count via subquery
         const { data, error } = await supabase
           .from('posts')
-          .select('*, author:users(student_id, nickname, avatar_color, role)')
+          .select('*, author:users(student_id, nickname, avatar_color, role), comment_count:post_comments(count)')
           .eq('type', activeTab)
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
@@ -103,7 +105,17 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         if (error) throw error
         if (!active) return
 
-        setPosts((data ?? []).map(mapPost))
+        // Supabase returns comment_count as [{count: N}] — normalise to a plain number
+        const normalised = (data ?? []).map((p) => {
+          const raw = p as unknown as { comment_count: { count: number }[] | number | null } & Record<string, unknown>
+          return {
+            ...raw,
+            comment_count: Array.isArray(raw.comment_count)
+              ? (raw.comment_count[0]?.count ?? 0)
+              : (raw.comment_count ?? 0),
+          }
+        })
+        setPosts(normalised.map(mapPost))
       } catch (err) {
         console.error('[Board] Initial fetch error:', err)
         toaster.create({
@@ -138,7 +150,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           // Fetch with author join (Realtime payload won't include joined relations)
           const { data } = await supabase
             .from('posts')
-            .select('*, author:users(student_id, nickname, avatar_color, role)')
+            .select('*, author:users(student_id, nickname, avatar_color, role), comment_count:post_comments(count)')
             .eq('id', payload.new.id)
             .single()
 
@@ -216,8 +228,46 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         }
       })
 
+    // ── Global comment counter channel ─────────────────────────────────────
+    // Watches ALL inserts/deletes on post_comments and patches comment_count
+    // in the posts state array so face-card counters update without needing
+    // the comment drawer to be open first.
+    const commentChannel = supabase
+      .channel('global-comment-counts-' + activeTab)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'post_comments' },
+        (payload) => {
+          const postId = Number(payload.new.post_id)
+          setPosts((prev) =>
+            prev.map((p) =>
+              p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p
+            )
+          )
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'post_comments' },
+        (payload) => {
+          const postId = Number(payload.old.post_id)
+          setPosts((prev) =>
+            prev.map((p) =>
+              p.id === postId
+                ? { ...p, comment_count: Math.max(0, p.comment_count - 1) }
+                : p
+            )
+          )
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) console.error('[Comment Counts Realtime Error]:', err)
+        console.log('[Comment Counts Realtime Status]:', status)
+      })
+
     return () => {
       supabase.removeChannel(channel)
+      supabase.removeChannel(commentChannel)
     }
   }, [activeTab, user])
 
