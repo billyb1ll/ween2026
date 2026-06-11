@@ -645,7 +645,7 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
     loadComments()
 
     // 2. Realtime channel setup
-    const channelName = `comments-${post.id}`
+    const channelName = 'comments-' + String(post.id)
     const channel = supabase
       .channel(channelName)
       .on(
@@ -654,7 +654,7 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           event: 'INSERT',
           schema: 'public',
           table: 'post_comments',
-          filter: `post_id=eq.${post.id}`,
+          filter: 'post_id=eq.' + String(post.id),
         },
         async (payload) => {
           // Fetch the author relation as realtime event payload doesn't include joins
@@ -678,7 +678,7 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
           event: 'DELETE',
           schema: 'public',
           table: 'post_comments',
-          filter: `post_id=eq.${post.id}`,
+          filter: 'post_id=eq.' + String(post.id),
         },
         (payload) => {
           if (active) {
@@ -689,9 +689,9 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
 
     channel.subscribe((status, err) => {
       if (err) {
-        console.error(`[Comments Realtime Error - Post ${post.id}]:`, err)
+        console.error('[Comments Realtime Error - Post ' + String(post.id) + ']:', err)
       }
-      console.log(`[Comments Realtime Status - Post ${post.id}]:`, status)
+      console.log('[Comments Realtime Status - Post ' + String(post.id) + ']:', status)
     })
 
     return () => {
@@ -1001,7 +1001,7 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
     loadComments()
 
     // 2. Realtime channel setup
-    const channelName = `comments-${post.id}`
+    const channelName = 'comments-' + String(post.id)
     const channel = supabase
       .channel(channelName)
       .on(
@@ -1010,7 +1010,7 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
           event: 'INSERT',
           schema: 'public',
           table: 'post_comments',
-          filter: `post_id=eq.${post.id}`,
+          filter: 'post_id=eq.' + String(post.id),
         },
         async (payload) => {
           // Fetch the author relation as realtime event payload doesn't include joins
@@ -1034,7 +1034,7 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
           event: 'DELETE',
           schema: 'public',
           table: 'post_comments',
-          filter: `post_id=eq.${post.id}`,
+          filter: 'post_id=eq.' + String(post.id),
         },
         (payload) => {
           if (active) {
@@ -1045,9 +1045,9 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
 
     channel.subscribe((status, err) => {
       if (err) {
-        console.error(`[Comments Realtime Error - Post ${post.id}]:`, err)
+        console.error('[Comments Realtime Error - Post ' + String(post.id) + ']:', err)
       }
-      console.log(`[Comments Realtime Status - Post ${post.id}]:`, status)
+      console.log('[Comments Realtime Status - Post ' + String(post.id) + ']:', status)
     })
 
     return () => {
