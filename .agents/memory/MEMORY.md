@@ -2,3 +2,6 @@
 
 ## Project
 - [project] Always create a new dedicated branch for major code changes → project-conventions.md
+
+## Reference
+- [reference] Production deployment endpoints for Vercel and Supabase (ap-southeast-1) → infrastructure-notes.md
