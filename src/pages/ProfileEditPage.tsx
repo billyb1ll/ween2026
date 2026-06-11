@@ -89,48 +89,167 @@ export function ProfileEditPage() {
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Zoom and Crop States
+  const [isOpenCrop, setIsOpenCrop] = useState(false)
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
+  const [zoom, setZoom] = useState(1.0)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const dragStart = useRef({ x: 0, y: 0 })
+
+  const C = 400 // Canvas resolution
+  const D = 320 // Display size in px
+  const canvasScaleFactor = C / D
+
   useEffect(() => {
     if (!user) {
       navigate('/login')
     }
   }, [user, navigate])
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const clampPan = (px: number, py: number, currentZoom: number) => {
+    if (!imageObj) return { x: 0, y: 0 }
+    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
+    const scale = baseScale * currentZoom
+    const sw = imageObj.width * scale
+    const sh = imageObj.height * scale
+
+    const limitX = Math.max(0, (sw - C) / 2)
+    const limitY = Math.max(0, (sh - C) / 2)
+
+    return {
+      x: Math.max(-limitX, Math.min(limitX, px)),
+      y: Math.max(-limitY, Math.min(limitY, py)),
+    }
+  }
+
+  const handleStart = (clientX: number, clientY: number) => {
+    if (!imageObj) return
+    setIsDragging(true)
+    dragStart.current = {
+      x: clientX * canvasScaleFactor - pan.x,
+      y: clientY * canvasScaleFactor - pan.y,
+    }
+  }
+
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isDragging || !imageObj) return
+    const newX = clientX * canvasScaleFactor - dragStart.current.x
+    const newY = clientY * canvasScaleFactor - dragStart.current.y
+    const clamped = clampPan(newX, newY, zoom)
+    setPan(clamped)
+  }
+
+  const handleEnd = () => {
+    setIsDragging(false)
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !imageObj || !isOpenCrop) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Clear canvas
+    ctx.clearRect(0, 0, C, C)
+
+    // Calculate scaling
+    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
+    const scale = baseScale * zoom
+    const sw = imageObj.width * scale
+    const sh = imageObj.height * scale
+
+    // Centered position + pan
+    const x = (C - sw) / 2 + pan.x
+    const y = (C - sh) / 2 + pan.y
+
+    // Draw image
+    ctx.drawImage(imageObj, x, y, sw, sh)
+  }, [imageObj, zoom, pan, isOpenCrop])
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
-    setUploading(true)
-    try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.student_id}-${Date.now()}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
-        .getPublicUrl(filePath)
-
-      setProfilePicUrl(publicUrl)
-      toaster.create({
-        title: 'Image uploaded!',
-        description: 'Successfully saved profile picture.',
-        type: 'success',
-      })
-    } catch (err) {
-      console.error('File upload failed:', err)
-      toaster.create({
-        title: 'Upload failed',
-        description: 'Please try again.',
-        type: 'error',
-      })
-    } finally {
-      setUploading(false)
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new window.Image()
+      img.onload = () => {
+        setImageObj(img)
+        setZoom(1.0)
+        setPan({ x: 0, y: 0 })
+        setIsOpenCrop(true)
+      }
+      img.src = event.target?.result as string
     }
+    reader.readAsDataURL(file)
+  }
+
+  const handleCropCancel = () => {
+    setIsOpenCrop(false)
+    setImageObj(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleCropSave = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !user) return
+
+    setUploading(true)
+    setIsOpenCrop(false)
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        toaster.create({ title: 'Cropping failed', type: 'error' })
+        setUploading(false)
+        return
+      }
+
+      try {
+        const fileExt = 'jpg'
+        const fileName = `${user.student_id}-${Date.now()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('profiles')
+          .upload(filePath, blob, {
+            contentType: 'image/jpeg',
+            cacheControl: '3600',
+            upsert: true,
+          })
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('profiles')
+          .getPublicUrl(filePath)
+
+        setProfilePicUrl(publicUrl)
+        toaster.create({
+          title: 'Avatar updated!',
+          description: 'Successfully cropped and uploaded profile picture.',
+          type: 'success',
+        })
+      } catch (err) {
+        console.error('File upload failed:', err)
+        toaster.create({
+          title: 'Upload failed',
+          description: 'Please try again.',
+          type: 'error',
+        })
+      } finally {
+        setUploading(false)
+        setImageObj(null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    }, 'image/jpeg', 0.9)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -379,7 +498,7 @@ export function ProfileEditPage() {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={handleFileUpload}
+                  onChange={handleFileSelect}
                   ref={fileInputRef}
                   display="none"
                 />
@@ -458,6 +577,220 @@ export function ProfileEditPage() {
           </VStack>
         </Box>
       </Container>
+
+      {/* Crop Overlay Modal */}
+      {isOpenCrop && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="rgba(20, 16, 15, 0.85)"
+          backdropFilter="blur(8px)"
+          zIndex="9999"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          p={4}
+        >
+          <Box
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="2xl"
+            maxW="360px"
+            w="100%"
+            p={6}
+            boxShadow="0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)"
+            animation="scale-in 0.3s var(--ease-out-quart)"
+          >
+            <VStack gap={5} align="stretch">
+              <VStack align="center" textAlign="center" gap={1}>
+                <Heading as="h2" fontSize="lg" color="accent.solid" fontWeight="700">
+                  Adjust Profile Pic
+                </Heading>
+                <Text color="fg.muted" fontSize="xs">
+                  Drag to pan, slide to zoom. Ensure your face fits inside the circle.
+                </Text>
+              </VStack>
+
+              {/* Crop Canvas Wrapper */}
+              <Box
+                position="relative"
+                w="320px"
+                h="320px"
+                mx="auto"
+                bg="black"
+                borderRadius="xl"
+                overflow="hidden"
+                boxShadow="inner"
+              >
+                <canvas
+                  ref={canvasRef}
+                  width={400}
+                  height={400}
+                  style={{
+                    width: '320px',
+                    height: '320px',
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    touchAction: 'none',
+                  }}
+                  onMouseDown={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    handleStart(e.clientX - rect.left, e.clientY - rect.top)
+                  }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    handleMove(e.clientX - rect.left, e.clientY - rect.top)
+                  }}
+                  onMouseUp={handleEnd}
+                  onMouseLeave={handleEnd}
+                  onTouchStart={(e) => {
+                    if (e.touches[0]) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      handleStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
+                    }
+                  }}
+                  onTouchMove={(e) => {
+                    if (e.touches[0]) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      handleMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
+                    }
+                  }}
+                  onTouchEnd={handleEnd}
+                />
+
+                {/* Circular Mask Overlay */}
+                <Box
+                  position="absolute"
+                  top="0"
+                  left="0"
+                  width="320px"
+                  height="320px"
+                  pointerEvents="none"
+                  background="radial-gradient(circle, transparent 148px, rgba(15, 12, 11, 0.75) 150px)"
+                >
+                  <Box
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    transform="translate(-50%, -50%)"
+                    width="300px"
+                    height="300px"
+                    borderRadius="full"
+                    border="2.5px dashed rgba(255, 255, 255, 0.8)"
+                    boxShadow="0 0 0 9999px rgba(0, 0, 0, 0.1)"
+                  />
+                </Box>
+              </Box>
+
+              {/* Slider Controls */}
+              <VStack gap={2} align="stretch">
+                <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
+                  Zoom Control
+                </Text>
+                <HStack gap={3} px={1}>
+                  <Button
+                    size="xs"
+                    h="32px"
+                    w="32px"
+                    minW="32px"
+                    borderRadius="lg"
+                    variant="outline"
+                    borderColor="border.subtle"
+                    color="accent.solid"
+                    onClick={() => {
+                      const newZoom = Math.max(1, zoom - 0.1)
+                      setZoom(newZoom)
+                      setPan(prev => clampPan(prev.x, prev.y, newZoom))
+                    }}
+                    _hover={{ bg: 'bg.hero' }}
+                    cursor="pointer"
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.01"
+                    value={zoom}
+                    aria-label="Zoom level"
+                    title="Zoom level"
+                    onChange={(e) => {
+                      const z = parseFloat(e.target.value)
+                      setZoom(z)
+                      setPan(prev => clampPan(prev.x, prev.y, z))
+                    }}
+                    style={{
+                      flex: 1,
+                      height: '6px',
+                      borderRadius: '3px',
+                      background: 'var(--c-chocolate)',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      WebkitAppearance: 'none',
+                    }}
+                  />
+                  <Button
+                    size="xs"
+                    h="32px"
+                    w="32px"
+                    minW="32px"
+                    borderRadius="lg"
+                    variant="outline"
+                    borderColor="border.subtle"
+                    color="accent.solid"
+                    onClick={() => {
+                      const newZoom = Math.min(3, zoom + 0.1)
+                      setZoom(newZoom)
+                      setPan(prev => clampPan(prev.x, prev.y, newZoom))
+                    }}
+                    _hover={{ bg: 'bg.hero' }}
+                    cursor="pointer"
+                  >
+                    +
+                  </Button>
+                </HStack>
+              </VStack>
+
+              {/* Actions */}
+              <HStack gap={3} mt={2}>
+                <Button
+                  variant="outline"
+                  borderColor="border.subtle"
+                  color="accent.solid"
+                  borderRadius="xl"
+                  h="44px"
+                  flex={1}
+                  fontSize="sm"
+                  fontWeight="600"
+                  onClick={handleCropCancel}
+                  _hover={{ bg: 'bg.hero' }}
+                  cursor="pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  bg="accent.solid"
+                  color="white"
+                  borderRadius="xl"
+                  h="44px"
+                  flex={1.5}
+                  fontSize="sm"
+                  fontWeight="700"
+                  onClick={handleCropSave}
+                  _hover={{ bg: 'chocolate.600' }}
+                  cursor="pointer"
+                >
+                  Apply Crop
+                </Button>
+              </HStack>
+            </VStack>
+          </Box>
+        </Box>
+      )}
     </Box>
   )
 }
