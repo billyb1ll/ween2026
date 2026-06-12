@@ -43,12 +43,22 @@ export interface UseBoardRealtimeReturn {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapPost(p: any): DBPost {
+  let cc = 0
+  if (Array.isArray(p.comment_count)) {
+    cc = p.comment_count[0]?.count ?? 0
+  } else if (p.comment_count !== undefined && p.comment_count !== null) {
+    cc = Number(p.comment_count)
+  }
+  if (isNaN(cc)) {
+    cc = 0
+  }
+
   return {
     id: Number(p.id),
     content: p.content,
     createdAt: p.created_at,
     likes: p.likes ?? 0,
-    comment_count: Number(p.comment_count ?? 0),
+    comment_count: cc,
     tags: Array.isArray(p.tags) ? p.tags : (p.tags ? [p.tags] : ['orientation']),
     is_anonymous: p.is_anonymous ?? false,
     is_hidden: p.is_hidden ?? false,
@@ -107,17 +117,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         if (error) throw error
         if (!active) return
 
-        // Supabase returns comment_count as [{count: N}] — normalise to a plain number
-        const normalised = (data ?? []).map((p) => {
-          const raw = p as unknown as { comment_count: { count: number }[] | number | null } & Record<string, unknown>
-          return {
-            ...raw,
-            comment_count: Array.isArray(raw.comment_count)
-              ? (raw.comment_count[0]?.count ?? 0)
-              : (raw.comment_count ?? 0),
-          }
-        })
-        setPosts(normalised.map(mapPost))
+        setPosts((data ?? []).map(mapPost))
       } catch (err) {
         console.error('[Board] Initial fetch error:', err)
         toaster.create({

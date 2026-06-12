@@ -8,11 +8,11 @@ import {
   Button,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { getImmichConfig } from "../utils/immich";
 import { toaster } from "../components/ui/toaster";
 import { supabase } from "../lib/supabase";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, useScroll } from "framer-motion";
 import type { Variants } from "framer-motion";
 
 const ThreeBlob = lazy(() =>
@@ -82,16 +82,17 @@ const cardVariants = (shouldReduceMotion: boolean): Variants => ({
     y: 0,
     opacity: 1,
     transition: shouldReduceMotion
-      ? { duration: 0.2 }
-      : { type: "spring", stiffness: 100, damping: 15 },
+      ? { duration: 0.01 }
+      : { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
   },
 });
 
 export function HomePage() {
   const [onlineCount] = useState(42);
-  const lineRef = useRef<SVGPathElement>(null);
   const [isMobile, setIsMobile] = useState(true);
+  const { scrollYProgress } = useScroll();
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const pathLength = shouldReduceMotion ? 1 : scrollYProgress;
   const variants = cardVariants(shouldReduceMotion);
 
   const [nextEvent, setNextEvent] = useState({
@@ -162,27 +163,7 @@ export function HomePage() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  useEffect(() => {
-    const path = lineRef.current;
-    if (!path) return;
-    const length = path.getTotalLength();
-    path.style.strokeDasharray = `${length}`;
-    path.style.strokeDashoffset = `${length}`;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          path.style.animation = `draw-line 2s var(--ease-out-quart) forwards`;
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.2 },
-    );
-
-    const parent = path.closest("svg");
-    if (parent) observer.observe(parent);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <Box position="relative">
@@ -350,13 +331,13 @@ export function HomePage() {
             preserveAspectRatio="xMidYMid meet"
             className="svg-block"
           >
-            <path
-              ref={lineRef}
+            <motion.path
               d="M 100 40 C 300 10, 500 70, 700 40 C 900 10, 1000 70, 1100 40"
               stroke="var(--c-chocolate)"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
+              style={{ pathLength }}
             />
           </svg>
         </Box>
@@ -383,7 +364,7 @@ export function HomePage() {
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, margin: "-10%" }}
           >
             <Box
               display="grid"

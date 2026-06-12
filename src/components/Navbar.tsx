@@ -499,7 +499,10 @@ export function Navbar() {
               fontWeight="700"
               letterSpacing="0.1em"
             >
-              Baan 7
+              <HStack>
+                <Text color="red">Very</Text>
+                <Text color="orange">Ween</Text>
+              </HStack>
             </Text>
           </NavLink>
 

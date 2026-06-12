@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -18,6 +18,11 @@ import { toaster } from '../components/ui/toaster'
 export function LoginPage() {
   const navigate = useNavigate()
   const { user, checkStudentId, login, registerPin, loading } = useUser()
+
+  const userRef = useRef(user)
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   // Authentication Stages
   // 'id' = Stage 1 (ID verification)
@@ -159,7 +164,12 @@ export function LoginPage() {
       setCheckmarkText('Welcome to Baan 7!')
       setShowCheckmark(true)
       setTimeout(() => {
-        // Successful login: will auto-route via useEffect
+        const currentUser = userRef.current
+        if (!currentUser || !currentUser.nickname || !currentUser.faculty) {
+          navigate('/profile-edit')
+        } else {
+          navigate('/')
+        }
       }, 1200)
     } else {
       setPin('') // Reset PIN on error
@@ -288,7 +298,7 @@ export function LoginPage() {
                       </Box>
                       <Input
                         id="student-id-input"
-                        placeholder="e.g. 6688216"
+                        placeholder="e.g. 69xxxxx"
                         type="text"
                         pattern="\d*"
                         value={studentId}

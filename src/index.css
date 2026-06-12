@@ -275,3 +275,11 @@ a:hover {
   animation: spin 0.8s linear infinite;
 }
 
+/* Custom select dropdown styling to hide browser default arrows */
+.custom-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+

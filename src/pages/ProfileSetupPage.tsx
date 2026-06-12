@@ -176,7 +176,7 @@ export function ProfileSetupPage() {
                 </Box>
                 <Input
                   id="setup-nickname"
-                  placeholder="e.g. บิล"
+                  placeholder="e.g. billy"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   borderRadius="xl"
@@ -214,14 +214,12 @@ export function ProfileSetupPage() {
                     borderRadius="xl"
                     border="1.5px solid var(--c-outline)"
                     bg="var(--c-ivory)"
+                    px={4}
                     _focus={{
                       borderColor: 'var(--c-lagoon)',
                       boxShadow: '0 0 0 3px var(--c-lagoon-light)',
                       bg: 'var(--c-white)',
                     }}
-                    h="48px"
-                    fontSize="sm"
-                    px={4}
                   >
                     <option value="">Select Faculty...</option>
                     {THAI_FACULTIES.map((fac) => {
@@ -264,14 +262,12 @@ export function ProfileSetupPage() {
                       borderRadius="xl"
                       border="1.5px solid var(--c-outline)"
                       bg="var(--c-ivory)"
+                      px={4}
                       _focus={{
                         borderColor: 'var(--c-lagoon)',
                         boxShadow: '0 0 0 3px var(--c-lagoon-light)',
                         bg: 'var(--c-white)',
                       }}
-                      h="48px"
-                      fontSize="sm"
-                      px={4}
                     >
                       <option value="">Select Position...</option>
                       {STAFF_ROLES.map((role) => (
