@@ -42,7 +42,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
     return <LoadingFallback />
   }
 
-  // Only allow superadmin, media_admin, or staff roles
+  // Only allow moderator, media_admin, or staff roles
   if (!user || user.role === 'student') {
     return <Navigate to="/" replace />
   }

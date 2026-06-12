@@ -1,5 +1,5 @@
 import { Box, Flex, Heading, HStack, Text, VStack, Button, Textarea, Spinner, Badge, Input, Image } from '@chakra-ui/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { useUser } from '../context/UserContext'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useBoardRealtime, type DBPost, type BoardTab } from '../hooks/useBoardRealtime'
@@ -782,7 +782,7 @@ function CommentSection({
                     <Text fontSize="xs" fontWeight="700" color="fg.default">
                       {commentPrefix}{comment.author?.nickname || 'Student'}
                     </Text>
-                    <Badge colorPalette={comment.author?.role === 'superadmin' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
+                    <Badge colorPalette={comment.author?.role === 'moderator' ? 'red' : comment.author?.role === 'staff' ? 'orange' : comment.author?.role === 'media_admin' ? 'blue' : 'gray'} fontSize="3xs">
                       {comment.author?.role || 'student'}
                     </Badge>
                     <Text fontSize="3xs" color="fg.subtle">
@@ -854,7 +854,7 @@ function CommentSection({
   )
 }
 
-function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
+const HypeCard = memo(function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
   const { user } = useUser()
   const liked = !!(user && post.liked_by?.includes(user.student_id))
   const [showComments, setShowComments] = useState(false)
@@ -867,9 +867,9 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
   const isStaff = post.author.role !== 'student'
   const prefix = isStaff ? "P' " : ""
   
-  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
-  const displayAuthorInitials = isAnon && currentUserRole !== 'superadmin' ? '?' : getInitials(displayAuthorName)
-  const displayAvatarColor = isAnon && currentUserRole !== 'superadmin' ? '#8c7b74' : post.author.avatar_color
+  const displayAuthorName = isAnon && currentUserRole !== 'moderator' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
+  const displayAuthorInitials = isAnon && currentUserRole !== 'moderator' ? '?' : getInitials(displayAuthorName)
+  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? '#8c7b74' : post.author.avatar_color
 
   return (
     <Box
@@ -902,7 +902,7 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
         <VStack align="start" gap={0} flex={1}>
           <Text fontSize="sm" fontWeight="700" color="fg.default" display="inline-flex" gap={1} flexWrap="wrap">
             {displayAuthorName}
-            {isAnon && currentUserRole === 'superadmin' && (
+            {isAnon && currentUserRole === 'moderator' && (
               <Badge colorPalette="orange" fontSize="3xs" alignSelf="center">
                 Anonymous (ID: {post.student_id})
               </Badge>
@@ -969,11 +969,11 @@ function HypeCard({ post, index, onLike, currentUserRole }: HypeCardProps) {
       )}
     </Box>
   )
-}
+})
 
 interface MemoryCardProps { post: DBPost; index: number; onLike: (id: number) => void; currentUserRole?: string }
 
-function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
+const MemoryCard = memo(function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const { user } = useUser()
   const liked = !!(user && post.liked_by?.includes(user.student_id))
   const [showComments, setShowComments] = useState(false)
@@ -989,9 +989,9 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
   const isStaff = post.author.role !== 'student'
   const prefix = isStaff ? "P' " : ""
   
-  const displayAuthorName = isAnon && currentUserRole !== 'superadmin' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
-  const displayAuthorInitials = isAnon && currentUserRole !== 'superadmin' ? '?' : getInitials(displayAuthorName)
-  const displayAvatarColor = isAnon && currentUserRole !== 'superadmin' ? '#8c7b74' : post.author.avatar_color
+  const displayAuthorName = isAnon && currentUserRole !== 'moderator' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
+  const displayAuthorInitials = isAnon && currentUserRole !== 'moderator' ? '?' : getInitials(displayAuthorName)
+  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? '#8c7b74' : post.author.avatar_color
 
   return (
     <Box
@@ -1030,7 +1030,7 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
         <VStack align="start" gap={0} flex={1}>
           <Text fontSize="xs" fontWeight="700" color="fg.default" display="inline-flex" gap={1} flexWrap="wrap">
             {displayAuthorName}
-            {isAnon && currentUserRole === 'superadmin' && (
+            {isAnon && currentUserRole === 'moderator' && (
               <Badge colorPalette="orange" fontSize="3xs" alignSelf="center">
                 Anonymous (ID: {post.student_id})
               </Badge>
@@ -1090,4 +1090,4 @@ function MemoryCard({ post, index, onLike, currentUserRole }: MemoryCardProps) {
       )}
     </Box>
   )
-}
+})

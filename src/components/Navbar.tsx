@@ -21,6 +21,7 @@ import { toaster } from "./ui/toaster";
 import { useUser } from "../context/UserContext";
 import type { User } from "../context/UserContext";
 import { motion, useReducedMotion } from "framer-motion";
+import { supabase } from "../lib/supabase";
 
 interface NavItemProps {
   to: string;
@@ -147,7 +148,7 @@ const UserDropdownContent = ({
         </Button>
       </Link>
     )}
-    {user && (user.role === "superadmin" || user.role === "media_admin") && (
+    {user && (user.role === "moderator" || user.role === "media_admin") && (
       <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
         <Button
           size="sm"
@@ -167,7 +168,7 @@ const UserDropdownContent = ({
         </Button>
       </Link>
     )}
-    {user && (user.role === "superadmin" || user.role === "staff") && (
+    {user && (user.role === "moderator" || user.role === "staff") && (
       <Link to="/staff" onClick={onClose} style={{ width: "100%" }}>
         <Button
           size="sm"
@@ -210,7 +211,61 @@ export function Navbar() {
   const { user, logout } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
+  const [emergencyMsg, setEmergencyMsg] = useState<string | null>(null);
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const fetchEmergency = async () => {
+      try {
+        const { data } = await supabase
+          .from("system_config")
+          .select("value, text_value")
+          .eq("key", "emergency_announcement")
+          .maybeSingle();
+
+        if (active && data) {
+          if (data.value && data.text_value) {
+            setEmergencyMsg(data.text_value);
+          } else {
+            setEmergencyMsg(null);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch emergency announcement:", err);
+      }
+    };
+    fetchEmergency();
+
+    const channel = supabase
+      .channel("system_config_emergency")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "system_config",
+          filter: "key=eq.emergency_announcement",
+        },
+        (payload) => {
+          if (active && payload.new) {
+            const newRecord = payload.new as { value: boolean; text_value: string | null };
+            if (newRecord.value && newRecord.text_value) {
+              setEmergencyMsg(newRecord.text_value);
+            } else {
+              setEmergencyMsg(null);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const desktopPortalRef = useRef<HTMLDivElement>(null);
   const mobilePortalRef = useRef<HTMLDivElement>(null);
@@ -304,11 +359,37 @@ export function Navbar() {
 
   return (
     <>
+      {emergencyMsg && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bg="#d97706"
+          color="#4a2c11"
+          py={1.5}
+          px={4}
+          zIndex={9999}
+          fontSize="xs"
+          fontWeight="bold"
+          textAlign="center"
+          boxShadow="sm"
+          style={{ animation: "pulse 2s infinite ease-in-out" }}
+        >
+          <HStack justify="center" gap={2}>
+            <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#4a2c11" }}>
+              warning
+            </span>
+            <Text>{emergencyMsg}</Text>
+          </HStack>
+        </Box>
+      )}
+
       {/* Desktop: Sticky top bar */}
       <Box
         display={{ base: "none", md: "block" }}
         position="fixed"
-        top={6}
+        top={emergencyMsg ? "46px" : 6}
         left="50%"
         transform="translateX(-50%)"
         zIndex={50}
@@ -350,6 +431,12 @@ export function Navbar() {
             <NavItem to="/vibe-check">Vibe Check</NavItem>
             <NavItem to="/board">Board</NavItem>
             <NavItem to="/gallery">Gallery</NavItem>
+            {user && (user.role === "moderator" || user.role === "media_admin") && (
+              <NavItem to="/admin">Admin</NavItem>
+            )}
+            {user && (user.role === "moderator" || user.role === "staff") && (
+              <NavItem to="/staff">Staff</NavItem>
+            )}
           </HStack>
 
           {user ? (
@@ -476,6 +563,12 @@ export function Navbar() {
           <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />
           <MobileDockItem to="/board" icon="campaign" label="Board" />
           <MobileDockItem to="/gallery" icon="photo_library" label="Gallery" />
+          {user && (user.role === "moderator" || user.role === "media_admin") && (
+            <MobileDockItem to="/admin" icon="admin_panel_settings" label="Admin" />
+          )}
+          {user && (user.role === "moderator" || user.role === "staff") && (
+            <MobileDockItem to="/staff" icon="shield_person" label="Staff" />
+          )}
         </Flex>
       </Box>
 
@@ -483,7 +576,7 @@ export function Navbar() {
       <Box
         display={{ base: "block", md: "none" }}
         position="sticky"
-        top={0}
+        top={emergencyMsg ? "32px" : 0}
         zIndex={40}
         bg="rgba(var(--c-ivory-rgb), 0.92)"
         backdropFilter="blur(12px)"

@@ -10,7 +10,7 @@ export interface User {
   faculty: string | null
   major: string | null
   ig: string | null
-  role: 'superadmin' | 'media_admin' | 'staff' | 'student'
+  role: 'moderator' | 'media_admin' | 'staff' | 'student'
   avatar_color: string
   images: string[]
   tags: string[]

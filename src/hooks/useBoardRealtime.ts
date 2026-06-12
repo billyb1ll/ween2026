@@ -113,6 +113,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           .eq('type', activeTab)
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
+          .limit(50)
 
         if (error) throw error
         if (!active) return
