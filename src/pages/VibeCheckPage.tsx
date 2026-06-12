@@ -12,6 +12,7 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { useState, useCallback, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 
 const getInitials = (name: string) => {
   return name.trim().slice(0, 2).toUpperCase();
@@ -60,7 +61,7 @@ interface VibeMission {
 }
 
 export function VibeCheckPage() {
-  const { user } = useUser();
+  const { user, loading: authLoading } = useUser();
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   // Deck States
@@ -323,6 +324,18 @@ export function VibeCheckPage() {
       (s.faculty || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.major || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (authLoading) {
+    return (
+      <Flex minH="80vh" align="center" justify="center">
+        <Spinner size="xl" color="accent.solid" />
+      </Flex>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (loading) {
     return (
