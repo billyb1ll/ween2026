@@ -47,7 +47,7 @@ function NavItem({ to, children, icon }: NavItemProps) {
         toaster.create({
           title: "Gallery Warming Up",
           description:
-            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off.",
           type: "info",
           closable: true,
           duration: 5000,
@@ -389,26 +389,28 @@ export function Navbar() {
       <Box
         display={{ base: "none", md: "block" }}
         position="fixed"
-        top={emergencyMsg ? "46px" : 6}
-        left="50%"
-        transform="translateX(-50%)"
-        zIndex={50}
-        w="auto"
-        maxW="4xl"
+        top={emergencyMsg ? "32px" : 0}
+        left={0}
+        right={0}
+        zIndex={1000}
+        w="100%"
+        pt={4}
       >
         <Flex
           as="nav"
           aria-label="Main navigation"
           align="center"
-          bg="rgba(var(--c-ivory-rgb), 0.85)"
-          backdropFilter="blur(24px)"
+          bg="color-mix(in srgb, var(--c-ivory) 80%, transparent)"
+          backdropFilter="blur(12px)"
           borderRadius="full"
           px={6}
           py={3}
-          border="1px solid"
-          borderColor="border.subtle"
-          boxShadow="var(--shadow-ambient)"
+          border="1px solid color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+          boxShadow="var(--shadow-card)"
           gap={2}
+          maxW="1200px"
+          mx="auto"
+          w={{ base: "calc(100% - 32px)", md: "90%" }}
         >
           <NavLink to="/">
             <Flex
@@ -711,7 +713,7 @@ function MobileDockItem({
         toaster.create({
           title: "Gallery Warming Up",
           description:
-            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off.",
           type: "info",
           closable: true,
           duration: 5000,
