@@ -211,7 +211,9 @@ export function Navbar() {
   const { user, logout } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
-  const [emergencyAnnouncement, setEmergencyAnnouncement] = useState<string | null>(null);
+  const [emergencyAnnouncement, setEmergencyAnnouncement] = useState<
+    string | null
+  >(null);
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -250,14 +252,17 @@ export function Navbar() {
         },
         (payload) => {
           if (active && payload.new) {
-            const newRecord = payload.new as { value: boolean; text_value: string | null };
+            const newRecord = payload.new as {
+              value: boolean;
+              text_value: string | null;
+            };
             if (newRecord.value && newRecord.text_value) {
               setEmergencyAnnouncement(newRecord.text_value);
             } else {
               setEmergencyAnnouncement(null);
             }
           }
-        }
+        },
       )
       .subscribe();
 
@@ -377,7 +382,11 @@ export function Navbar() {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{ overflow: "hidden", width: "100%", pointerEvents: "auto" }}
+              style={{
+                overflow: "hidden",
+                width: "100%",
+                pointerEvents: "auto",
+              }}
             >
               <Box
                 w="100%"
@@ -463,9 +472,10 @@ export function Navbar() {
               <NavItem to="/vibe-check">Vibe Check</NavItem>
               <NavItem to="/board">Board</NavItem>
               <NavItem to="/gallery">Gallery</NavItem>
-              {user && (user.role === "moderator" || user.role === "media_admin") && (
-                <NavItem to="/admin">Admin</NavItem>
-              )}
+              {user &&
+                (user.role === "moderator" || user.role === "media_admin") && (
+                  <NavItem to="/admin">Admin</NavItem>
+                )}
               {user && (user.role === "moderator" || user.role === "staff") && (
                 <NavItem to="/staff">Staff</NavItem>
               )}
@@ -484,7 +494,9 @@ export function Navbar() {
                     minW="40px"
                     p={0}
                     borderRadius="full"
-                    bg={user.profile_pic_url ? "transparent" : user.avatar_color}
+                    bg={
+                      user.profile_pic_url ? "transparent" : user.avatar_color
+                    }
                     color="white"
                     display="flex"
                     alignItems="center"
@@ -711,9 +723,14 @@ export function Navbar() {
           <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />
           <MobileDockItem to="/board" icon="campaign" label="Board" />
           <MobileDockItem to="/gallery" icon="photo_library" label="Gallery" />
-          {user && (user.role === "moderator" || user.role === "media_admin") && (
-            <MobileDockItem to="/admin" icon="admin_panel_settings" label="Admin" />
-          )}
+          {user &&
+            (user.role === "moderator" || user.role === "media_admin") && (
+              <MobileDockItem
+                to="/admin"
+                icon="admin_panel_settings"
+                label="Admin"
+              />
+            )}
           {user && (user.role === "moderator" || user.role === "staff") && (
             <MobileDockItem to="/staff" icon="shield_person" label="Staff" />
           )}
