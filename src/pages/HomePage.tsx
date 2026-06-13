@@ -5,7 +5,6 @@ import {
   HStack,
   Text,
   VStack,
-  Button,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
@@ -271,10 +270,10 @@ export function HomePage() {
                 letterSpacing="0.05em"
                 gap={2}
                 transition="all 0.3s var(--ease-out-quart)"
-                boxShadow="0 6px 20px rgba(124, 86, 63, 0.25)"
+                boxShadow="0 6px 20px color-mix(in srgb, var(--c-chocolate) 25%, transparent)"
                 _hover={{
                   transform: "translateY(-2px)",
-                  boxShadow: "0 10px 30px rgba(124, 86, 63, 0.35)",
+                  boxShadow: "0 10px 30px color-mix(in srgb, var(--c-chocolate) 35%, transparent)",
                 }}
                 _active={{ transform: "scale(0.97)" }}
               >
@@ -465,7 +464,7 @@ function FeatureCardLarge({
           role="group"
           _hover={{
             transform: "translateY(-4px)",
-            boxShadow: "0 0 40px rgba(197, 224, 230, 0.4)",
+            boxShadow: "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
           }}
         >
           {/* Ambient glow */}
@@ -633,7 +632,7 @@ function FeatureCardWide({
           role="group"
           _hover={{
             transform: "translateY(-4px)",
-            boxShadow: "0 0 40px rgba(124, 86, 63, 0.3)",
+            boxShadow: "0 0 40px color-mix(in srgb, var(--c-chocolate) 30%, transparent)",
           }}
         >
           {/* Dot pattern */}
@@ -719,7 +718,7 @@ function FeatureCardSmall({
         toaster.create({
           title: "Gallery Warming Up",
           description:
-            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off. 📸",
+            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off.",
           type: "info",
           closable: true,
           duration: 5000,
@@ -887,8 +886,7 @@ function FeatureCardEvent({
               {countdownText || 'Loading countdown...'}
             </Text>
           </VStack>
-          <Button
-            type="button"
+          <Box
             w="100%"
             mt={{ base: 4, md: 6 }}
             py={2.5}
@@ -900,11 +898,14 @@ function FeatureCardEvent({
             color="brand.fg"
             boxShadow="var(--shadow-ambient)"
             transition="all 0.2s"
-            _hover={{ bg: "brand.muted" }}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            _groupHover={{ bg: "brand.muted" }}
             minH="44px"
           >
             Join Now
-          </Button>
+          </Box>
         </Box>
       </motion.div>
     </Link>

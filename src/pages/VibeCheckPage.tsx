@@ -11,7 +11,7 @@ import {
   Image,
   Spinner,
 } from "@chakra-ui/react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
 
 const getInitials = (name: string) => {
@@ -51,6 +51,7 @@ interface DBStaff {
   images: string[];
   tags: string[];
   role: string;
+  house_position: string | null;
 }
 
 interface VibeMission {
@@ -76,6 +77,7 @@ export function VibeCheckPage() {
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState(0);
   const [collectedCountForMission, setCollectedCountForMission] = useState(0);
+  const [strikeCount, setStrikeCount] = useState<number>(0);
 
   // Sticker Book Drawer States
   const [isBookOpen, setIsBookOpen] = useState(false);
@@ -126,6 +128,7 @@ export function VibeCheckPage() {
 
       if (statusData) {
         activeMission = statusData.vibe_missions as VibeMission;
+        setStrikeCount(statusData.strike_count || 0);
         if (statusData.locked_until) {
           const lockedTime = new Date(statusData.locked_until).getTime();
           if (lockedTime > Date.now()) {
@@ -166,7 +169,7 @@ export function VibeCheckPage() {
       // 3. Fetch all whitelisted staff (for the Collection Book)
       const { data: staffData } = await supabase
         .from("users")
-        .select("student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role")
+        .select("student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role, house_position")
         .in("role", ["staff", "media_admin", "moderator"]);
 
       if (staffData) {
@@ -187,7 +190,7 @@ export function VibeCheckPage() {
         const secureDeck: StaffProfile[] = shuffled.map((s) => ({
           id: s.student_id,
           name: s.nickname || "Staff Member",
-          avatar_color: s.avatar_color || "#496268",
+          avatar_color: s.avatar_color || "var(--c-lagoon)",
           profile_pic_url: s.profile_pic_url,
           bio: s.bio || "Orientation staff ready to answer all your questions!",
           ig: s.ig,
@@ -258,8 +261,8 @@ export function VibeCheckPage() {
         // Process response payload securely
         if (data.status === "collected") {
           toaster.create({
-            title: "Card Unlocked! 🧡",
-            description: `Successfully collected ${data.collected_staff_name}!`,
+            title: "Correct Swipe!",
+            description: `Successfully collected P'${data.collected_staff_name || "Staff"}!`,
             type: "success",
           });
           setCollectedIds((prev) => {
@@ -268,22 +271,38 @@ export function VibeCheckPage() {
             return next;
           });
           setCollectedCountForMission(data.current_count);
+        } else if (data.status === "skipped") {
+          toaster.create({
+            title: "Correct Skip!",
+            description: "Nice! That person doesn't match the active quest.",
+            type: "success",
+          });
         } else if (data.status === "mission_cleared") {
+          toaster.create({
+            title: "Quest Completed!",
+            description: `Amazing! You successfully collected enough staff members!`,
+            type: "success",
+          });
           setClearedMissionTarget(currentMission?.target_role || "");
           setCelebrationOpen(true);
           // Triggers full layout refresh
           await fetchGameData();
         } else if (data.status === "locked") {
+          setStrikeCount(0); // resets strikes display during lockout cooldown
           const lockedTime = new Date(data.locked_until).getTime();
           setLockoutUntil(lockedTime);
           toaster.create({
-            title: "Lockout Penalty! 🔒",
+            title: "Lockout Penalty!",
             description: `Too many incorrect swipes. Cooldown active for ${data.cooldown_minutes} min.`,
             type: "error",
           });
         } else if (data.status === "strike") {
-          // Hidden fail: proceeds silently to avoid cheat-spoiling.
-          console.log(`Hidden Swipe Strike! (Strike count: ${data.strike_count}/${data.max_strikes})`);
+          setStrikeCount(data.strike_count || 0);
+          toaster.create({
+            title: "Incorrect Swipe!",
+            description: `Mistake recorded. (Mistakes: ${data.strike_count}/${data.max_strikes || 5})`,
+            type: "error",
+          });
         }
 
         setTimeout(
@@ -324,6 +343,21 @@ export function VibeCheckPage() {
       (s.faculty || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.major || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const groupedStaffData = useMemo(() => {
+    const grouped: { [key: string]: DBStaff[] } = {};
+    filteredStaff.forEach((s) => {
+      const pos = s.house_position || "ทั่วไป";
+      if (!grouped[pos]) {
+        grouped[pos] = [];
+      }
+      grouped[pos].push(s);
+    });
+    return {
+      grouped,
+      sortedKeys: Object.keys(grouped).sort((a, b) => a.localeCompare(b)),
+    };
+  }, [filteredStaff]);
 
   if (authLoading) {
     return (
@@ -370,51 +404,90 @@ export function VibeCheckPage() {
           aria-label="Open Collection Book"
           title="Open Collection Book"
         >
-          📖 Collection ({collectedIds.size}/{allStaff.length})
+          <Box as="span" className="material-symbols-outlined" fontSize="16px" mr={1}>
+            menu_book
+          </Box>
+          Collection ({collectedIds.size}/{allStaff.length})
         </Button>
       </Flex>
 
       {/* 2. Active Mission Banner */}
       {currentMission ? (
         <Box
-          bg="rgba(73, 98, 104, 0.08)"
-          border="1.5px dashed"
+          bg="color-mix(in srgb, var(--c-ivory) 85%, transparent)"
+          backdropFilter="blur(12px)"
+          border="2px solid"
           borderColor="accent.solid"
           borderRadius="2xl"
           p={4}
           mb={5}
           textAlign="center"
-          boxShadow="inner"
+          boxShadow="0 0 15px rgba(73, 98, 104, 0.2)"
+          position="relative"
+          overflow="hidden"
         >
-          <Text
-            fontSize="2xs"
-            fontWeight="700"
-            color="accent.solid"
-            textTransform="uppercase"
-            letterSpacing="0.08em"
-            mb={1}
-          >
-            🎯 Active Quest
-          </Text>
-          <Heading as="h2" fontSize="sm" color="fg.default" fontWeight="700" mb={1}>
+          <Box
+            position="absolute"
+            top="-50%"
+            left="-50%"
+            w="200%"
+            h="200%"
+            bg="radial-gradient(circle, rgba(73, 98, 104, 0.05) 0%, transparent 60%)"
+            pointerEvents="none"
+          />
+          <HStack justify="center" gap={1.5} color="accent.solid" mb={1.5}>
+            <Box as="span" className="material-symbols-outlined" fontSize="16px">
+              military_tech
+            </Box>
+            <Text fontSize="xs" fontWeight="700" textTransform="uppercase" letterSpacing="0.05em">
+              Active Quest
+            </Text>
+          </HStack>
+          <Heading as="h2" fontSize="sm" color="chocolate.800" fontWeight="800" mb={2} px={2}>
             Collect {currentMission.required_count} {currentMission.target_role} Staff Members
           </Heading>
-          <Text fontSize="2xs" color="fg.muted" fontWeight="600">
-            Progress: {collectedCountForMission} / {currentMission.required_count}
-          </Text>
+          <Box w="100%" bg="color-mix(in srgb, var(--c-chocolate) 10%, transparent)" h="8px" borderRadius="full" mb={2.5} overflow="hidden">
+            <Box
+              bg="accent.solid"
+              h="100%"
+              borderRadius="full"
+              width={`${Math.min(100, (collectedCountForMission / currentMission.required_count) * 100)}%`}
+              transition="width 0.3s ease"
+            />
+          </Box>
+          <Flex justify="space-between" align="center" px={1}>
+            <Text fontSize="2xs" color="fg.muted" fontWeight="700">
+              Progress: {collectedCountForMission} / {currentMission.required_count}
+            </Text>
+            <Box
+              fontSize="2xs"
+              fontWeight="700"
+              color={strikeCount >= 4 ? "red.600" : "chocolate.600"}
+              bg={strikeCount >= 4 ? "red.50" : "color-mix(in srgb, var(--c-chocolate) 5%, transparent)"}
+              px={2.5}
+              py={0.5}
+              borderRadius="full"
+              border="1px solid"
+              borderColor={strikeCount >= 4 ? "red.200" : "color-mix(in srgb, var(--c-chocolate) 15%, transparent)"}
+            >
+              Mistakes Left: {Math.max(0, 5 - strikeCount)}/5
+            </Box>
+          </Flex>
         </Box>
       ) : (
         <Box
-          bg="rgba(124, 86, 63, 0.08)"
-          border="1.5px dashed"
+          bg="color-mix(in srgb, var(--c-ivory) 85%, transparent)"
+          backdropFilter="blur(12px)"
+          border="2px solid"
           borderColor="chocolate.500"
           borderRadius="2xl"
           p={4}
           mb={5}
           textAlign="center"
+          boxShadow="var(--shadow-card)"
         >
           <Text fontSize="sm" color="chocolate.800" fontWeight="bold">
-            🏆 You collected all cards! Check back later.
+            You collected all cards! Check back later.
           </Text>
         </Box>
       )}
@@ -498,7 +571,7 @@ export function VibeCheckPage() {
                   }}
                 >
                   <Box
-                    bg="rgba(73, 98, 104, 0.9)"
+                    bg="color-mix(in srgb, var(--c-lagoon) 90%, transparent)"
                     color="white"
                     px={4}
                     py={1.5}
@@ -523,7 +596,7 @@ export function VibeCheckPage() {
                   }}
                 >
                   <Box
-                    bg="rgba(192, 57, 43, 0.9)"
+                    bg="color-mix(in srgb, var(--c-error) 90%, transparent)"
                     color="white"
                     px={4}
                     py={1.5}
@@ -544,7 +617,7 @@ export function VibeCheckPage() {
                   bottom={0}
                   left={0}
                   right={0}
-                  bg="gradient.card"
+                  bg="linear-gradient(to top, color-mix(in srgb, var(--c-ink) 95%, transparent) 0%, color-mix(in srgb, var(--c-ink) 40%, transparent) 60%, transparent 100%)"
                   p={5}
                   color="white"
                 >
@@ -584,7 +657,7 @@ export function VibeCheckPage() {
               left={0}
               right={0}
               bottom={0}
-              bg="rgba(20, 16, 15, 0.85)"
+              bg="color-mix(in srgb, var(--c-ink) 85%, transparent)"
               backdropFilter="blur(10px)"
               zIndex={20}
               display="flex"
@@ -658,14 +731,15 @@ export function VibeCheckPage() {
             w="56px"
             borderRadius="full"
             p={0}
+            transition="transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s"
             _hover={{ transform: "scale(1.1)", bg: "red.50" }}
             cursor="pointer"
             aria-label="Skip card"
             title="Skip card"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
+            <Box as="span" className="material-symbols-outlined" fontSize="24px">
               close
-            </span>
+            </Box>
           </Button>
           <Button
             onClick={() => performSwipeSecure("right")}
@@ -676,14 +750,15 @@ export function VibeCheckPage() {
             w="56px"
             borderRadius="full"
             p={0}
+            transition="transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s"
             _hover={{ transform: "scale(1.1)", bg: "chocolate.600" }}
             cursor="pointer"
             aria-label="Collect card"
             title="Collect card"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "24px", fontVariationSettings: "'FILL' 1" }}>
+            <Box as="span" className="material-symbols-outlined" fontSize="24px" fontVariationSettings="'FILL' 1">
               check
-            </span>
+            </Box>
           </Button>
         </HStack>
       )}
@@ -770,76 +845,170 @@ export function VibeCheckPage() {
 
             {/* Sticker grid view */}
             <Box flex={1} overflowY="auto" pb={4}>
-              <Flex gap={3} flexWrap="wrap" justify="start">
-                {filteredStaff.map((s) => {
-                  const isCollected = collectedIds.has(s.student_id);
-                  return (
-                    <Box
-                      key={s.student_id}
-                      w="100px"
-                      display="flex"
-                      flexDirection="column"
-                      alignItems="center"
-                      onClick={() => {
-                        if (isCollected) setSelectedStaffDetail(s);
-                      }}
-                      cursor={isCollected ? "pointer" : "default"}
-                    >
-                      <Box
-                        position="relative"
-                        w="80px"
-                        h="80px"
-                        borderRadius="full"
-                        overflow="hidden"
-                        border="2px solid"
-                        borderColor={isCollected ? "accent.solid" : "border.subtle"}
-                        bg={s.avatar_color}
-                        mb={1.5}
-                        style={{
-                          filter: isCollected ? "none" : "grayscale(1) brightness(0.25)",
-                        }}
-                      >
-                        {s.profile_pic_url ? (
-                          <Image src={s.profile_pic_url} alt={s.nickname || "Staff"} w="100%" h="100%" objectFit="cover" />
-                        ) : (
-                          <Flex w="100%" h="100%" align="center" justify="center" color="white" fontWeight="700">
-                            {getInitials(s.nickname || "?")}
-                          </Flex>
-                        )}
-                        {!isCollected && (
-                          <Flex
-                            position="absolute"
-                            top={0}
-                            left={0}
-                            right={0}
-                            bottom={0}
-                            align="center"
-                            justify="center"
-                            bg="blackAlpha.300"
-                          >
-                            <span className="material-symbols-outlined" style={{ color: "white", fontSize: "18px" }}>
-                              lock
-                            </span>
-                          </Flex>
-                        )}
-                      </Box>
-                      <Text
-                        fontSize="2xs"
-                        fontWeight="600"
-                        color={isCollected ? "fg.default" : "fg.subtle"}
-                        textAlign="center"
-                        lineClamp={1}
-                        w="100%"
-                      >
-                        {s.nickname || "Locked"}
-                      </Text>
-                      <Text fontSize="3xs" color="accent.solid" opacity={isCollected ? 1 : 0.5} lineClamp={1}>
-                        {s.major || "Staff"}
-                      </Text>
+              <VStack align="stretch" gap={6}>
+                {groupedStaffData.sortedKeys.length === 0 ? (
+                  <Flex h="150px" align="center" justify="center" direction="column">
+                    <Box as="span" className="material-symbols-outlined" fontSize="36px" color="var(--c-muted)">
+                      search_off
                     </Box>
-                  );
-                })}
-              </Flex>
+                    <Text fontSize="xs" color="fg.subtle" mt={2}>
+                      No staff members match search query
+                    </Text>
+                  </Flex>
+                ) : (
+                  groupedStaffData.sortedKeys.map((pos) => {
+                    const staffInGroup = groupedStaffData.grouped[pos];
+                    const collectedInGroup = staffInGroup.filter((s) => collectedIds.has(s.student_id));
+                    const lockedInGroup = staffInGroup.filter((s) => !collectedIds.has(s.student_id));
+
+                    return (
+                      <Box key={pos} w="100%">
+                        <Heading
+                          size="xs"
+                          color="accent.solid"
+                          mb={3.5}
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                          borderBottom="1.5px solid"
+                          borderColor="color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+                          pb={1.5}
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
+                          <Text as="span" fontWeight="800">{pos}</Text>
+                          <Text as="span" fontSize="2xs" color="fg.subtle" fontWeight="700">
+                            ({collectedInGroup.length}/{staffInGroup.length})
+                          </Text>
+                        </Heading>
+                        <Flex gap={4} flexWrap="wrap" justify="start">
+                          {/* Collected staff */}
+                          {collectedInGroup.map((s) => (
+                            <Box
+                              key={s.student_id}
+                              w="100px"
+                              display="flex"
+                              flexDirection="column"
+                              alignItems="center"
+                              onClick={() => setSelectedStaffDetail(s)}
+                              cursor="pointer"
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`View details for ${s.nickname || "Staff"}`}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedStaffDetail(s);
+                                }
+                              }}
+                            >
+                              <Box
+                                position="relative"
+                                w="80px"
+                                h="80px"
+                                borderRadius="full"
+                                overflow="hidden"
+                                border="2px solid"
+                                borderColor="accent.solid"
+                                bg={s.avatar_color}
+                                mb={1.5}
+                              >
+                                {s.profile_pic_url ? (
+                                  <Image
+                                    draggable={false}
+                                    src={s.profile_pic_url}
+                                    alt={s.nickname || "Staff"}
+                                    w="100%"
+                                    h="100%"
+                                    objectFit="cover"
+                                  />
+                                ) : (
+                                  <Flex w="100%" h="100%" align="center" justify="center" color="white" fontWeight="700">
+                                    {getInitials(s.nickname || "?")}
+                                  </Flex>
+                                )}
+                              </Box>
+                              <Text
+                                fontSize="2xs"
+                                fontWeight="600"
+                                color="fg.default"
+                                textAlign="center"
+                                lineClamp={1}
+                                w="100%"
+                              >
+                                {s.nickname || "Staff"}
+                              </Text>
+                              <Text fontSize="3xs" color="fg.subtle" lineClamp={1}>
+                                {s.major || "Staff"}
+                              </Text>
+                            </Box>
+                          ))}
+
+                          {/* Locked stubs - NO NAMES/BIO/PORTRAITS leaked! */}
+                          {lockedInGroup.map((s, idx) => {
+                            const lockedLabel = `${pos} #${idx + 1}`;
+                            return (
+                              <Box
+                                key={`locked-${s.student_id}`}
+                                w="100px"
+                                display="flex"
+                                flexDirection="column"
+                                alignItems="center"
+                                cursor="default"
+                              >
+                                <Flex
+                                  position="relative"
+                                  w="80px"
+                                  h="80px"
+                                  borderRadius="full"
+                                  overflow="hidden"
+                                  border="2px dashed"
+                                  borderColor="border.subtle"
+                                  bg="color-mix(in srgb, var(--c-chocolate) 6%, transparent)"
+                                  mb={1.5}
+                                  alignItems="center"
+                                  justifyContent="center"
+                                >
+                                  <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="32px" opacity={0.4}>
+                                    person
+                                  </Box>
+                                  <Flex
+                                    position="absolute"
+                                    top={0}
+                                    left={0}
+                                    right={0}
+                                    bottom={0}
+                                    align="center"
+                                    justifyContent="center"
+                                    bg="blackAlpha.50"
+                                  >
+                                    <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="16px" opacity={0.6}>
+                                      lock
+                                    </Box>
+                                  </Flex>
+                                </Flex>
+                                <Text
+                                  fontSize="2xs"
+                                  fontWeight="600"
+                                  color="fg.subtle"
+                                  textAlign="center"
+                                  lineClamp={1}
+                                  w="100%"
+                                >
+                                  {lockedLabel}
+                                </Text>
+                                <Text fontSize="3xs" color="fg.subtle" opacity={0.6} lineClamp={1}>
+                                  Locked
+                                </Text>
+                              </Box>
+                            );
+                          })}
+                        </Flex>
+                      </Box>
+                    );
+                  })
+                )}
+              </VStack>
             </Box>
           </Box>
         </Portal>
@@ -866,11 +1035,13 @@ export function VibeCheckPage() {
             transform="translateX(-50%)"
             w="100%"
             maxW="md"
+            maxH="85vh"
+            overflowY="auto"
             bg="bg.surface"
             borderTopRadius="2xl"
             border="1px solid"
             borderColor="border.subtle"
-            boxShadow="0 -10px 25px rgba(0,0,0,0.15)"
+            boxShadow="0 -10px 25px color-mix(in srgb, var(--c-ink) 15%, transparent)"
             zIndex="2101"
             p={5}
             animation="slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards"
@@ -957,7 +1128,7 @@ export function VibeCheckPage() {
             left={0}
             right={0}
             bottom={0}
-            bg="rgba(20, 16, 15, 0.95)"
+            bg="color-mix(in srgb, var(--c-ink) 95%, transparent)"
             zIndex="9999"
             display="flex"
             flexDirection="column"
@@ -967,8 +1138,10 @@ export function VibeCheckPage() {
             textAlign="center"
           >
             <VStack gap={5} maxW="320px">
-              <Box fontSize="5xl" animation="scale-in 0.5s ease">
-                🎉
+              <Box fontSize="3xl" animation="scale-in 0.5s ease" color="accent.solid">
+                <span className="material-symbols-outlined" style={{ fontSize: "48px" }}>
+                  military_tech
+                </span>
               </Box>
               <Heading as="h2" fontSize="2xl" color="white" fontWeight="800">
                 Quest Complete!

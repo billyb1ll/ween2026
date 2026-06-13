@@ -12,12 +12,75 @@ import {
   Table,
   Badge,
   Portal,
+  Tabs,
+  Textarea,
+  Dialog,
+  CloseButton,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
 import { getImmichConfig } from '../utils/immich'
 import { toaster } from '../components/ui/toaster'
+import { Tooltip } from '../components/ui/tooltip'
 import Papa from 'papaparse'
+
+interface AccordionSectionProps {
+  title: string
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}
+
+function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectionProps) {
+  return (
+    <Box
+      bg="var(--c-white)"
+      border="1px solid"
+      borderColor="border.subtle"
+      borderRadius="2xl"
+      boxShadow="var(--shadow-card)"
+      overflow="hidden"
+      w="100%"
+    >
+      <Button
+        type="button"
+        onClick={onToggle}
+        variant="ghost"
+        w="100%"
+        justifyContent="space-between"
+        py={5}
+        px={6}
+        h="auto"
+        _hover={{ bg: 'color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))' }}
+        borderRadius="none"
+        borderBottom={isOpen ? '1px solid' : 'none'}
+        borderColor="border.subtle"
+        cursor="pointer"
+        display="flex"
+        alignItems="center"
+      >
+        <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" m={0}>
+          {title}
+        </Heading>
+        <Box
+          as="span"
+          className="material-symbols-outlined"
+          color="var(--c-chocolate)"
+          transition="transform 0.2s ease"
+          transform={isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
+        >
+          expand_more
+        </Box>
+      </Button>
+      {isOpen && (
+        <Box p={6} animation="scale-in 0.2s ease-out">
+          {children}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 
 interface DBUser {
   student_id: string
@@ -25,6 +88,8 @@ interface DBUser {
   faculty: string | null
   role: string
   created_at: string
+  major?: string | null
+  house_position?: string | null
 }
 
 interface CSVRecord {
@@ -73,6 +138,27 @@ export function AdminDashboardPage() {
   const [eventTime, setEventTime] = useState('')
   const [updatingEvent, setUpdatingEvent] = useState(false)
 
+  // Multi-Select States
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+
+  // Accordion Sections State
+  const [expandedSections, setExpandedSections] = useState({
+    sectionA: false, // Emergency Broadcast
+    sectionB: false, // Daily Vibe Mission Sequence Configurator
+    sectionC: true,  // Student Whitelist Matrix Table
+    sectionD: false, // Historical Administrative Audit Logs Timeline
+    sectionE: false, // Portal Master Switches
+    sectionF: false, // Orientation Milestones Timer Setup
+  })
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }))
+  }
+
   // Game Engine & Config states
   const [missions, setMissions] = useState<VibeMission[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
@@ -91,6 +177,17 @@ export function AdminDashboardPage() {
   const [editMajor, setEditMajor] = useState('')
   const [editRole, setEditRole] = useState('')
   const [inspectUserLogs, setInspectUserLogs] = useState<AuditLog[]>([])
+  const [editHousePosition, setEditHousePosition] = useState('')
+  const [userToDelete, setUserToDelete] = useState<string | null>(null)
+  const [whitelistRoleTab, setWhitelistRoleTab] = useState<'student' | 'staff'>('student')
+
+  const filteredWhitelistedUsers = whitelistedUsers.filter((u) => {
+    if (whitelistRoleTab === 'student') {
+      return u.role === 'student'
+    } else {
+      return u.role !== 'student'
+    }
+  })
 
   // Mission configurator form
   const [newMissionTarget, setNewMissionTarget] = useState('')
@@ -131,7 +228,7 @@ export function AdminDashboardPage() {
       if (user?.role === 'moderator') {
         const { data: usersData } = await supabase
           .from('users')
-          .select('student_id, nickname, faculty, role, created_at')
+          .select('student_id, nickname, faculty, role, created_at, major, house_position')
           .order('created_at', { ascending: false })
         if (usersData) setWhitelistedUsers(usersData as DBUser[])
 
@@ -288,17 +385,109 @@ export function AdminDashboardPage() {
     }
   }, [user, immichConfig.isConfigured, immichConfig.url])
 
+  // Selection & Bulk Delete Helpers
+  const visibleIds = filteredWhitelistedUsers.map((u) => u.student_id)
+  const isAllSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedStudentIds.includes(id))
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedStudentIds((prev) => {
+        const newSelections = [...prev]
+        visibleIds.forEach((id) => {
+          if (!newSelections.includes(id)) {
+            newSelections.push(id)
+          }
+        })
+        return newSelections
+      })
+    } else {
+      setSelectedStudentIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
+    }
+  }
+
+  const handleSelectUser = (studentId: string, checked: boolean) => {
+    setSelectedStudentIds((prev) =>
+      checked ? [...prev, studentId] : prev.filter((id) => id !== studentId)
+    )
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedStudentIds.length === 0) return
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          role: 'student',
+          nickname: null,
+          faculty: null,
+          major: null,
+          ig: null,
+          bio: null,
+          profile_pic_url: null,
+          images: [],
+          tags: []
+        })
+        .in('student_id', selectedStudentIds)
+
+      if (error) throw error
+
+      const count = selectedStudentIds.length
+      await logAuditAction(
+        'whitelist_bulk_remove',
+        selectedStudentIds.join(','),
+        `Moderator bulk-removed ${count} users: [${selectedStudentIds.join(', ')}]`
+      )
+
+      toaster.create({
+        title: 'Bulk Removal Successful',
+        description: `Revoked whitelist and reset profiles for ${count} users.`,
+        type: 'success',
+      })
+      setSelectedStudentIds([])
+      triggerRefresh()
+    } catch (err) {
+      console.error(err)
+      toaster.create({
+        title: 'Failed to bulk-remove users',
+        type: 'error',
+      })
+    }
+  }
+
+  const getRoleDescription = (role: string) => {
+    switch (role) {
+      case 'moderator':
+        return 'Moderator: Full administrative control, whitelist management, emergency broadcasts, game configuration, and audit logs.'
+      case 'media_admin':
+        return 'Media Admin: Access to photo server connectivity status, droplet sync tracker, and media synchronization tools.'
+      case 'staff':
+        return 'Staff: Access to staff panel to verify cards, view house statistics, and manage general operations.'
+      default:
+        return 'Student: Freshmen role. Access to vibe check, collection book, hype board, and memory canvas.'
+    }
+  }
+
   // Handle Whitelist Add
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmedId = newStudentId.trim()
-    if (!trimmedId) return
+    // Trim spaces and strip non-numeric symbols
+    const sanitizedId = newStudentId.trim().replace(/\D/g, '')
+
+    // Validate length fits between 7 and 10 digits
+    if (!sanitizedId || sanitizedId.length < 7 || sanitizedId.length > 10) {
+      toaster.create({
+        title: 'Validation Failed',
+        description: 'Student ID must be between 7 and 10 digits.',
+        type: 'error',
+      })
+      return
+    }
 
     try {
       const { data, error } = await supabase
         .from('users')
         .insert({
-          student_id: trimmedId,
+          student_id: sanitizedId,
           role: newRole,
         })
         .select()
@@ -306,10 +495,10 @@ export function AdminDashboardPage() {
       if (error) throw error
 
       if (data) {
-        await logAuditAction('whitelist_add', trimmedId, `Manually whitelisted student as role: ${newRole}`)
+        await logAuditAction('whitelist_add', sanitizedId, `Manually whitelisted student as role: ${newRole}`)
         toaster.create({
           title: 'Student Whitelisted!',
-          description: `ID ${trimmedId} whitelisted as ${newRole}.`,
+          description: `ID ${sanitizedId} whitelisted as ${newRole}.`,
           type: 'success',
         })
         setNewStudentId('')
@@ -327,7 +516,6 @@ export function AdminDashboardPage() {
 
   // Handle Whitelist Remove (Soft Deactivation)
   const handleRemoveWhitelist = async (studentId: string) => {
-    if (!window.confirm(`Are you sure you want to revoke staff access for ID ${studentId}?`)) return
     try {
       const { error } = await supabase
         .from('users')
@@ -369,17 +557,19 @@ export function AdminDashboardPage() {
     setEditFaculty(u.faculty || '')
     setEditRole(u.role)
     setEditMajor('')
+    setEditHousePosition('')
     setInspectUserStats(null)
     setInspectUserLogs([])
 
     try {
       const { data: detailData } = await supabase
         .from('users')
-        .select('major')
+        .select('major, house_position')
         .eq('student_id', u.student_id)
         .single()
       if (detailData) {
         setEditMajor(detailData.major || '')
+        setEditHousePosition(detailData.house_position || '')
       }
 
       // Fetch collection statistics
@@ -425,6 +615,7 @@ export function AdminDashboardPage() {
           faculty: editFaculty || null,
           major: editMajor || null,
           role: editRole,
+          house_position: editHousePosition || null,
         })
         .eq('student_id', inspectUser.student_id)
 
@@ -433,7 +624,7 @@ export function AdminDashboardPage() {
       await logAuditAction(
         'user_update',
         inspectUser.student_id,
-        `Details edited: role=${editRole}, nickname="${editNickname}", faculty="${editFaculty}", major="${editMajor}"`
+        `Details edited: role=${editRole}, nickname="${editNickname}", faculty="${editFaculty}", major="${editMajor}", house_position="${editHousePosition}"`
       )
 
       toaster.create({
@@ -516,31 +707,53 @@ export function AdminDashboardPage() {
   // Handle Emergency Announcement Broadcast Save
   const handleSaveEmergencyAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault()
+    const token = localStorage.getItem('baan7_session_token')
+    const trimmedText = emergencyText.trim()
+    
+    if (!trimmedText) {
+      toaster.create({
+        title: 'Empty Announcement',
+        description: 'Please enter a valid announcement message.',
+        type: 'warning',
+      })
+      return
+    }
+
     try {
-      const { error } = await supabase
-        .from('system_config')
-        .upsert({
-          key: 'emergency_announcement',
-          value: emergencyActive,
-          text_value: emergencyText,
-        }, { onConflict: 'key' })
+      const { error } = await supabase.rpc('broadcast_emergency_message', {
+        p_session_token: token,
+        p_active: emergencyActive,
+        p_text: trimmedText,
+      })
 
       if (error) throw error
 
-      await logAuditAction(
-        'emergency_broadcast',
-        'system_config',
-        `Broadcast updated: active=${emergencyActive}, text="${emergencyText}"`
-      )
+      setEmergencyText(trimmedText)
+
       toaster.create({
         title: 'Emergency Announcement Saved!',
         description: emergencyActive ? 'Broadcast is live!' : 'Broadcast disabled.',
         type: 'success',
       })
+
+      // Broadcast the active real-time WebSocket state change to trigger layout sync
+      const syncChannel = supabase.channel('system_config_emergency')
+      syncChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          syncChannel.send({
+            type: 'broadcast',
+            event: 'emergency_announcement',
+            payload: { value: emergencyActive, text_value: trimmedText }
+          }).then(() => {
+            supabase.removeChannel(syncChannel)
+          })
+        }
+      })
     } catch (err) {
       console.error(err)
       toaster.create({
         title: 'Failed to save announcement',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred.',
         type: 'error',
       })
     }
@@ -793,184 +1006,29 @@ export function AdminDashboardPage() {
 
       {/* TIER 1: Moderator Panel */}
       {activeTab === 'moderator' && user?.role === 'moderator' && (
-        <VStack align="stretch" gap={8}>
-          
-          {/* Whitelist Manager */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
-              <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)">
-                Student ID Whitelisting
-              </Heading>
-              
-              {/* CSV Upload Inputs */}
-              <Box>
-                <Input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleCSVUpload}
-                  ref={fileInputRef}
-                  display="none"
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  bg="var(--c-chocolate)"
-                  color="white"
-                  h="44px"
-                  px={6}
-                  borderRadius="xl"
-                  cursor="pointer"
-                  _hover={{ bg: 'chocolate.600' }}
-                >
-                  Upload CSV
-                </Button>
-              </Box>
-            </Flex>
-
-            <Flex as="form" onSubmit={handleAddWhitelist} gap={3} flexWrap="wrap" align="end" mb={6}>
-              <VStack align="start" gap={1}>
-                <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Student ID</Text>
-                <Input
-                  placeholder="e.g. 6688225"
-                  value={newStudentId}
-                  onChange={(e) => setNewStudentId(e.target.value.replace(/\D/g, ''))}
-                  h="44px"
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-ivory)"
-                  maxW="200px"
-                  required
-                />
-              </VStack>
-              <VStack align="start" gap={1}>
-                <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Role Assignment</Text>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                  style={{
-                    height: '44px',
-                    borderRadius: '12px',
-                    border: '1.5px solid var(--c-outline)',
-                    backgroundColor: 'var(--c-ivory)',
-                    paddingLeft: '12px',
-                    paddingRight: '12px',
-                    fontSize: '0.875rem',
-                    minWidth: '150px',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                  }}
-                  aria-label="Role Assignment"
-                  title="Role Assignment"
-                >
-                  <option value="student">Student (น้องบ้าน)</option>
-                  <option value="staff">Staff (สตาฟบ้าน)</option>
-                  <option value="media_admin">Media Admin (โสต)</option>
-                  <option value="moderator">Moderator</option>
-                </select>
-              </VStack>
-              <Button
-                type="submit"
-                bg="var(--c-lagoon)"
-                color="white"
-                h="44px"
-                px={6}
-                borderRadius="xl"
-                cursor="pointer"
-                _hover={{ bg: '#3c5156' }}
-              >
-                Whitelist ID
-              </Button>
-            </Flex>
-
-            {/* Whitelisted Users Table */}
-            <Box overflowX="auto" maxH="350px" overflowY="auto">
-              <Table.Root size="sm" variant="line">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>Student ID</Table.ColumnHeader>
-                    <Table.ColumnHeader>Nickname</Table.ColumnHeader>
-                    <Table.ColumnHeader>Faculty</Table.ColumnHeader>
-                    <Table.ColumnHeader>Role</Table.ColumnHeader>
-                    <Table.ColumnHeader>Status</Table.ColumnHeader>
-                    <Table.ColumnHeader textAlign="right">Actions</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {whitelistedUsers.map((u) => (
-                    <Table.Row key={u.student_id}>
-                      <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
-                      <Table.Cell>{u.nickname || <Text as="span" color="fg.subtle" fontStyle="italic">Pending Onboarding</Text>}</Table.Cell>
-                      <Table.Cell>{u.faculty || '-'}</Table.Cell>
-                      <Table.Cell>
-                        <Badge colorPalette={u.role === 'moderator' ? 'red' : u.role === 'staff' ? 'orange' : u.role === 'media_admin' ? 'blue' : 'gray'}>
-                          {u.role}
-                        </Badge>
-                      </Table.Cell>
-                      <Table.Cell>
-                        {u.nickname ? (
-                          <Badge colorPalette="green">Registered</Badge>
-                        ) : (
-                          <Badge colorPalette="yellow">Whitelisted</Badge>
-                        )}
-                      </Table.Cell>
-                      <Table.Cell textAlign="right">
-                        <HStack gap={2} justify="end">
-                          <Button
-                            size="sm"
-                            h="40px"
-                            px={4}
-                            variant="outline"
-                            onClick={() => handleInspectUser(u)}
-                            cursor="pointer"
-                            aria-label={`Inspect details for student ID ${u.student_id}`}
-                            title={`Inspect details for student ID ${u.student_id}`}
-                          >
-                            Inspect
-                          </Button>
-                          <Button
-                            size="sm"
-                            h="40px"
-                            px={4}
-                            variant="ghost"
-                            colorPalette="red"
-                            onClick={() => handleRemoveWhitelist(u.student_id)}
-                            cursor="pointer"
-                            aria-label={`Remove student ID ${u.student_id} from whitelist`}
-                            title={`Remove student ID ${u.student_id} from whitelist`}
-                          >
-                            Remove
-                          </Button>
-                        </HStack>
-                      </Table.Cell>
-                    </Table.Row>
-                  ))}
-                </Table.Body>
-              </Table.Root>
-            </Box>
-          </Box>
-
-          {/* Emergency Broadcast Editor */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              🚨 Emergency Broadcast Alert
-            </Heading>
+        <VStack align="stretch" gap={6}>
+          {/* Section A: Emergency Broadcast Control */}
+          <AccordionSection
+            title="Emergency Broadcast Control (ประกาศด่วนหน้างาน)"
+            isOpen={expandedSections.sectionA}
+            onToggle={() => toggleSection('sectionA')}
+          >
             <VStack as="form" onSubmit={handleSaveEmergencyAnnouncement} gap={4} align="stretch">
               <Box>
                 <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={1} textTransform="uppercase">Announcement Text</Text>
-                <textarea
+                <Textarea
                   placeholder="Type an announcement to display globally at the top header..."
                   value={emergencyText}
                   onChange={(e) => setEmergencyText(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: '80px',
-                    borderRadius: '12px',
-                    border: '1.5px solid var(--c-outline)',
-                    backgroundColor: 'var(--c-ivory)',
-                    padding: '12px',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                  }}
+                  h="80px"
+                  borderRadius="xl"
+                  border="1.5px solid var(--c-outline)"
+                  bg="var(--c-ivory)"
+                  p={3}
+                  fontSize="sm"
+                  outline="none"
+                  resize="none"
+                  _focus={{ borderColor: 'var(--c-lagoon)', boxShadow: '0 0 0 2px var(--c-lagoon-light)' }}
                 />
               </Box>
               <Flex align="center" justify="space-between">
@@ -1000,13 +1058,14 @@ export function AdminDashboardPage() {
                 </Button>
               </Flex>
             </VStack>
-          </Box>
+          </AccordionSection>
 
-          {/* Gamification Config & Mission Chain Builder */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              🎮 Vibe Mission Chain Builder
-            </Heading>
+          {/* Section B: Daily Vibe Mission Sequence Configurator */}
+          <AccordionSection
+            title="Daily Vibe Mission Sequence Configurator (ตั้งค่าคิวภารกิจประจำวัน)"
+            isOpen={expandedSections.sectionB}
+            onToggle={() => toggleSection('sectionB')}
+          >
             <VStack align="stretch" gap={6}>
               {/* Mission list */}
               <Box border="1px solid" borderColor="border.subtle" borderRadius="xl" overflow="hidden">
@@ -1057,16 +1116,7 @@ export function AdminDashboardPage() {
                   <select
                     value={newMissionTarget}
                     onChange={(e) => setNewMissionTarget(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid var(--c-outline)',
-                      backgroundColor: 'var(--c-white)',
-                      paddingLeft: '8px',
-                      paddingRight: '8px',
-                      fontSize: '0.875rem',
-                      outline: 'none',
-                    }}
+                    className="admin-select-white-sm custom-select"
                     aria-label="Target Staff Category"
                     title="Target Staff Category"
                     required
@@ -1149,13 +1199,229 @@ export function AdminDashboardPage() {
                 </Button>
               </VStack>
             </VStack>
-          </Box>
+          </AccordionSection>
 
-          {/* Audit Logs Viewer */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              📋 Chronological System Audit Timeline
-            </Heading>
+          {/* Section C: Student Whitelist Matrix Table */}
+          <AccordionSection
+            title="Student Whitelist Matrix Table (ระบบจัดการและกรองรายชื่อแยก Tabs)"
+            isOpen={expandedSections.sectionC}
+            onToggle={() => toggleSection('sectionC')}
+          >
+            <Box>
+              <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
+                <Heading as="h3" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" m={0}>
+                  Student ID Whitelisting
+                </Heading>
+                
+                {/* CSV Upload Inputs */}
+                <Box>
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    ref={fileInputRef}
+                    display="none"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    bg="var(--c-chocolate)"
+                    color="white"
+                    h="44px"
+                    px={6}
+                    borderRadius="xl"
+                    cursor="pointer"
+                    _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
+                  >
+                    Upload CSV
+                  </Button>
+                </Box>
+              </Flex>
+
+              <Flex as="form" onSubmit={handleAddWhitelist} gap={3} flexWrap="wrap" align="end" mb={6}>
+                <VStack align="start" gap={1}>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Student ID</Text>
+                  <Input
+                    placeholder="e.g. 6688225"
+                    value={newStudentId}
+                    onChange={(e) => setNewStudentId(e.target.value.replace(/\D/g, ''))}
+                    h="44px"
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    bg="var(--c-ivory)"
+                    maxW="200px"
+                    required
+                  />
+                </VStack>
+                <VStack align="start" gap={1}>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Role Assignment</Text>
+                  <Tooltip label={getRoleDescription(newRole)}>
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value)}
+                      className="admin-select-lg custom-select"
+                      aria-label="Role Assignment"
+                      title="Role Assignment"
+                    >
+                      <option value="student">Student (น้องบ้าน)</option>
+                      <option value="staff">Staff (สตาฟบ้าน)</option>
+                      <option value="media_admin">Media Admin (โสต)</option>
+                      <option value="moderator">Moderator</option>
+                    </select>
+                  </Tooltip>
+                </VStack>
+                <Button
+                  type="submit"
+                  bg="var(--c-lagoon)"
+                  color="white"
+                  h="44px"
+                  px={6}
+                  borderRadius="xl"
+                  cursor="pointer"
+                  _hover={{ bg: 'color-mix(in srgb, var(--c-lagoon) 85%, black)' }}
+                >
+                  Whitelist ID
+                </Button>
+              </Flex>
+
+              {/* Whitelist tab filters */}
+              <Tabs.Root 
+                defaultValue="student" 
+                value={whitelistRoleTab} 
+                onValueChange={(details) => setWhitelistRoleTab(details.value as 'student' | 'staff')}
+                variant="line" 
+                mb={4}
+              >
+                <Tabs.List borderColor="border.subtle">
+                  <Tabs.Trigger value="student" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2}>
+                    Freshmen Only ({whitelistedUsers.filter(u => u.role === 'student').length})
+                  </Tabs.Trigger>
+                  <Tabs.Trigger value="staff" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2}>
+                    Staff & Moderators ({whitelistedUsers.filter(u => u.role !== 'student').length})
+                  </Tabs.Trigger>
+                </Tabs.List>
+              </Tabs.Root>
+
+              {/* Whitelisted Users Table */}
+              <Box overflowX="auto" maxH="350px" overflowY="auto">
+                <Table.Root size="sm" variant="line">
+                  <Table.Header>
+                    <Table.Row>
+                      <Table.ColumnHeader width="40px" textAlign="center">
+                        <label
+                          htmlFor="select-all-checkbox"
+                          className="checkbox-label-wrapper"
+                        >
+                          <input
+                            id="select-all-checkbox"
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              accentColor: 'var(--c-lagoon)',
+                              cursor: 'pointer',
+                            }}
+                            aria-label="Select all students on page"
+                            title="Select all students on page"
+                          />
+                        </label>
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader>Student ID</Table.ColumnHeader>
+                      <Table.ColumnHeader>Nickname</Table.ColumnHeader>
+                      <Table.ColumnHeader>Faculty</Table.ColumnHeader>
+                      <Table.ColumnHeader>Role</Table.ColumnHeader>
+                      <Table.ColumnHeader>Status</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">Actions</Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {filteredWhitelistedUsers.map((u) => (
+                      <Table.Row key={u.student_id}>
+                        <Table.Cell textAlign="center" py={3}>
+                          <label
+                            htmlFor={`select-user-${u.student_id}`}
+                            className="checkbox-label-wrapper"
+                          >
+                            <input
+                              id={`select-user-${u.student_id}`}
+                              type="checkbox"
+                              checked={selectedStudentIds.includes(u.student_id)}
+                              onChange={(e) => handleSelectUser(u.student_id, e.target.checked)}
+                              style={{
+                                width: '20px',
+                                height: '20px',
+                                accentColor: 'var(--c-lagoon)',
+                                cursor: 'pointer',
+                              }}
+                              aria-label={`Select student ID ${u.student_id}`}
+                              title={`Select student ID ${u.student_id}`}
+                            />
+                          </label>
+                        </Table.Cell>
+                        <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
+                        <Table.Cell>{u.nickname || <Text as="span" color="fg.subtle" fontStyle="italic">Pending Onboarding</Text>}</Table.Cell>
+                        <Table.Cell>{u.faculty || '-'}</Table.Cell>
+                        <Table.Cell>
+                          <Tooltip label={getRoleDescription(u.role)}>
+                            <Badge
+                              colorPalette={u.role === 'moderator' ? 'red' : u.role === 'staff' ? 'orange' : u.role === 'media_admin' ? 'blue' : 'gray'}
+                              cursor="help"
+                            >
+                              {u.role}
+                            </Badge>
+                          </Tooltip>
+                        </Table.Cell>
+                        <Table.Cell>
+                          {u.nickname ? (
+                            <Badge colorPalette="green">Registered</Badge>
+                          ) : (
+                            <Badge colorPalette="yellow">Whitelisted</Badge>
+                          )}
+                        </Table.Cell>
+                        <Table.Cell textAlign="right">
+                          <HStack gap={2} justify="end">
+                            <Button
+                              size="sm"
+                              h="40px"
+                              px={4}
+                              variant="outline"
+                              onClick={() => handleInspectUser(u)}
+                              cursor="pointer"
+                              aria-label={`Inspect details for student ID ${u.student_id}`}
+                              title={`Inspect details for student ID ${u.student_id}`}
+                            >
+                              Inspect
+                            </Button>
+                            <Button
+                              size="sm"
+                              h="40px"
+                              px={4}
+                              variant="ghost"
+                              colorPalette="red"
+                              onClick={() => setUserToDelete(u.student_id)}
+                              cursor="pointer"
+                              aria-label={`Remove student ID ${u.student_id} from whitelist`}
+                              title={`Remove student ID ${u.student_id} from whitelist`}
+                            >
+                              Remove
+                            </Button>
+                          </HStack>
+                        </Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Root>
+              </Box>
+            </Box>
+          </AccordionSection>
+
+          {/* Section D: Historical Administrative Audit Logs Timeline */}
+          <AccordionSection
+            title="Historical Administrative Audit Logs Timeline (บันทึกประวัติระบบ)"
+            isOpen={expandedSections.sectionD}
+            onToggle={() => toggleSection('sectionD')}
+          >
             <Box overflowY="auto" maxH="250px" border="1px solid" borderColor="border.subtle" borderRadius="xl">
               <Table.Root size="sm" variant="line">
                 <Table.Header bg="var(--c-ivory)">
@@ -1195,18 +1461,19 @@ export function AdminDashboardPage() {
                 </Table.Body>
               </Table.Root>
             </Box>
-          </Box>
+          </AccordionSection>
 
-          {/* Portal Master Switches */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              Portal Master Switches
-            </Heading>
+          {/* Section E: Portal Master Switches */}
+          <AccordionSection
+            title="Portal Master Switches (สวิตช์ควบคุมระบบ)"
+            isOpen={expandedSections.sectionE}
+            onToggle={() => toggleSection('sectionE')}
+          >
             <VStack gap={4} align="stretch">
               <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
                 <Box>
                   <Text fontWeight="600" color="var(--c-chocolate)">Hype Board Active</Text>
-                  <Text fontSize="xs" color="fg.muted">Enable the Twitter-like aggregate chat block feeds.</Text>
+                  <Text fontSize="xs" color="fg.muted">Enable the aggregate chat block feeds.</Text>
                 </Box>
                 <Button
                   type="button"
@@ -1241,13 +1508,14 @@ export function AdminDashboardPage() {
                 </Button>
               </Flex>
             </VStack>
-          </Box>
+          </AccordionSection>
 
-          {/* Future Events Calendar */}
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              Orientation Milestones Timer Setup
-            </Heading>
+          {/* Section F: Orientation Milestones Timer Setup */}
+          <AccordionSection
+            title="Orientation Milestones Timer Setup (ตั้งค่าเวลานับถอยหลัง)"
+            isOpen={expandedSections.sectionF}
+            onToggle={() => toggleSection('sectionF')}
+          >
             <VStack as="form" onSubmit={handleUpdateEvent} gap={4} align="stretch">
               <Flex gap={4} flexWrap="wrap">
                 <VStack align="start" gap={1} flex={1} minW="200px">
@@ -1288,7 +1556,7 @@ export function AdminDashboardPage() {
                 Configure Timer
               </Button>
             </VStack>
-          </Box>
+          </AccordionSection>
         </VStack>
       )}
 
@@ -1323,7 +1591,7 @@ export function AdminDashboardPage() {
             <Heading as="h3" fontSize="sm" fontWeight="700" color="var(--c-chocolate)" mb={2}>
               DigitalOcean Droplet Sync Log Tracker
             </Heading>
-            <Box bg="var(--c-ink)" color="#00ff00" p={4} borderRadius="xl" fontFamily="monospace" fontSize="xs" h="150px" overflowY="auto">
+            <Box bg="var(--c-ink)" color="green.400" p={4} borderRadius="xl" fontFamily="monospace" fontSize="xs" h="150px" overflowY="auto">
               <Text>[{new Date().toISOString()}] INITIALIZING Droplet connectivity check...</Text>
               <Text>[{new Date().toISOString()}] GET config url: {immichConfig.url || 'local_db'}</Text>
               <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
@@ -1333,99 +1601,103 @@ export function AdminDashboardPage() {
         </VStack>
       )}
 
-      {/* CSV Preview Modal Workflow */}
+      {/* CSV Preview Dialog */}
       {showCsvModal && (
-        <Box
-          position="fixed"
-          inset={0}
-          bg="rgba(0,0,0,0.5)"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          zIndex={1000}
-          px={4}
-        >
-          <Box
-            bg="bg.surface"
-            borderRadius="2xl"
-            maxW="2xl"
-            w="100%"
-            maxH="80vh"
-            p={6}
-            boxShadow="xl"
-            display="flex"
-            flexDirection="column"
-            animation="scale-in 0.3s ease-out"
-          >
-            <Heading size="md" mb={2} color="var(--c-chocolate)">
-              CSV Upload Preview & Duplicate Validation
-            </Heading>
-            <Text fontSize="xs" color="fg.subtle" mb={4}>
-              Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
-            </Text>
+        <Dialog.Root open={showCsvModal} onOpenChange={(e) => setShowCsvModal(e.open)}>
+          <Dialog.Backdrop bg="rgba(0, 0, 0, 0.5)" />
+          <Dialog.Positioner zIndex={1000} px={4}>
+            <Dialog.Content
+              bg="var(--c-ivory)"
+              border="2px solid var(--c-chocolate)"
+              color="var(--c-ink)"
+              borderRadius="2xl"
+              maxW="2xl"
+              w="100%"
+              maxH="80vh"
+              p={6}
+              boxShadow="none"
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Dialog.Header p={0} mb={2}>
+                <Dialog.Title fontSize="xl" fontWeight="bold" color="var(--c-chocolate)">
+                  CSV Upload Preview & Duplicate Validation
+                </Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" mb={4}>
+                <Text fontSize="xs" color="fg.subtle" mb={4}>
+                  Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
+                </Text>
 
-            <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
-              <Table.Root size="sm" variant="line">
-                <Table.Header>
-                  <Table.Row>
-                    <Table.ColumnHeader>Student ID</Table.ColumnHeader>
-                    <Table.ColumnHeader>Nickname</Table.ColumnHeader>
-                    <Table.ColumnHeader>Faculty</Table.ColumnHeader>
-                    <Table.ColumnHeader>Role</Table.ColumnHeader>
-                    <Table.ColumnHeader>Validation</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {csvRecords.map((row, idx) => {
-                    const dup = isDuplicate(row.student_id)
-                    return (
-                      <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
-                        <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
-                        <Table.Cell>{row.nickname || '-'}</Table.Cell>
-                        <Table.Cell>{row.faculty || '-'}</Table.Cell>
-                        <Table.Cell>
-                          <Badge colorPalette="gray">{row.role}</Badge>
-                        </Table.Cell>
-                        <Table.Cell>
-                          {dup ? (
-                            <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
-                          ) : (
-                            <Badge colorPalette="green">New Record</Badge>
-                          )}
-                        </Table.Cell>
+                <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
+                  <Table.Root size="sm" variant="line">
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.ColumnHeader>Student ID</Table.ColumnHeader>
+                        <Table.ColumnHeader>Nickname</Table.ColumnHeader>
+                        <Table.ColumnHeader>Faculty</Table.ColumnHeader>
+                        <Table.ColumnHeader>Role</Table.ColumnHeader>
+                        <Table.ColumnHeader>Validation</Table.ColumnHeader>
                       </Table.Row>
-                    )
-                  })}
-                </Table.Body>
-              </Table.Root>
-            </Box>
+                    </Table.Header>
+                    <Table.Body>
+                      {csvRecords.map((row, idx) => {
+                        const dup = isDuplicate(row.student_id)
+                        return (
+                          <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
+                            <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
+                            <Table.Cell>{row.nickname || '-'}</Table.Cell>
+                            <Table.Cell>{row.faculty || '-'}</Table.Cell>
+                            <Table.Cell>
+                              <Badge colorPalette="gray">{row.role}</Badge>
+                            </Table.Cell>
+                            <Table.Cell>
+                              {dup ? (
+                                <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
+                              ) : (
+                                <Badge colorPalette="green">New Record</Badge>
+                              )}
+                            </Table.Cell>
+                          </Table.Row>
+                        )
+                      })}
+                    </Table.Body>
+                  </Table.Root>
+                </Box>
+              </Dialog.Body>
 
-            <HStack gap={3} justify="end">
-              <Button
-                variant="outline"
-                onClick={() => setShowCsvModal(false)}
-                h="44px"
-                borderRadius="xl"
-                cursor="pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                bg="accent.solid"
-                color="white"
-                onClick={handleBatchUpsert}
-                loading={upserting}
-                h="44px"
-                px={6}
-                borderRadius="xl"
-                cursor="pointer"
-                _hover={{ bg: '#603e2c' }}
-              >
-                Batch Upsert ({csvRecords.length} records)
-              </Button>
-            </HStack>
-          </Box>
-        </Box>
+              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                <Dialog.CloseTrigger asChild>
+                  <Button
+                    variant="outline"
+                    h="44px"
+                    borderRadius="xl"
+                    cursor="pointer"
+                  >
+                    Cancel
+                  </Button>
+                </Dialog.CloseTrigger>
+                <Button
+                  bg="accent.solid"
+                  color="white"
+                  onClick={handleBatchUpsert}
+                  loading={upserting}
+                  h="44px"
+                  px={6}
+                  borderRadius="xl"
+                  cursor="pointer"
+                  _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
+                >
+                  Batch Upsert ({csvRecords.length} records)
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <CloseButton size="sm" cursor="pointer" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
       )}
 
       {/* Mobile-First User Inspector Bottom Sheet Drawer */}
@@ -1505,14 +1777,14 @@ export function AdminDashboardPage() {
                   <Input
                     id="inspect-faculty"
                     value={editFaculty}
-                    onChange={(e) => setEditFaculty(e.target.value)}
+                    onChange={(e) => setInspectUser(prev => prev ? { ...prev, faculty: e.target.value } : null)}
                     bg="var(--c-ivory)"
                     h="38px"
                   />
                 </Box>
                 <Box>
                   <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-major">Major / Position (e.g. โสต, สันทนาการ)</label>
+                    <label htmlFor="inspect-major">Major (สาขาวิชา)</label>
                   </Box>
                   <Input
                     id="inspect-major"
@@ -1524,30 +1796,36 @@ export function AdminDashboardPage() {
                 </Box>
                 <Box>
                   <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                    <label htmlFor="inspect-house-position">House Position (ตำแหน่ง staff)</label>
+                  </Box>
+                  <Input
+                    id="inspect-house-position"
+                    value={editHousePosition}
+                    onChange={(e) => setEditHousePosition(e.target.value)}
+                    bg="var(--c-ivory)"
+                    placeholder="e.g. สันทนาการ, โสต"
+                    h="38px"
+                  />
+                </Box>
+                <Box>
+                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
                     <label htmlFor="inspect-role">System Role</label>
                   </Box>
-                  <select
-                    id="inspect-role"
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value)}
-                    style={{
-                      height: '38px',
-                      borderRadius: '8px',
-                      border: '1.5px solid var(--c-outline)',
-                      backgroundColor: 'var(--c-ivory)',
-                      paddingLeft: '8px',
-                      paddingRight: '8px',
-                      fontSize: '0.875rem',
-                      width: '100%',
-                    }}
-                    aria-label="Edit System Role"
-                    title="Edit System Role"
-                  >
-                    <option value="student">student</option>
-                    <option value="staff">staff</option>
-                    <option value="media_admin">media_admin</option>
-                    <option value="moderator">moderator</option>
-                  </select>
+                  <Tooltip label={getRoleDescription(editRole)}>
+                    <select
+                      id="inspect-role"
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      className="admin-select-sm custom-select"
+                      aria-label="Edit System Role"
+                      title="Edit System Role"
+                    >
+                      <option value="student">student</option>
+                      <option value="staff">staff</option>
+                      <option value="media_admin">media_admin</option>
+                      <option value="moderator">moderator</option>
+                    </select>
+                  </Tooltip>
                 </Box>
                 <Button type="submit" bg="var(--c-chocolate)" color="white" h="40px" borderRadius="lg" cursor="pointer">
                   Save Changes
@@ -1575,6 +1853,195 @@ export function AdminDashboardPage() {
           </Box>
         </Portal>
       )}
+
+      {/* Whitelist Remove Confirmation Dialog */}
+      {userToDelete && (
+        <Dialog.Root open={!!userToDelete} onOpenChange={() => setUserToDelete(null)} role="alertdialog">
+          <Dialog.Backdrop bg="rgba(20, 16, 15, 0.7)" backdropFilter="blur(8px)" />
+          <Dialog.Positioner zIndex={2200} px={4}>
+            <Dialog.Content
+              bg="var(--c-ivory)"
+              border="2px solid var(--c-chocolate)"
+              color="var(--c-ink)"
+              borderRadius="2xl"
+              maxW="sm"
+              w="100%"
+              maxH="90vh"
+              p={6}
+              boxShadow="none"
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Dialog.Header p={0} mb={3}>
+                <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    warning
+                  </Box>
+                  Confirm Whitelist Removal
+                </Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body p={0} mb={5}>
+                <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                  Are you sure you want to remove user <strong>{userToDelete}</strong>? This action will revoke their whitelist status and soft-deactivate their profile.
+                </Text>
+              </Dialog.Body>
+              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                <Dialog.CloseTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="border.subtle"
+                    borderRadius="xl"
+                    cursor="pointer"
+                    h="40px"
+                    px={4}
+                  >
+                    Cancel
+                  </Button>
+                </Dialog.CloseTrigger>
+                <Button
+                  size="sm"
+                  bg="red.600"
+                  _hover={{ bg: "red.700" }}
+                  color="white"
+                  borderRadius="xl"
+                  onClick={async () => {
+                    await handleRemoveWhitelist(userToDelete);
+                    setUserToDelete(null);
+                  }}
+                  cursor="pointer"
+                  h="40px"
+                  px={4}
+                >
+                  Confirm Delete
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <CloseButton size="sm" cursor="pointer" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      )}
+
+      {/* Floating Bulk Actions Bar */}
+      {selectedStudentIds.length > 0 && (
+        <Box
+          position="fixed"
+          bottom="80px"
+          left="50%"
+          transform="translateX(-50%)"
+          zIndex={1500}
+          w="calc(100% - 32px)"
+          maxW="md"
+          bg="var(--c-chocolate)"
+          color="white"
+          borderRadius="2xl"
+          boxShadow="lg"
+          py={3}
+          px={5}
+          animation="slide-up 0.3s var(--ease-out-quint)"
+        >
+          <Flex align="center" justify="space-between" gap={4}>
+            <HStack gap={2}>
+              <Box as="span" className="material-symbols-outlined" fontSize="20px" color="var(--c-chocolate-light)">
+                check_box
+              </Box>
+              <Text fontSize="sm" fontWeight="700">
+                Selected: {selectedStudentIds.length} users
+              </Text>
+            </HStack>
+            <Button
+              size="sm"
+              bg="red.600"
+              _hover={{ bg: 'color-mix(in srgb, var(--c-error) 85%, black)' }}
+              color="white"
+              borderRadius="xl"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              cursor="pointer"
+              fontSize="xs"
+              h="36px"
+              px={4}
+            >
+              Remove Selected (ลบรายชื่อที่เลือก)
+            </Button>
+          </Flex>
+        </Box>
+      )}
+
+      {/* Bulk Delete Confirmation Dialog */}
+      {isBulkDeleteOpen && (
+        <Dialog.Root open={isBulkDeleteOpen} onOpenChange={(e) => setIsBulkDeleteOpen(e.open)} role="alertdialog">
+          <Dialog.Backdrop bg="rgba(20, 16, 15, 0.7)" backdropFilter="blur(8px)" />
+          <Dialog.Positioner zIndex={2200} px={4}>
+            <Dialog.Content
+              bg="var(--c-ivory)"
+              border="2px solid var(--c-chocolate)"
+              color="var(--c-ink)"
+              borderRadius="2xl"
+              maxW="sm"
+              w="100%"
+              maxH="90vh"
+              p={6}
+              boxShadow="none"
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Dialog.Header p={0} mb={3}>
+                <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    warning
+                  </Box>
+                  Confirm Bulk Removal
+                </Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body p={0} mb={5}>
+                <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                  Are you sure you want to remove <strong>{selectedStudentIds.length}</strong> selected users? This action will revoke their whitelist status, soft-deactivate their profiles, and revert their roles to student.
+                </Text>
+              </Dialog.Body>
+              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                <Dialog.CloseTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    borderColor="border.subtle"
+                    borderRadius="xl"
+                    onClick={() => setIsBulkDeleteOpen(false)}
+                    cursor="pointer"
+                    h="40px"
+                    px={4}
+                  >
+                    Cancel
+                  </Button>
+                </Dialog.CloseTrigger>
+                <Button
+                  size="sm"
+                  bg="red.600"
+                  _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
+                  color="white"
+                  borderRadius="xl"
+                  onClick={async () => {
+                    await handleBulkDeleteConfirm();
+                    setIsBulkDeleteOpen(false);
+                  }}
+                  cursor="pointer"
+                  h="40px"
+                  px={4}
+                >
+                  Confirm Bulk Delete
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <CloseButton size="sm" cursor="pointer" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      )}
     </Box>
   )
 }
+

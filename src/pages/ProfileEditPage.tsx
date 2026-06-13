@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   Flex,
   Image,
   NativeSelect,
+  Textarea,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
@@ -76,7 +77,6 @@ const STAFF_ROLES = [
 export function ProfileEditPage() {
   const navigate = useNavigate()
   const { user, updateProfile } = useUser()
-  const isStaff = user?.role && user.role !== 'student'
 
   const [nickname, setNickname] = useState(user?.nickname || '')
   const [faculty, setFaculty] = useState(user?.faculty || '')
@@ -89,86 +89,21 @@ export function ProfileEditPage() {
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Zoom and Crop States
+  // House Position States (Option A predefined roles + custom fallback)
+  const isCustomPosition = user?.house_position && !STAFF_ROLES.includes(user.house_position)
+  const [housePosition, setHousePosition] = useState(user?.house_position || '')
+  const [selectedSelectRole, setSelectedSelectRole] = useState(isCustomPosition ? 'Other' : (user?.house_position || ''))
+  const [customPositionText, setCustomPositionText] = useState(isCustomPosition ? (user?.house_position || '') : '')
+
+  // Crop States
   const [isOpenCrop, setIsOpenCrop] = useState(false)
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null)
-  const [zoom, setZoom] = useState(1.0)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const dragStart = useRef({ x: 0, y: 0 })
-
-  const C = 400 // Canvas resolution
-  const D = 320 // Display size in px
-  const canvasScaleFactor = C / D
 
   useEffect(() => {
     if (!user) {
       navigate('/login')
     }
   }, [user, navigate])
-
-  const clampPan = (px: number, py: number, currentZoom: number) => {
-    if (!imageObj) return { x: 0, y: 0 }
-    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
-    const scale = baseScale * currentZoom
-    const sw = imageObj.width * scale
-    const sh = imageObj.height * scale
-
-    const limitX = Math.max(0, (sw - C) / 2)
-    const limitY = Math.max(0, (sh - C) / 2)
-
-    return {
-      x: Math.max(-limitX, Math.min(limitX, px)),
-      y: Math.max(-limitY, Math.min(limitY, py)),
-    }
-  }
-
-  const handleStart = (clientX: number, clientY: number) => {
-    if (!imageObj) return
-    setIsDragging(true)
-    dragStart.current = {
-      x: clientX * canvasScaleFactor - pan.x,
-      y: clientY * canvasScaleFactor - pan.y,
-    }
-  }
-
-  const handleMove = (clientX: number, clientY: number) => {
-    if (!isDragging || !imageObj) return
-    const newX = clientX * canvasScaleFactor - dragStart.current.x
-    const newY = clientY * canvasScaleFactor - dragStart.current.y
-    const clamped = clampPan(newX, newY, zoom)
-    setPan(clamped)
-  }
-
-  const handleEnd = () => {
-    setIsDragging(false)
-  }
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !imageObj || !isOpenCrop) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Clear canvas
-    ctx.clearRect(0, 0, C, C)
-
-    // Calculate scaling
-    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
-    const scale = baseScale * zoom
-    const sw = imageObj.width * scale
-    const sh = imageObj.height * scale
-
-    // Centered position + pan
-    const x = (C - sw) / 2 + pan.x
-    const y = (C - sh) / 2 + pan.y
-
-    // Draw image
-    ctx.drawImage(imageObj, x, y, sw, sh)
-  }, [imageObj, zoom, pan, isOpenCrop])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -179,8 +114,6 @@ export function ProfileEditPage() {
       const img = new window.Image()
       img.onload = () => {
         setImageObj(img)
-        setZoom(1.0)
-        setPan({ x: 0, y: 0 })
         setIsOpenCrop(true)
       }
       img.src = event.target?.result as string
@@ -196,60 +129,51 @@ export function ProfileEditPage() {
     }
   }
 
-  const handleCropSave = () => {
-    const canvas = canvasRef.current
-    if (!canvas || !user) return
+  const handleCropSave = async (blob: Blob) => {
+    if (!user) return
 
     setUploading(true)
     setIsOpenCrop(false)
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        toaster.create({ title: 'Cropping failed', type: 'error' })
-        setUploading(false)
-        return
-      }
+    try {
+      const fileExt = 'jpg'
+      const fileName = `${user.student_id}-${Date.now()}.${fileExt}`
+      const filePath = `${fileName}`
 
-      try {
-        const fileExt = 'jpg'
-        const fileName = `${user.student_id}-${Date.now()}.${fileExt}`
-        const filePath = `${fileName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('profiles')
-          .upload(filePath, blob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
-            upsert: true,
-          })
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('profiles')
-          .getPublicUrl(filePath)
-
-        setProfilePicUrl(publicUrl)
-        toaster.create({
-          title: 'Avatar updated!',
-          description: 'Successfully cropped and uploaded profile picture.',
-          type: 'success',
+      const { error: uploadError } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, blob, {
+          contentType: 'image/jpeg',
+          cacheControl: '3600',
+          upsert: true,
         })
-      } catch (err) {
-        console.error('File upload failed:', err)
-        toaster.create({
-          title: 'Upload failed',
-          description: 'Please try again.',
-          type: 'error',
-        })
-      } finally {
-        setUploading(false)
-        setImageObj(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath)
+
+      setProfilePicUrl(publicUrl)
+      toaster.create({
+        title: 'Avatar updated!',
+        description: 'Successfully cropped and uploaded profile picture.',
+        type: 'success',
+      })
+    } catch (err) {
+      console.error('File upload failed:', err)
+      toaster.create({
+        title: 'Upload failed',
+        description: 'Please try again.',
+        type: 'error',
+      })
+    } finally {
+      setUploading(false)
+      setImageObj(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
       }
-    }, 'image/jpeg', 0.9)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -258,6 +182,17 @@ export function ProfileEditPage() {
     if (!nickname.trim() || !faculty.trim()) {
       toaster.create({
         title: 'Nickname and Faculty are required',
+        type: 'error',
+      })
+      return
+    }
+
+    // Enforce house_position for staff/moderators
+    const needsHousePosition = user?.role === 'staff' || user?.role === 'moderator'
+    if (needsHousePosition && !housePosition.trim()) {
+      toaster.create({
+        title: 'House Position is required',
+        description: 'Please select or enter your staff position in the house.',
         type: 'error',
       })
       return
@@ -273,6 +208,7 @@ export function ProfileEditPage() {
       bio: bio.trim(),
       profilePicUrl: profilePicUrl.trim(),
       photoPool: user?.photo_pool || [], // keep photo pool intact
+      housePosition: housePosition.trim(),
     })
     setSubmitting(false)
 
@@ -312,6 +248,27 @@ export function ProfileEditPage() {
               </Text>
             </VStack>
 
+            {/* Required setup warning for staff/moderator */}
+            {(user?.role === 'staff' || user?.role === 'moderator') && !user.house_position && (
+              <Box
+                bg="rgba(197, 48, 48, 0.08)"
+                border="1.5px solid"
+                borderColor="red.500"
+                borderRadius="xl"
+                p={3.5}
+                w="100%"
+                role="alert"
+                aria-live="assertive"
+              >
+                <Text fontSize="xs" color="red.600" fontWeight="700" display="flex" alignItems="center" gap={1.5}>
+                  <Box as="span" className="material-symbols-outlined" fontSize="16px">
+                    campaign
+                  </Box>
+                  House Position Required: Please select your official role below to activate your orientation staff profile.
+                </Text>
+              </Box>
+            )}
+
             <VStack align="stretch" gap={4}>
               {/* Nickname */}
               <VStack align="stretch" gap={1.5}>
@@ -335,7 +292,13 @@ export function ProfileEditPage() {
 
               {/* Faculty Dropdown */}
               <VStack align="stretch" gap={1.5}>
-                <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
+                <Box
+                  fontSize="xs"
+                  fontWeight="700"
+                  color="accent.solid"
+                  textTransform="uppercase"
+                  letterSpacing="0.05em"
+                >
                   <label htmlFor="edit-faculty">Faculty (คณะ) <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
                 <NativeSelect.Root width="100%">
@@ -348,10 +311,10 @@ export function ProfileEditPage() {
                     borderRadius="xl"
                     border="1.5px solid var(--c-outline)"
                     bg="bg.hero"
-                    _focus={{ borderColor: 'accent.solid' }}
-                    h="48px"
-                    fontSize="sm"
                     px={4}
+                    _focus={{
+                      borderColor: 'accent.solid',
+                    }}
                   >
                     <option value="">Select Faculty...</option>
                     {THAI_FACULTIES.map((fac) => {
@@ -367,24 +330,53 @@ export function ProfileEditPage() {
                 </NativeSelect.Root>
               </VStack>
 
-              {/* Major / Staff Position */}
+              {/* Major (Academic Major) */}
               <VStack align="stretch" gap={1.5}>
                 <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
                   <label htmlFor="edit-major">
-                    {isStaff ? 'Staff Position (ตำแหน่ง)' : 'Major (สาขา)'}{' '}
-                    <Text as="span" color="fg.subtle" fontSize="2xs" fontWeight="normal">
-                      (Optional)
-                    </Text>
+                    Major (สาขา) <Text as="span" color="fg.subtle" fontSize="2xs" fontWeight="normal">(Optional)</Text>
                   </label>
                 </Box>
-                {isStaff ? (
+                <Input
+                  id="edit-major"
+                  placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                  value={major}
+                  onChange={(e) => setMajor(e.target.value)}
+                  borderRadius="xl"
+                  border="1.5px solid var(--c-outline)"
+                  bg="bg.hero"
+                  _focus={{ borderColor: 'accent.solid' }}
+                  h="48px"
+                  fontSize="sm"
+                />
+                <Text fontSize="2xs" color="fg.subtle" mt={1}>
+                  Only visible to verified Baan 7 freshmen
+                </Text>
+              </VStack>
+
+              {/* House Position (Staff/Moderator Only - Required) */}
+              {(user?.role === 'staff' || user?.role === 'moderator') && (
+                <VStack align="stretch" gap={1.5}>
+                  <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
+                    <label htmlFor="edit-house-position">
+                      House Position (ตำแหน่ง staff) <Text as="span" color="red.500" fontSize="xs">* Required</Text>
+                    </label>
+                  </Box>
                   <NativeSelect.Root width="100%">
                     <NativeSelect.Field
-                      id="edit-major"
-                      aria-label="Staff Position (ตำแหน่ง)"
-                      title="Staff Position (ตำแหน่ง)"
-                      value={major}
-                      onChange={(e) => setMajor(e.currentTarget.value)}
+                      id="edit-house-position"
+                      aria-label="House Position (ตำแหน่ง staff)"
+                      title="House Position (ตำแหน่ง staff)"
+                      value={selectedSelectRole}
+                      onChange={(e) => {
+                        const val = e.currentTarget.value
+                        setSelectedSelectRole(val)
+                        if (val === 'Other') {
+                          setHousePosition(customPositionText)
+                        } else {
+                          setHousePosition(val)
+                        }
+                      }}
                       borderRadius="xl"
                       border="1.5px solid var(--c-outline)"
                       bg="bg.hero"
@@ -399,27 +391,37 @@ export function ProfileEditPage() {
                           {role}
                         </option>
                       ))}
+                      <option value="Other">Other / อื่นๆ...</option>
                     </NativeSelect.Field>
                     <NativeSelect.Indicator />
                   </NativeSelect.Root>
-                ) : (
-                  <Input
-                    id="edit-major"
-                    placeholder="e.g. วิทยาการคอมพิวเตอร์"
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="bg.hero"
-                    _focus={{ borderColor: 'accent.solid' }}
-                    h="48px"
-                    fontSize="sm"
-                  />
-                )}
-                <Text fontSize="2xs" color="fg.subtle" mt={1}>
-                  Only visible to verified Baan 7 freshmen
-                </Text>
-              </VStack>
+
+                  {selectedSelectRole === 'Other' && (
+                    <Input
+                      id="custom-house-position"
+                      aria-label="Custom house position"
+                      placeholder="Enter custom position (e.g. ตากล้องพิเศษ)"
+                      value={customPositionText}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setCustomPositionText(val)
+                        setHousePosition(val)
+                      }}
+                      borderRadius="xl"
+                      border="1.5px solid var(--c-outline)"
+                      bg="bg.hero"
+                      _focus={{ borderColor: 'accent.solid' }}
+                      h="48px"
+                      fontSize="sm"
+                      mt={1.5}
+                      required
+                    />
+                  )}
+                  <Text fontSize="2xs" color="fg.subtle" mt={1}>
+                    This position is displayed on your sticker card album
+                  </Text>
+                </VStack>
+              )}
 
               {/* Instagram */}
               <VStack align="stretch" gap={1.5}>
@@ -448,7 +450,7 @@ export function ProfileEditPage() {
                 <Box fontSize="xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
                   <label htmlFor="edit-bio">Bio (คำโปรย) <Text as="span" color="fg.subtle" fontSize="2xs" fontWeight="normal">(Optional)</Text></label>
                 </Box>
-                <Input
+                <Textarea
                   id="edit-bio"
                   placeholder="e.g. สนใจเรื่องสิ่งแวดล้อม ชอบฟังเพลงอินดี้"
                   value={bio}
@@ -457,8 +459,9 @@ export function ProfileEditPage() {
                   border="1.5px solid var(--c-outline)"
                   bg="bg.hero"
                   _focus={{ borderColor: 'accent.solid' }}
-                  h="48px"
+                  minH="80px"
                   fontSize="sm"
+                  py={3}
                 />
               </VStack>
 
@@ -579,218 +582,335 @@ export function ProfileEditPage() {
       </Container>
 
       {/* Crop Overlay Modal */}
-      {isOpenCrop && (
-        <Box
-          position="fixed"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          bg="rgba(20, 16, 15, 0.85)"
-          backdropFilter="blur(8px)"
-          zIndex="9999"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          p={4}
-        >
+      <AvatarCropModal
+        isOpen={isOpenCrop}
+        imageObj={imageObj}
+        onCancel={handleCropCancel}
+        onSave={handleCropSave}
+      />
+    </Box>
+  )
+}
+
+interface AvatarCropModalProps {
+  isOpen: boolean
+  imageObj: HTMLImageElement | null
+  onCancel: () => void
+  onSave: (blob: Blob) => void
+}
+
+export function AvatarCropModal({ isOpen, imageObj, onCancel, onSave }: AvatarCropModalProps) {
+  const [zoom, setZoom] = useState(1.0)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const dragStart = useRef({ x: 0, y: 0 })
+
+  const C = 400 // Canvas resolution
+
+  const clampPan = useCallback((px: number, py: number, currentZoom: number) => {
+    if (!imageObj) return { x: 0, y: 0 }
+    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
+    const scale = baseScale * currentZoom
+    const sw = imageObj.width * scale
+    const sh = imageObj.height * scale
+
+    const limitX = Math.max(0, (sw - C) / 2)
+    const limitY = Math.max(0, (sh - C) / 2)
+
+    return {
+      x: Math.max(-limitX, Math.min(limitX, px)),
+      y: Math.max(-limitY, Math.min(limitY, py)),
+    }
+  }, [imageObj])
+
+  const handleStart = useCallback((clientX: number, clientY: number) => {
+    if (!imageObj || !canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const scaleFactor = C / rect.width
+    setIsDragging(true)
+    dragStart.current = {
+      x: clientX * scaleFactor - pan.x,
+      y: clientY * scaleFactor - pan.y,
+    }
+  }, [imageObj, pan])
+
+  const handleMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDragging || !imageObj || !canvasRef.current) return
+    const rect = canvasRef.current.getBoundingClientRect()
+    const scaleFactor = C / rect.width
+    const newX = clientX * scaleFactor - dragStart.current.x
+    const newY = clientY * scaleFactor - dragStart.current.y
+    const clamped = clampPan(newX, newY, zoom)
+    setPan(clamped)
+  }, [isDragging, imageObj, zoom, clampPan])
+
+  const handleEnd = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !imageObj || !isOpen) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Clear canvas
+    ctx.clearRect(0, 0, C, C)
+
+    // Calculate scaling
+    const baseScale = Math.max(C / imageObj.width, C / imageObj.height)
+    const scale = baseScale * zoom
+    const sw = imageObj.width * scale
+    const sh = imageObj.height * scale
+
+    // Centered position + pan
+    const x = (C - sw) / 2 + pan.x
+    const y = (C - sh) / 2 + pan.y
+
+    // Draw image
+    ctx.drawImage(imageObj, x, y, sw, sh)
+  }, [imageObj, zoom, pan, isOpen])
+
+  const handleCropSaveLocal = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        onSave(blob)
+      } else {
+        toaster.create({ title: 'Cropping failed', type: 'error' })
+      }
+    }, 'image/jpeg', 0.9)
+  }, [onSave])
+
+  // Global key event listeners inside the modal lifecycle
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCancel()
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        handleCropSaveLocal()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onCancel, handleCropSaveLocal])
+
+  if (!isOpen) return null
+
+  return (
+    <Box
+      position="fixed"
+      top="0"
+      left="0"
+      right="0"
+      bottom="0"
+      bg="color-mix(in srgb, var(--c-ink) 85%, transparent)"
+      backdropFilter="blur(8px)"
+      zIndex="9999"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      p={4}
+    >
+      <Box
+        bg="bg.surface"
+        border="1px solid"
+        borderColor="border.subtle"
+        borderRadius="2xl"
+        width={{ base: "calc(100% - 32px)", sm: "360px" }}
+        maxH={{ base: "90vh", sm: "620px" }}
+        boxShadow="var(--shadow-card)"
+        animation="scale-in 0.3s var(--ease-out-quart)"
+        display="flex"
+        flexDirection="column"
+        overflow="hidden"
+      >
+        <VStack gap={5} align="stretch" overflowY="auto" p={6}>
+          <VStack align="center" textAlign="center" gap={1}>
+            <Heading as="h2" fontSize="lg" color="accent.solid" fontWeight="700">
+              Adjust Profile Pic
+            </Heading>
+            <Text color="fg.muted" fontSize="xs">
+              Drag to pan, slide to zoom. Ensure your face fits inside the circle.
+            </Text>
+          </VStack>
+
+          {/* Crop Canvas Wrapper */}
           <Box
-            bg="bg.surface"
-            border="1px solid"
-            borderColor="border.subtle"
-            borderRadius="2xl"
-            maxW="360px"
+            position="relative"
             w="100%"
-            p={6}
-            boxShadow="0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)"
-            animation="scale-in 0.3s var(--ease-out-quart)"
+            maxW={{ base: "280px", sm: "320px" }}
+            aspectRatio="1/1"
+            mx="auto"
+            bg="black"
+            borderRadius="xl"
+            overflow="hidden"
+            boxShadow="inner"
           >
-            <VStack gap={5} align="stretch">
-              <VStack align="center" textAlign="center" gap={1}>
-                <Heading as="h2" fontSize="lg" color="accent.solid" fontWeight="700">
-                  Adjust Profile Pic
-                </Heading>
-                <Text color="fg.muted" fontSize="xs">
-                  Drag to pan, slide to zoom. Ensure your face fits inside the circle.
-                </Text>
-              </VStack>
+            <canvas
+              ref={canvasRef}
+              width={C}
+              height={C}
+              aria-label="Profile picture crop editor"
+              className="crop-canvas"
+              data-dragging={isDragging ? 'true' : 'false'}
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                handleStart(e.clientX - rect.left, e.clientY - rect.top)
+              }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                handleMove(e.clientX - rect.left, e.clientY - rect.top)
+              }}
+              onMouseUp={handleEnd}
+              onMouseLeave={handleEnd}
+              onTouchStart={(e) => {
+                if (e.touches[0]) {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  handleStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
+                }
+              }}
+              onTouchMove={(e) => {
+                if (e.touches[0]) {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  handleMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
+                }
+              }}
+              onTouchEnd={handleEnd}
+            />
 
-              {/* Crop Canvas Wrapper */}
+            {/* Circular Mask Overlay */}
+            <Box
+              position="absolute"
+              top="0"
+              left="0"
+              width="100%"
+              height="100%"
+              pointerEvents="none"
+              background="radial-gradient(circle, transparent 46%, color-mix(in srgb, var(--c-ink) 75%, transparent) 47%)"
+            >
               <Box
-                position="relative"
-                w="320px"
-                h="320px"
-                mx="auto"
-                bg="black"
-                borderRadius="xl"
-                overflow="hidden"
-                boxShadow="inner"
-              >
-                <canvas
-                  ref={canvasRef}
-                  width={400}
-                  height={400}
-                  style={{
-                    width: '320px',
-                    height: '320px',
-                    cursor: isDragging ? 'grabbing' : 'grab',
-                    touchAction: 'none',
-                  }}
-                  onMouseDown={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    handleStart(e.clientX - rect.left, e.clientY - rect.top)
-                  }}
-                  onMouseMove={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    handleMove(e.clientX - rect.left, e.clientY - rect.top)
-                  }}
-                  onMouseUp={handleEnd}
-                  onMouseLeave={handleEnd}
-                  onTouchStart={(e) => {
-                    if (e.touches[0]) {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      handleStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
-                    }
-                  }}
-                  onTouchMove={(e) => {
-                    if (e.touches[0]) {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      handleMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top)
-                    }
-                  }}
-                  onTouchEnd={handleEnd}
-                />
-
-                {/* Circular Mask Overlay */}
-                <Box
-                  position="absolute"
-                  top="0"
-                  left="0"
-                  width="320px"
-                  height="320px"
-                  pointerEvents="none"
-                  background="radial-gradient(circle, transparent 148px, rgba(15, 12, 11, 0.75) 150px)"
-                >
-                  <Box
-                    position="absolute"
-                    top="50%"
-                    left="50%"
-                    transform="translate(-50%, -50%)"
-                    width="300px"
-                    height="300px"
-                    borderRadius="full"
-                    border="2.5px dashed rgba(255, 255, 255, 0.8)"
-                    boxShadow="0 0 0 9999px rgba(0, 0, 0, 0.1)"
-                  />
-                </Box>
-              </Box>
-
-              {/* Slider Controls */}
-              <VStack gap={2} align="stretch">
-                <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
-                  Zoom Control
-                </Text>
-                <HStack gap={3} px={1}>
-                  <Button
-                    size="xs"
-                    h="32px"
-                    w="32px"
-                    minW="32px"
-                    borderRadius="lg"
-                    variant="outline"
-                    borderColor="border.subtle"
-                    color="accent.solid"
-                    onClick={() => {
-                      const newZoom = Math.max(1, zoom - 0.1)
-                      setZoom(newZoom)
-                      setPan(prev => clampPan(prev.x, prev.y, newZoom))
-                    }}
-                    _hover={{ bg: 'bg.hero' }}
-                    cursor="pointer"
-                  >
-                    -
-                  </Button>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.01"
-                    value={zoom}
-                    aria-label="Zoom level"
-                    title="Zoom level"
-                    onChange={(e) => {
-                      const z = parseFloat(e.target.value)
-                      setZoom(z)
-                      setPan(prev => clampPan(prev.x, prev.y, z))
-                    }}
-                    style={{
-                      flex: 1,
-                      height: '6px',
-                      borderRadius: '3px',
-                      background: 'var(--c-chocolate)',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      WebkitAppearance: 'none',
-                    }}
-                  />
-                  <Button
-                    size="xs"
-                    h="32px"
-                    w="32px"
-                    minW="32px"
-                    borderRadius="lg"
-                    variant="outline"
-                    borderColor="border.subtle"
-                    color="accent.solid"
-                    onClick={() => {
-                      const newZoom = Math.min(3, zoom + 0.1)
-                      setZoom(newZoom)
-                      setPan(prev => clampPan(prev.x, prev.y, newZoom))
-                    }}
-                    _hover={{ bg: 'bg.hero' }}
-                    cursor="pointer"
-                  >
-                    +
-                  </Button>
-                </HStack>
-              </VStack>
-
-              {/* Actions */}
-              <HStack gap={3} mt={2}>
-                <Button
-                  variant="outline"
-                  borderColor="border.subtle"
-                  color="accent.solid"
-                  borderRadius="xl"
-                  h="44px"
-                  flex={1}
-                  fontSize="sm"
-                  fontWeight="600"
-                  onClick={handleCropCancel}
-                  _hover={{ bg: 'bg.hero' }}
-                  cursor="pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  bg="accent.solid"
-                  color="white"
-                  borderRadius="xl"
-                  h="44px"
-                  flex={1.5}
-                  fontSize="sm"
-                  fontWeight="700"
-                  onClick={handleCropSave}
-                  _hover={{ bg: 'chocolate.600' }}
-                  cursor="pointer"
-                >
-                  Apply Crop
-                </Button>
-              </HStack>
-            </VStack>
+                position="absolute"
+                top="50%"
+                left="50%"
+                transform="translate(-50%, -50%)"
+                width="93.75%"
+                height="93.75%"
+                borderRadius="full"
+                border="2.5px dashed rgba(255, 255, 255, 0.8)"
+                boxShadow="0 0 0 9999px color-mix(in srgb, var(--c-ink) 10%, transparent)"
+              />
+            </Box>
           </Box>
-        </Box>
-      )}
+
+          {/* Slider Controls */}
+          <VStack gap={2} align="stretch">
+            <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
+              Zoom Control
+            </Text>
+            <HStack gap={3} px={1}>
+              <Button
+                size="xs"
+                h="44px"
+                w="44px"
+                minW="44px"
+                borderRadius="lg"
+                variant="outline"
+                borderColor="border.subtle"
+                color="accent.solid"
+                onClick={() => {
+                  const newZoom = Math.max(1, zoom - 0.1)
+                  setZoom(newZoom)
+                  setPan(prev => clampPan(prev.x, prev.y, newZoom))
+                }}
+                _hover={{ bg: 'bg.hero' }}
+                cursor="pointer"
+              >
+                -
+              </Button>
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.01"
+                value={zoom}
+                aria-label="Zoom level"
+                title="Zoom level"
+                className="crop-slider"
+                onChange={(e) => {
+                  const z = parseFloat(e.target.value)
+                  setZoom(z)
+                  setPan(prev => clampPan(prev.x, prev.y, z))
+                }}
+              />
+              <Button
+                size="xs"
+                h="44px"
+                w="44px"
+                minW="44px"
+                borderRadius="lg"
+                variant="outline"
+                borderColor="border.subtle"
+                color="accent.solid"
+                onClick={() => {
+                  const newZoom = Math.min(3, zoom + 0.1)
+                  setZoom(newZoom)
+                  setPan(prev => clampPan(prev.x, prev.y, newZoom))
+                }}
+                _hover={{ bg: 'bg.hero' }}
+                cursor="pointer"
+              >
+                +
+              </Button>
+            </HStack>
+          </VStack>
+
+          {/* Actions */}
+          <HStack gap={3} mt={2}>
+            <Button
+              variant="outline"
+              borderColor="border.subtle"
+              color="accent.solid"
+              borderRadius="xl"
+              h="44px"
+              flex={1}
+              fontSize="sm"
+              fontWeight="600"
+              onClick={onCancel}
+              _hover={{ bg: 'bg.hero' }}
+              cursor="pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              bg="accent.solid"
+              color="white"
+              borderRadius="xl"
+              h="44px"
+              flex={1.5}
+              fontSize="sm"
+              fontWeight="700"
+              onClick={handleCropSaveLocal}
+              _hover={{ bg: 'chocolate.600' }}
+              cursor="pointer"
+            >
+              Apply Crop
+            </Button>
+          </HStack>
+        </VStack>
+      </Box>
     </Box>
   )
 }

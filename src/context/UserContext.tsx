@@ -1,171 +1,225 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { hashPin } from '../utils/crypto'
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import { hashPin } from "../utils/crypto";
 
 export interface User {
-  student_id: string
-  pin_hash: string | null
-  nickname: string | null
-  faculty: string | null
-  major: string | null
-  ig: string | null
-  role: 'moderator' | 'media_admin' | 'staff' | 'student'
-  avatar_color: string
-  images: string[]
-  tags: string[]
-  bio: string | null
-  profile_pic_url: string | null
-  photo_pool: string[]
-  created_at: string
+  student_id: string;
+  pin_hash: string | null;
+  nickname: string | null;
+  faculty: string | null;
+  major: string | null;
+  ig: string | null;
+  role: "moderator" | "media_admin" | "staff" | "student";
+  avatar_color: string;
+  images: string[];
+  tags: string[];
+  bio: string | null;
+  profile_pic_url: string | null;
+  photo_pool: string[];
+  house_position: string | null;
+  created_at: string;
 }
 
 interface UserContextType {
-  user: User | null
-  loading: boolean
-  checkStudentId: (studentId: string) => Promise<{ exists: boolean; hasPin: boolean; user?: User }>
-  login: (studentId: string, pin: string) => Promise<boolean>
-  registerPin: (studentId: string, pin: string) => Promise<boolean>
+  user: User | null;
+  loading: boolean;
+  checkStudentId: (
+    studentId: string,
+  ) => Promise<{ exists: boolean; hasPin: boolean; user?: User }>;
+  login: (studentId: string, pin: string) => Promise<boolean>;
+  registerPin: (studentId: string, pin: string) => Promise<boolean>;
   updateProfile: (profile: {
-    nickname: string
-    faculty: string
-    major?: string
-    ig?: string
-    avatarColor?: string
-    bio?: string
-    profilePicUrl?: string
-    photoPool?: string[]
-  }) => Promise<boolean>
-  logout: () => void
+    nickname: string;
+    faculty: string;
+    major?: string;
+    ig?: string;
+    avatarColor?: string;
+    bio?: string;
+    profilePicUrl?: string;
+    photoPool?: string[];
+    housePosition?: string;
+  }) => Promise<boolean>;
+  logout: () => void;
 }
 
-const UserContext = createContext<UserContextType | undefined>(undefined)
+const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     const restoreSession = async () => {
-      const savedStudentId = localStorage.getItem('baan7_student_id')
-      if (savedStudentId) {
+      const savedToken = localStorage.getItem("baan7_session_token");
+      if (savedToken) {
         try {
           const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('student_id', savedStudentId)
-            .single()
+            .from("user_sessions")
+            .select("student_id, expires_at, users (*)")
+            .eq("session_token", savedToken)
+            .maybeSingle();
 
-          if (!active) return
+          if (!active) return;
 
-          if (error || !data) {
-            console.error('Session restore failed:', error)
-            localStorage.removeItem('baan7_student_id')
+          if (error || !data || !data.users) {
+            console.error("Session restore failed or expired:", error);
+            localStorage.removeItem("baan7_session_token");
           } else {
-            setUser(data as User)
+            const expiresAt = new Date(data.expires_at);
+            if (expiresAt < new Date()) {
+              console.log("Session token expired, deleting on-demand");
+              await supabase
+                .from("user_sessions")
+                .delete()
+                .eq("session_token", savedToken);
+              localStorage.removeItem("baan7_session_token");
+            } else {
+              setUser(data.users as unknown as User);
+            }
           }
         } catch (err) {
-          console.error('Session restore failed:', err)
-          if (active) localStorage.removeItem('baan7_student_id')
+          console.error("Session restore failed:", err);
+          if (active) localStorage.removeItem("baan7_session_token");
         }
       }
-      if (active) setLoading(false)
-    }
+      if (active) setLoading(false);
+    };
 
-    restoreSession()
+    restoreSession();
     return () => {
-      active = false
-    }
-  }, [])
+      active = false;
+    };
+  }, []);
 
   const checkStudentId = async (studentId: string) => {
     try {
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('student_id', studentId)
-        .maybeSingle()
+        .from("users")
+        .select("*")
+        .eq("student_id", studentId)
+        .maybeSingle();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (!data) {
-        return { exists: false, hasPin: false }
+        return { exists: false, hasPin: false };
       }
 
       return {
         exists: true,
         hasPin: !!data.pin_hash,
         user: data as User,
-      }
+      };
     } catch (err) {
-      console.error('Check student ID error:', err)
-      return { exists: false, hasPin: false }
+      console.error("Check student ID error:", err);
+      return { exists: false, hasPin: false };
     }
-  }
+  };
 
   const login = async (studentId: string, pin: string): Promise<boolean> => {
     try {
-      const hashedPin = await hashPin(pin)
+      const hashedPin = await hashPin(pin);
       const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('pin_hash', hashedPin)
-        .maybeSingle()
+        .from("users")
+        .select("*")
+        .eq("student_id", studentId)
+        .eq("pin_hash", hashedPin)
+        .maybeSingle();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (!data) {
-        return false
+        return false;
       }
 
-      setUser(data as User)
-      localStorage.setItem('baan7_student_id', data.student_id)
-      return true
-    } catch (err) {
-      console.error('Login error:', err)
-      return false
-    }
-  }
+      // Generate a session in the database
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("user_sessions")
+        .insert({
+          student_id: data.student_id,
+          expires_at: expiresAt,
+        })
+        .select("session_token")
+        .single();
 
-  const registerPin = async (studentId: string, pin: string): Promise<boolean> => {
+      if (sessionError || !sessionData) {
+        console.error("Session creation failed:", sessionError);
+        return false;
+      }
+
+      setUser(data as User);
+      localStorage.removeItem("baan7_student_id"); // remove legacy key
+      localStorage.setItem("baan7_session_token", sessionData.session_token);
+      return true;
+    } catch (err) {
+      console.error("Login error:", err);
+      return false;
+    }
+  };
+
+  const registerPin = async (
+    studentId: string,
+    pin: string,
+  ): Promise<boolean> => {
     try {
-      const hashedPin = await hashPin(pin)
+      const hashedPin = await hashPin(pin);
       const { data, error } = await supabase
-        .from('users')
+        .from("users")
         .update({ pin_hash: hashedPin })
-        .eq('student_id', studentId)
-        .is('pin_hash', null)
+        .eq("student_id", studentId)
+        .is("pin_hash", null)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (!data) {
-        return false
+        return false;
       }
 
-      setUser(data as User)
-      localStorage.setItem('baan7_student_id', data.student_id)
-      return true
+      // Generate a session in the database
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("user_sessions")
+        .insert({
+          student_id: data.student_id,
+          expires_at: expiresAt,
+        })
+        .select("session_token")
+        .single();
+
+      if (sessionError || !sessionData) {
+        console.error("Session creation failed:", sessionError);
+        return false;
+      }
+
+      setUser(data as User);
+      localStorage.removeItem("baan7_student_id"); // remove legacy key
+      localStorage.setItem("baan7_session_token", sessionData.session_token);
+      return true;
     } catch (err) {
-      console.error('PIN registration error:', err)
-      return false
+      console.error("PIN registration error:", err);
+      return false;
     }
-  }
+  };
 
   const updateProfile = async (profile: {
-    nickname: string
-    faculty: string
-    major?: string
-    ig?: string
-    avatarColor?: string
-    bio?: string
-    profilePicUrl?: string
-    photoPool?: string[]
+    nickname: string;
+    faculty: string;
+    major?: string;
+    ig?: string;
+    avatarColor?: string;
+    bio?: string;
+    profilePicUrl?: string;
+    photoPool?: string[];
+    housePosition?: string;
   }): Promise<boolean> => {
-    if (!user) return false
+    if (!user) return false;
 
     try {
       const updates: Partial<User> = {
@@ -176,35 +230,49 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         bio: profile.bio || null,
         profile_pic_url: profile.profilePicUrl || null,
         photo_pool: profile.photoPool || [],
-      }
+        house_position: profile.housePosition || null,
+      };
 
       if (profile.avatarColor) {
-        updates.avatar_color = profile.avatarColor
+        updates.avatar_color = profile.avatarColor;
       }
 
       const { data, error } = await supabase
-        .from('users')
+        .from("users")
         .update(updates)
-        .eq('student_id', user.student_id)
+        .eq("student_id", user.student_id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
 
-      if (!data) return false
+      if (!data) return false;
 
-      setUser(data as User)
-      return true
+      setUser(data as User);
+      return true;
     } catch (err) {
-      console.error('Update profile error:', err)
-      return false
+      console.error("Update profile error:", err);
+      return false;
     }
-  }
+  };
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('baan7_student_id')
-  }
+  const logout = async () => {
+    const savedToken = localStorage.getItem("baan7_session_token");
+    if (savedToken) {
+      try {
+        await supabase
+          .from("user_sessions")
+          .delete()
+          .eq("session_token", savedToken);
+      } catch (err) {
+        console.error("Logout DB cleanup failed:", err);
+      }
+    }
+    setUser(null);
+    localStorage.removeItem("baan7_session_token");
+    localStorage.removeItem("baan7_student_id");
+  };
+
 
   return (
     <UserContext.Provider
@@ -220,13 +288,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     >
       {children}
     </UserContext.Provider>
-  )
-}
+  );
+};
 
 export const useUser = () => {
-  const context = useContext(UserContext)
+  const context = useContext(UserContext);
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider')
+    throw new Error("useUser must be used within a UserProvider");
   }
-  return context
-}
+  return context;
+};

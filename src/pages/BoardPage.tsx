@@ -391,7 +391,7 @@ export function BoardPage() {
                         onClick={handleSubmitPost}
                         loading={submitting}
                         disabled={!user || !newPostText.trim() || !selectedTag}
-                        _hover={{ boxShadow: '0 4px 14px rgba(124, 86, 63, 0.25)' }}
+                        _hover={{ boxShadow: '0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)' }}
                         minH="44px"
                       >
                         {activeTab === 'hype' ? 'Post' : 'Pin it!'}
@@ -405,7 +405,7 @@ export function BoardPage() {
             {/* Posts Grid */}
             {loading ? (
               <Flex justify="center" py={12}>
-                <Spinner size="lg" color="var(--c-lagoon)" />
+                <Spinner size="lg" color="var(--c-lagoon)" title="Loading posts" aria-label="Loading posts" />
               </Flex>
             ) : filteredPosts.length === 0 ? (
               <Flex
@@ -760,7 +760,7 @@ function CommentSection({
               <Flex key={comment.id} gap={2} p={2.5} bg="bg.hero" borderRadius="xl" align="start">
                 <Box
                   w={avatarSize} h={avatarSize} borderRadius="full"
-                  bg={comment.author?.profile_pic_url ? "transparent" : (comment.author?.avatar_color || '#8c7b74')}
+                  bg={comment.author?.profile_pic_url ? "transparent" : (comment.author?.avatar_color || 'var(--c-muted-brown)')}
                   color="white" display="flex" alignItems="center" justifyContent="center"
                   fontSize={avatarFontSize} fontWeight="700" flexShrink={0}
                   overflow="hidden"
@@ -869,7 +869,7 @@ const HypeCard = memo(function HypeCard({ post, index, onLike, currentUserRole }
   
   const displayAuthorName = isAnon && currentUserRole !== 'moderator' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
   const displayAuthorInitials = isAnon && currentUserRole !== 'moderator' ? '?' : getInitials(displayAuthorName)
-  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? '#8c7b74' : post.author.avatar_color
+  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? 'var(--c-muted-brown)' : post.author.avatar_color
 
   return (
     <Box
@@ -945,7 +945,8 @@ const HypeCard = memo(function HypeCard({ post, index, onLike, currentUserRole }
         </Button>
         <Button
           type="button"
-          aria-label="Toggle comments"
+          aria-label={showComments ? "Collapse comments" : "Expand comments"}
+          aria-expanded={showComments}
           onClick={() => setShowComments(!showComments)}
           color="fg.subtle"
           bg="transparent"
@@ -991,7 +992,7 @@ const MemoryCard = memo(function MemoryCard({ post, index, onLike, currentUserRo
   
   const displayAuthorName = isAnon && currentUserRole !== 'moderator' ? 'Anonymous' : `${prefix}${post.author.nickname || 'Guest Whitelist'}`
   const displayAuthorInitials = isAnon && currentUserRole !== 'moderator' ? '?' : getInitials(displayAuthorName)
-  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? '#8c7b74' : post.author.avatar_color
+  const displayAvatarColor = isAnon && currentUserRole !== 'moderator' ? 'var(--c-muted-brown)' : post.author.avatar_color
 
   return (
     <Box
@@ -1006,7 +1007,7 @@ const MemoryCard = memo(function MemoryCard({ post, index, onLike, currentUserRo
         position="absolute" top={-2} left="50%" transform="translateX(-50%)"
         w={4} h={4} borderRadius="full"
         bg={index % 2 === 0 ? 'var(--c-state-pin-a)' : 'var(--c-state-pin-b)'}
-        boxShadow="0 2px 4px rgba(0,0,0,0.2)" zIndex={2}
+        boxShadow="0 2px 4px color-mix(in srgb, var(--c-ink) 20%, transparent)" zIndex={2}
       />
       <Flex align="center" gap={2} mb={3}>
         <Box
@@ -1066,7 +1067,8 @@ const MemoryCard = memo(function MemoryCard({ post, index, onLike, currentUserRo
         </Button>
         <Button
           type="button"
-          aria-label="Toggle comments"
+          aria-label={showComments ? "Collapse comments" : "Expand comments"}
+          aria-expanded={showComments}
           onClick={() => setShowComments(!showComments)}
           color="fg.subtle"
           bg="transparent"
