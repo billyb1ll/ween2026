@@ -421,23 +421,24 @@ export function Navbar() {
             mx="auto"
             w={{ base: "calc(100% - 32px)", md: "90%" }}
           >
-            <NavLink to="/">
-              <Flex
-                fontFamily="heading"
-                fontSize="xl"
-                fontWeight="700"
-                letterSpacing="0.1em"
-                mr={8}
-                transition="opacity 0.2s"
-                _hover={{ opacity: 0.8 }}
-                gap={1}
-              >
-                <Text color="red">Very</Text>
-                <Text color="orange">Ween</Text>
-              </Flex>
-            </NavLink>
+            <Flex flex={1} justify="flex-start">
+              <NavLink to="/">
+                <Flex
+                  fontFamily="heading"
+                  fontSize="xl"
+                  fontWeight="700"
+                  letterSpacing="0.1em"
+                  transition="opacity 0.2s"
+                  _hover={{ opacity: 0.8 }}
+                  gap={1}
+                >
+                  <Text color="red">Very</Text>
+                  <Text color="orange">Ween</Text>
+                </Flex>
+              </NavLink>
+            </Flex>
 
-            <HStack gap={1}>
+            <HStack gap={1} justify="center">
               <NavItem to="/">Home</NavItem>
               <NavItem to="/vibe-check">Vibe Check</NavItem>
               <NavItem to="/board">Board</NavItem>
@@ -450,74 +451,74 @@ export function Navbar() {
               )}
             </HStack>
 
-            {user ? (
-              <Box ml={6} position="relative" ref={desktopDropdownRef}>
-                <Button
-                  type="button"
-                  aria-label="User menu"
-                  aria-expanded={dropdownOpen}
-                  aria-haspopup="true"
-                  w="40px"
-                  h="40px"
-                  minW="40px"
-                  p={0}
-                  borderRadius="full"
-                  bg={user.profile_pic_url ? "transparent" : user.avatar_color}
-                  color="white"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  fontWeight="700"
-                  fontSize="sm"
-                  cursor="pointer"
-                  boxShadow="var(--shadow-ambient)"
-                  transition="all 0.2s"
-                  _hover={{ transform: "scale(1.05)" }}
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                >
-                  {user.profile_pic_url ? (
-                    <Image
-                      src={user.profile_pic_url}
-                      alt={user.nickname || "Avatar"}
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                      borderRadius="full"
-                    />
-                  ) : (
-                    getInitials(user.nickname || user.student_id)
-                  )}
-                </Button>
-
-                {dropdownOpen && desktopCoords && (
-                  <Portal>
-                    <Box
-                      ref={desktopPortalRef}
-                      position="fixed"
-                      top={`${desktopCoords.top}px`}
-                      right={`${desktopCoords.right}px`}
-                      bg="var(--c-white)"
-                      border="1px solid"
-                      borderColor="border.subtle"
-                      boxShadow="var(--shadow-lagoon)"
-                      borderRadius="16px"
-                      p={4}
-                      minW="200px"
-                      zIndex={1000}
-                      animation="scale-in 0.2s var(--ease-out-quart)"
-                      role="menu"
-                    >
-                      <UserDropdownContent
-                        user={user}
-                        logout={logout}
-                        onClose={() => setDropdownOpen(false)}
+            <Flex flex={1} justify="flex-end" align="center">
+              {user ? (
+                <Box position="relative" ref={desktopDropdownRef}>
+                  <Button
+                    type="button"
+                    aria-label="User menu"
+                    aria-expanded={dropdownOpen}
+                    aria-haspopup="true"
+                    w="40px"
+                    h="40px"
+                    minW="40px"
+                    p={0}
+                    borderRadius="full"
+                    bg={user.profile_pic_url ? "transparent" : user.avatar_color}
+                    color="white"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    fontWeight="700"
+                    fontSize="sm"
+                    cursor="pointer"
+                    boxShadow="var(--shadow-ambient)"
+                    transition="all 0.2s"
+                    _hover={{ transform: "scale(1.05)" }}
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                  >
+                    {user.profile_pic_url ? (
+                      <Image
+                        src={user.profile_pic_url}
+                        alt={user.nickname || "Avatar"}
+                        w="100%"
+                        h="100%"
+                        objectFit="cover"
+                        borderRadius="full"
                       />
-                    </Box>
-                  </Portal>
-                )}
-              </Box>
-            ) : (
-              <Box ml={6}>
+                    ) : (
+                      getInitials(user.nickname || user.student_id)
+                    )}
+                  </Button>
+
+                  {dropdownOpen && desktopCoords && (
+                    <Portal>
+                      <Box
+                        ref={desktopPortalRef}
+                        position="fixed"
+                        top={`${desktopCoords.top}px`}
+                        right={`${desktopCoords.right}px`}
+                        bg="var(--c-white)"
+                        border="1px solid"
+                        borderColor="border.subtle"
+                        boxShadow="var(--shadow-lagoon)"
+                        borderRadius="16px"
+                        p={4}
+                        minW="200px"
+                        zIndex={1000}
+                        animation="scale-in 0.2s var(--ease-out-quart)"
+                        role="menu"
+                      >
+                        <UserDropdownContent
+                          user={user}
+                          logout={logout}
+                          onClose={() => setDropdownOpen(false)}
+                        />
+                      </Box>
+                    </Portal>
+                  )}
+                </Box>
+              ) : (
                 <NavLink to="/login">
                   <Box
                     as="span"
@@ -542,8 +543,8 @@ export function Navbar() {
                     Join Now
                   </Box>
                 </NavLink>
-              </Box>
-            )}
+              )}
+            </Flex>
           </Flex>
         </Box>
 
