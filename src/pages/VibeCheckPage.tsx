@@ -10,6 +10,7 @@ import {
   Portal,
   Image,
   Spinner,
+  Dialog,
 } from "@chakra-ui/react";
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Navigate } from "react-router-dom";
@@ -763,360 +764,356 @@ export function VibeCheckPage() {
         </HStack>
       )}
 
-      {/* 5. Swipe Book Collection Slide-up Drawer */}
+      {/* 5. Swipe Book Collection Dialog */}
       {isBookOpen && (
-        <Portal>
-          <Box
-            position="fixed"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="blackAlpha.700"
-            backdropFilter="blur(4px)"
-            zIndex="2000"
-            onClick={() => setIsBookOpen(false)}
-          />
-          <Box
-            position="fixed"
-            bottom={0}
-            left="50%"
-            transform="translateX(-50%)"
-            w="100%"
-            maxW="md"
-            h="80vh"
-            bg="bg.surface"
-            borderTopRadius="2xl"
-            border="1px solid"
-            borderColor="border.subtle"
-            boxShadow="0 -10px 25px rgba(0,0,0,0.15)"
-            zIndex="2001"
-            display="flex"
-            flexDirection="column"
-            p={5}
-            animation="slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards"
-          >
-            {/* Grab handle */}
-            <Box
-              w="40px"
-              h="4px"
-              bg="border.subtle"
-              borderRadius="full"
-              mx="auto"
-              mb={4}
-              onClick={() => setIsBookOpen(false)}
-              cursor="pointer"
-            />
+        <Dialog.Root open={isBookOpen} onOpenChange={(e) => setIsBookOpen(e.open)} placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+          <Dialog.Positioner zIndex={2000} px={4}>
+            <Dialog.Content
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
+              bg="var(--c-ivory)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+              color="var(--c-ink)"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
+              p={6}
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Dialog.Header p={0} mb={4}>
+                <VStack align="start" gap={0}>
+                  <Dialog.Title fontSize="md" color="accent.solid" fontWeight="700">
+                    Sticker Collection Album
+                  </Dialog.Title>
+                  <Text fontSize="3xs" color="fg.muted">
+                    Tap collected staff cards to view full bio details.
+                  </Text>
+                </VStack>
+              </Dialog.Header>
 
-            <Flex justify="space-between" align="center" mb={4}>
-              <VStack align="start" gap={0}>
-                <Heading as="h2" fontSize="md" color="accent.solid" fontWeight="700">
-                  Sticker Collection Album
-                </Heading>
-                <Text fontSize="3xs" color="fg.muted">
-                  Tap collected staff cards to view full bio details.
-                </Text>
-              </VStack>
-              <Button
-                size="xs"
-                variant="ghost"
-                onClick={() => setIsBookOpen(false)}
-                cursor="pointer"
-              >
-                Close
-              </Button>
-            </Flex>
+              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column">
+                {/* Filter Search Input */}
+                <Input
+                  placeholder="Search whitelisted staff members..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  mb={4}
+                  borderRadius="xl"
+                  border="1.5px solid var(--c-outline)"
+                  bg="bg.hero"
+                  h="40px"
+                  fontSize="xs"
+                  _focus={{ borderColor: "accent.solid" }}
+                  aria-label="Search staff members"
+                  title="Search staff members"
+                />
 
-            {/* Filter Search Input */}
-            <Input
-              placeholder="Search whitelisted staff members..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              mb={4}
-              borderRadius="xl"
-              border="1.5px solid var(--c-outline)"
-              bg="bg.hero"
-              h="40px"
-              fontSize="xs"
-              _focus={{ borderColor: "accent.solid" }}
-              aria-label="Search staff members"
-              title="Search staff members"
-            />
+                {/* Sticker grid view */}
+                <Box flex={1} overflowY="auto" pb={4}>
+                  <VStack align="stretch" gap={6}>
+                    {groupedStaffData.sortedKeys.length === 0 ? (
+                      <Flex h="150px" align="center" justify="center" direction="column">
+                        <Box as="span" className="material-symbols-outlined" fontSize="36px" color="var(--c-muted)">
+                          search_off
+                        </Box>
+                        <Text fontSize="xs" color="fg.subtle" mt={2}>
+                          No staff members match search query
+                        </Text>
+                      </Flex>
+                    ) : (
+                      groupedStaffData.sortedKeys.map((pos) => {
+                        const staffInGroup = groupedStaffData.grouped[pos];
+                        const collectedInGroup = staffInGroup.filter((s) => collectedIds.has(s.student_id));
+                        const lockedInGroup = staffInGroup.filter((s) => !collectedIds.has(s.student_id));
 
-            {/* Sticker grid view */}
-            <Box flex={1} overflowY="auto" pb={4}>
-              <VStack align="stretch" gap={6}>
-                {groupedStaffData.sortedKeys.length === 0 ? (
-                  <Flex h="150px" align="center" justify="center" direction="column">
-                    <Box as="span" className="material-symbols-outlined" fontSize="36px" color="var(--c-muted)">
-                      search_off
-                    </Box>
-                    <Text fontSize="xs" color="fg.subtle" mt={2}>
-                      No staff members match search query
-                    </Text>
-                  </Flex>
-                ) : (
-                  groupedStaffData.sortedKeys.map((pos) => {
-                    const staffInGroup = groupedStaffData.grouped[pos];
-                    const collectedInGroup = staffInGroup.filter((s) => collectedIds.has(s.student_id));
-                    const lockedInGroup = staffInGroup.filter((s) => !collectedIds.has(s.student_id));
-
-                    return (
-                      <Box key={pos} w="100%">
-                        <Heading
-                          size="xs"
-                          color="accent.solid"
-                          mb={3.5}
-                          textTransform="uppercase"
-                          letterSpacing="0.05em"
-                          borderBottom="1.5px solid"
-                          borderColor="color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
-                          pb={1.5}
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="center"
-                        >
-                          <Text as="span" fontWeight="800">{pos}</Text>
-                          <Text as="span" fontSize="2xs" color="fg.subtle" fontWeight="700">
-                            ({collectedInGroup.length}/{staffInGroup.length})
-                          </Text>
-                        </Heading>
-                        <Flex gap={4} flexWrap="wrap" justify="start">
-                          {/* Collected staff */}
-                          {collectedInGroup.map((s) => (
-                            <Box
-                              key={s.student_id}
-                              w="100px"
+                        return (
+                          <Box key={pos} w="100%">
+                            <Heading
+                              size="xs"
+                              color="accent.solid"
+                              mb={3.5}
+                              textTransform="uppercase"
+                              letterSpacing="0.05em"
+                              borderBottom="1.5px solid"
+                              borderColor="color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+                              pb={1.5}
                               display="flex"
-                              flexDirection="column"
+                              justifyContent="space-between"
                               alignItems="center"
-                              onClick={() => setSelectedStaffDetail(s)}
-                              cursor="pointer"
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`View details for ${s.nickname || "Staff"}`}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  setSelectedStaffDetail(s);
-                                }
-                              }}
                             >
-                              <Box
-                                position="relative"
-                                w="80px"
-                                h="80px"
-                                borderRadius="full"
-                                overflow="hidden"
-                                border="2px solid"
-                                borderColor="accent.solid"
-                                bg={s.avatar_color}
-                                mb={1.5}
-                              >
-                                {s.profile_pic_url ? (
-                                  <Image
-                                    draggable={false}
-                                    src={s.profile_pic_url}
-                                    alt={s.nickname || "Staff"}
-                                    w="100%"
-                                    h="100%"
-                                    objectFit="cover"
-                                  />
-                                ) : (
-                                  <Flex w="100%" h="100%" align="center" justify="center" color="white" fontWeight="700">
-                                    {getInitials(s.nickname || "?")}
-                                  </Flex>
-                                )}
-                              </Box>
-                              <Text
-                                fontSize="2xs"
-                                fontWeight="600"
-                                color="fg.default"
-                                textAlign="center"
-                                lineClamp={1}
-                                w="100%"
-                              >
-                                {s.nickname || "Staff"}
+                              <Text as="span" fontWeight="800">{pos}</Text>
+                              <Text as="span" fontSize="2xs" color="fg.subtle" fontWeight="700">
+                                ({collectedInGroup.length}/{staffInGroup.length})
                               </Text>
-                              <Text fontSize="3xs" color="fg.subtle" lineClamp={1}>
-                                {s.major || "Staff"}
-                              </Text>
-                            </Box>
-                          ))}
-
-                          {/* Locked stubs - NO NAMES/BIO/PORTRAITS leaked! */}
-                          {lockedInGroup.map((s, idx) => {
-                            const lockedLabel = `${pos} #${idx + 1}`;
-                            return (
-                              <Box
-                                key={`locked-${s.student_id}`}
-                                w="100px"
-                                display="flex"
-                                flexDirection="column"
-                                alignItems="center"
-                                cursor="default"
-                              >
-                                <Flex
-                                  position="relative"
-                                  w="80px"
-                                  h="80px"
-                                  borderRadius="full"
-                                  overflow="hidden"
-                                  border="2px dashed"
-                                  borderColor="border.subtle"
-                                  bg="color-mix(in srgb, var(--c-chocolate) 6%, transparent)"
-                                  mb={1.5}
+                            </Heading>
+                            <Flex gap={4} flexWrap="wrap" justify="start">
+                              {/* Collected staff */}
+                              {collectedInGroup.map((s) => (
+                                <Box
+                                  key={s.student_id}
+                                  w="100px"
+                                  display="flex"
+                                  flexDirection="column"
                                   alignItems="center"
-                                  justifyContent="center"
+                                  onClick={() => setSelectedStaffDetail(s)}
+                                  cursor="pointer"
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label={`View details for ${s.nickname || "Staff"}`}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setSelectedStaffDetail(s);
+                                    }
+                                  }}
                                 >
-                                  <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="32px" opacity={0.4}>
-                                    person
-                                  </Box>
-                                  <Flex
-                                    position="absolute"
-                                    top={0}
-                                    left={0}
-                                    right={0}
-                                    bottom={0}
-                                    align="center"
-                                    justifyContent="center"
-                                    bg="blackAlpha.50"
+                                  <Box
+                                    position="relative"
+                                    w="80px"
+                                    h="80px"
+                                    borderRadius="full"
+                                    overflow="hidden"
+                                    border="2px solid"
+                                    borderColor="accent.solid"
+                                    bg={s.avatar_color}
+                                    mb={1.5}
                                   >
-                                    <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="16px" opacity={0.6}>
-                                      lock
-                                    </Box>
-                                  </Flex>
-                                </Flex>
-                                <Text
-                                  fontSize="2xs"
-                                  fontWeight="600"
-                                  color="fg.subtle"
-                                  textAlign="center"
-                                  lineClamp={1}
-                                  w="100%"
-                                >
-                                  {lockedLabel}
-                                </Text>
-                                <Text fontSize="3xs" color="fg.subtle" opacity={0.6} lineClamp={1}>
-                                  Locked
-                                </Text>
-                              </Box>
-                            );
-                          })}
-                        </Flex>
-                      </Box>
-                    );
-                  })
-                )}
-              </VStack>
-            </Box>
-          </Box>
-        </Portal>
+                                    {s.profile_pic_url ? (
+                                      <Image
+                                        draggable={false}
+                                        src={s.profile_pic_url}
+                                        alt={s.nickname || "Staff"}
+                                        w="100%"
+                                        h="100%"
+                                        objectFit="cover"
+                                      />
+                                    ) : (
+                                      <Flex w="100%" h="100%" align="center" justify="center" color="white" fontWeight="700">
+                                        {getInitials(s.nickname || "?")}
+                                      </Flex>
+                                    )}
+                                  </Box>
+                                  <Text
+                                    fontSize="2xs"
+                                    fontWeight="600"
+                                    color="fg.default"
+                                    textAlign="center"
+                                    lineClamp={1}
+                                    w="100%"
+                                  >
+                                    {s.nickname || "Staff"}
+                                  </Text>
+                                  <Text fontSize="3xs" color="fg.subtle" lineClamp={1}>
+                                    {s.major || "Staff"}
+                                  </Text>
+                                </Box>
+                              ))}
+
+                              {/* Locked stubs - NO NAMES/BIO/PORTRAITS leaked! */}
+                              {lockedInGroup.map((s, idx) => {
+                                const lockedLabel = `${pos} #${idx + 1}`;
+                                return (
+                                  <Box
+                                    key={`locked-${s.student_id}`}
+                                    w="100px"
+                                    display="flex"
+                                    flexDirection="column"
+                                    alignItems="center"
+                                    cursor="default"
+                                  >
+                                    <Flex
+                                      position="relative"
+                                      w="80px"
+                                      h="80px"
+                                      borderRadius="full"
+                                      overflow="hidden"
+                                      border="2px dashed"
+                                      borderColor="border.subtle"
+                                      bg="color-mix(in srgb, var(--c-chocolate) 6%, transparent)"
+                                      mb={1.5}
+                                      alignItems="center"
+                                      justifyContent="center"
+                                    >
+                                      <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="32px" opacity={0.4}>
+                                        person
+                                      </Box>
+                                      <Flex
+                                        position="absolute"
+                                        top={0}
+                                        left={0}
+                                        right={0}
+                                        bottom={0}
+                                        align="center"
+                                        justifyContent="center"
+                                        bg="blackAlpha.50"
+                                      >
+                                        <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="16px" opacity={0.6}>
+                                          lock
+                                        </Box>
+                                      </Flex>
+                                    </Flex>
+                                    <Text
+                                      fontSize="2xs"
+                                      fontWeight="600"
+                                      color="fg.subtle"
+                                      textAlign="center"
+                                      lineClamp={1}
+                                      w="100%"
+                                    >
+                                      {lockedLabel}
+                                    </Text>
+                                    <Text fontSize="3xs" color="fg.subtle" opacity={0.6} lineClamp={1}>
+                                      Locked
+                                    </Text>
+                                  </Box>
+                                );
+                              })}
+                            </Flex>
+                          </Box>
+                        );
+                      })
+                    )}
+                  </VStack>
+                </Box>
+              </Dialog.Body>
+
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                  onClick={() => setIsBookOpen(false)}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
       )}
 
-      {/* 6. Collected Card Details Bottom Sheet */}
+      {/* 6. Collected Card Details Dialog */}
       {selectedStaffDetail && (
-        <Portal>
-          <Box
-            position="fixed"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="blackAlpha.700"
-            backdropFilter="blur(4px)"
-            zIndex="2100"
-            onClick={() => setSelectedStaffDetail(null)}
-          />
-          <Box
-            position="fixed"
-            bottom={0}
-            left="50%"
-            transform="translateX(-50%)"
-            w="100%"
-            maxW="md"
-            maxH="85vh"
-            overflowY="auto"
-            bg="bg.surface"
-            borderTopRadius="2xl"
-            border="1px solid"
-            borderColor="border.subtle"
-            boxShadow="0 -10px 25px color-mix(in srgb, var(--c-ink) 15%, transparent)"
-            zIndex="2101"
-            p={5}
-            animation="slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards"
-          >
-            <Flex justify="space-between" mb={4}>
-              <Heading as="h3" fontSize="sm" color="accent.solid" fontWeight="700">
-                Collector's Intel
-              </Heading>
-              <Button size="xs" variant="ghost" onClick={() => setSelectedStaffDetail(null)} cursor="pointer">
-                Close
-              </Button>
-            </Flex>
+        <Dialog.Root open={!!selectedStaffDetail} onOpenChange={() => setSelectedStaffDetail(null)} placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+          <Dialog.Positioner zIndex={2100} px={4}>
+            <Dialog.Content
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
+              bg="var(--c-ivory)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+              color="var(--c-ink)"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
+              p={6}
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Dialog.Header p={0} mb={4}>
+                <Dialog.Title fontSize="sm" color="accent.solid" fontWeight="700">
+                  Collector's Intel
+                </Dialog.Title>
+              </Dialog.Header>
 
-            <VStack gap={4} align="stretch">
-              <HStack gap={4}>
-                <Image
-                  src={selectedStaffDetail.profile_pic_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"}
-                  alt={selectedStaffDetail.nickname || "Staff"}
-                  w="72px"
-                  h="72px"
-                  borderRadius="full"
-                  objectFit="cover"
-                  border="2px solid"
-                  borderColor="accent.solid"
-                />
-                <VStack align="start" gap={0.5}>
-                  <Heading as="h4" fontSize="md" color="fg.default" fontWeight="700">
-                    {selectedStaffDetail.nickname}
-                  </Heading>
-                  <Text fontSize="2xs" color="accent.solid" fontWeight="700">
-                    {selectedStaffDetail.major} ({selectedStaffDetail.faculty})
-                  </Text>
-                  {selectedStaffDetail.ig && (
-                    <Text fontSize="2xs" color="var(--c-chocolate)" fontWeight="600">
-                      IG: @{selectedStaffDetail.ig}
+              <Dialog.Body p={0} flex={1} overflowY="auto">
+                <VStack gap={4} align="stretch">
+                  <HStack gap={4}>
+                    <Image
+                      src={selectedStaffDetail.profile_pic_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"}
+                      alt={selectedStaffDetail.nickname || "Staff"}
+                      w="72px"
+                      h="72px"
+                      borderRadius="full"
+                      objectFit="cover"
+                      border="2px solid"
+                      borderColor="accent.solid"
+                    />
+                    <VStack align="start" gap={0.5}>
+                      <Heading as="h4" fontSize="md" color="fg.default" fontWeight="700">
+                        {selectedStaffDetail.nickname}
+                      </Heading>
+                      <Text fontSize="2xs" color="accent.solid" fontWeight="700">
+                        {selectedStaffDetail.major} ({selectedStaffDetail.faculty})
+                      </Text>
+                      {selectedStaffDetail.ig && (
+                        <Text fontSize="2xs" color="var(--c-chocolate)" fontWeight="600">
+                          IG: @{selectedStaffDetail.ig}
+                        </Text>
+                      )}
+                    </VStack>
+                  </HStack>
+
+                  <Box bg="bg.hero" p={3.5} borderRadius="xl" border="1px solid" borderColor="border.subtle">
+                    <Text fontSize="xs" fontWeight="700" color="accent.solid" mb={1} textTransform="uppercase" letterSpacing="0.05em">
+                      Bio / คำโปรย
                     </Text>
+                    <Text fontSize="xs" color="fg.default" lineHeight="1.6">
+                      {selectedStaffDetail.bio || "No bio entered."}
+                    </Text>
+                  </Box>
+
+                  {selectedStaffDetail.images && selectedStaffDetail.images.length > 0 && (
+                    <VStack align="stretch" gap={1.5}>
+                      <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
+                        Staff Photo Pool
+                      </Text>
+                      <HStack gap={2} overflowX="auto" pb={1}>
+                        {selectedStaffDetail.images.map((imgUrl: string, idx: number) => (
+                          <Image
+                            key={idx}
+                            src={imgUrl}
+                            alt={`Staff upload ${idx}`}
+                            w="90px"
+                            h="120px"
+                            objectFit="cover"
+                            borderRadius="lg"
+                            border="1px solid"
+                            borderColor="border.subtle"
+                            flexShrink={0}
+                          />
+                        ))}
+                      </HStack>
+                    </VStack>
                   )}
                 </VStack>
-              </HStack>
+              </Dialog.Body>
 
-              <Box bg="bg.hero" p={3.5} borderRadius="xl" border="1px solid" borderColor="border.subtle">
-                <Text fontSize="xs" fontWeight="700" color="accent.solid" mb={1} textTransform="uppercase" letterSpacing="0.05em">
-                  Bio / คำโปรย
-                </Text>
-                <Text fontSize="xs" color="fg.default" lineHeight="1.6">
-                  {selectedStaffDetail.bio || "No bio entered."}
-                </Text>
-              </Box>
-
-              {selectedStaffDetail.images && selectedStaffDetail.images.length > 0 && (
-                <VStack align="stretch" gap={1.5}>
-                  <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
-                    Staff Photo Pool
-                  </Text>
-                  <HStack gap={2} overflowX="auto" pb={1}>
-                    {selectedStaffDetail.images.map((imgUrl: string, idx: number) => (
-                      <Image
-                        key={idx}
-                        src={imgUrl}
-                        alt={`Staff upload ${idx}`}
-                        w="90px"
-                        h="120px"
-                        objectFit="cover"
-                        borderRadius="lg"
-                        border="1px solid"
-                        borderColor="border.subtle"
-                        flexShrink={0}
-                      />
-                    ))}
-                  </HStack>
-                </VStack>
-              )}
-            </VStack>
-          </Box>
-        </Portal>
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                  onClick={() => setSelectedStaffDetail(null)}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
       )}
 
       {/* 7. Mission Cleared Full Screen Celebration Modal */}

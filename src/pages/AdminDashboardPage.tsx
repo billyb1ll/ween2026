@@ -11,11 +11,9 @@ import {
   Spinner,
   Table,
   Badge,
-  Portal,
   Tabs,
   Textarea,
   Dialog,
-  CloseButton,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
@@ -1603,322 +1601,369 @@ export function AdminDashboardPage() {
 
       {/* CSV Preview Dialog */}
       {showCsvModal && (
-        <Dialog.Root open={showCsvModal} onOpenChange={(e) => setShowCsvModal(e.open)}>
-          <Dialog.Backdrop bg="rgba(0, 0, 0, 0.5)" />
+        <Dialog.Root open={showCsvModal} onOpenChange={(e) => setShowCsvModal(e.open)} placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
           <Dialog.Positioner zIndex={1000} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
-              border="2px solid var(--c-chocolate)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
               color="var(--c-ink)"
-              borderRadius="2xl"
-              maxW="2xl"
-              w="100%"
-              maxH="80vh"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
               p={6}
-              boxShadow="none"
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
               display="flex"
               flexDirection="column"
               position="relative"
             >
-              <Dialog.Header p={0} mb={2}>
-                <Dialog.Title fontSize="xl" fontWeight="bold" color="var(--c-chocolate)">
-                  CSV Upload Preview & Duplicate Validation
-                </Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" mb={4}>
-                <Text fontSize="xs" color="fg.subtle" mb={4}>
-                  Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
-                </Text>
+              <Box as="form" onSubmit={async (e) => {
+                e.preventDefault();
+                await handleBatchUpsert();
+              }} display="flex" flexDirection="column" height="100%" width="100%">
+                <Dialog.Header p={0} mb={2}>
+                  <Dialog.Title fontSize="xl" fontWeight="bold" color="var(--c-chocolate)">
+                    CSV Upload Preview & Duplicate Validation
+                  </Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" mb={4}>
+                  <Text fontSize="xs" color="fg.subtle" mb={4}>
+                    Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
+                  </Text>
 
-                <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
-                  <Table.Root size="sm" variant="line">
-                    <Table.Header>
-                      <Table.Row>
-                        <Table.ColumnHeader>Student ID</Table.ColumnHeader>
-                        <Table.ColumnHeader>Nickname</Table.ColumnHeader>
-                        <Table.ColumnHeader>Faculty</Table.ColumnHeader>
-                        <Table.ColumnHeader>Role</Table.ColumnHeader>
-                        <Table.ColumnHeader>Validation</Table.ColumnHeader>
-                      </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                      {csvRecords.map((row, idx) => {
-                        const dup = isDuplicate(row.student_id)
-                        return (
-                          <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
-                            <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
-                            <Table.Cell>{row.nickname || '-'}</Table.Cell>
-                            <Table.Cell>{row.faculty || '-'}</Table.Cell>
-                            <Table.Cell>
-                              <Badge colorPalette="gray">{row.role}</Badge>
-                            </Table.Cell>
-                            <Table.Cell>
-                              {dup ? (
-                                <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
-                              ) : (
-                                <Badge colorPalette="green">New Record</Badge>
-                              )}
-                            </Table.Cell>
-                          </Table.Row>
-                        )
-                      })}
-                    </Table.Body>
-                  </Table.Root>
-                </Box>
-              </Dialog.Body>
+                  <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
+                    <Table.Root size="sm" variant="line">
+                      <Table.Header>
+                        <Table.Row>
+                          <Table.ColumnHeader>Student ID</Table.ColumnHeader>
+                          <Table.ColumnHeader>Nickname</Table.ColumnHeader>
+                          <Table.ColumnHeader>Faculty</Table.ColumnHeader>
+                          <Table.ColumnHeader>Role</Table.ColumnHeader>
+                          <Table.ColumnHeader>Validation</Table.ColumnHeader>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
+                        {csvRecords.map((row, idx) => {
+                          const dup = isDuplicate(row.student_id)
+                          return (
+                            <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
+                              <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
+                              <Table.Cell>{row.nickname || '-'}</Table.Cell>
+                              <Table.Cell>{row.faculty || '-'}</Table.Cell>
+                              <Table.Cell>
+                                <Badge colorPalette="gray">{row.role}</Badge>
+                              </Table.Cell>
+                              <Table.Cell>
+                                {dup ? (
+                                  <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
+                                ) : (
+                                  <Badge colorPalette="green">New Record</Badge>
+                                )}
+                              </Table.Cell>
+                            </Table.Row>
+                          )
+                        })}
+                      </Table.Body>
+                    </Table.Root>
+                  </Box>
+                </Dialog.Body>
 
-              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                <Dialog.CloseTrigger asChild>
+                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                  <Dialog.CloseTrigger asChild>
+                    <Button
+                      variant="outline"
+                      h="44px"
+                      borderRadius="xl"
+                      cursor="pointer"
+                    >
+                      Cancel
+                    </Button>
+                  </Dialog.CloseTrigger>
                   <Button
-                    variant="outline"
+                    type="submit"
+                    bg="accent.solid"
+                    color="white"
+                    loading={upserting}
                     h="44px"
+                    px={6}
                     borderRadius="xl"
                     cursor="pointer"
+                    _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
                   >
-                    Cancel
+                    Batch Upsert ({csvRecords.length} records)
                   </Button>
-                </Dialog.CloseTrigger>
-                <Button
-                  bg="accent.solid"
-                  color="white"
-                  onClick={handleBatchUpsert}
-                  loading={upserting}
-                  h="44px"
-                  px={6}
-                  borderRadius="xl"
-                  cursor="pointer"
-                  _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
-                >
-                  Batch Upsert ({csvRecords.length} records)
-                </Button>
-              </Dialog.Footer>
+                </Dialog.Footer>
+              </Box>
               <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-                <CloseButton size="sm" cursor="pointer" />
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
         </Dialog.Root>
       )}
 
-      {/* Mobile-First User Inspector Bottom Sheet Drawer */}
+      {/* User Inspector Dialog */}
       {inspectUser && (
-        <Portal>
-          <Box
-            position="fixed"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="blackAlpha.700"
-            backdropFilter="blur(4px)"
-            zIndex="2100"
-            onClick={() => setInspectUser(null)}
-          />
-          <Box
-            position="fixed"
-            left="50%"
-            bottom={0}
-            transform="translateX(-50%)"
-            w="100%"
-            maxW="md"
-            bg="bg.surface"
-            borderTopRadius="3xl"
-            border="1px solid"
-            borderColor="border.subtle"
-            boxShadow="var(--shadow-card-hover)"
-            p={6}
-            zIndex="2200"
-            animation="slide-up 0.3s var(--ease-out-quint)"
-            maxH="85vh"
-            overflowY="auto"
-          >
-            <VStack gap={5} align="stretch">
-              <HStack justify="space-between">
-                <Heading as="h3" fontSize="md" color="var(--c-chocolate)" fontWeight="700">
-                  User Audit & Inspector
-                </Heading>
-                <Button size="xs" variant="ghost" onClick={() => setInspectUser(null)} cursor="pointer">Close</Button>
-              </HStack>
-
-              <VStack align="stretch" gap={2} bg="var(--c-ivory)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle">
-                <Text fontSize="xs"><strong>Student ID:</strong> {inspectUser.student_id}</Text>
-                {inspectUserStats ? (
-                  <>
-                    <Text fontSize="xs"><strong>Collected cards count:</strong> {inspectUserStats.collectedCount} cards</Text>
-                    {inspectUser.role !== 'student' && (
-                      <Text fontSize="xs"><strong>Times collected by students:</strong> {inspectUserStats.collectedFromCount} times</Text>
-                    )}
-                  </>
-                ) : (
-                  <Spinner size="xs" />
-                )}
-              </VStack>
-
-              <VStack as="form" onSubmit={handleEditUser} gap={4} align="stretch">
-                <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
-                  Manual Record Editor
-                </Heading>
-                 <Box>
-                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-nickname">Nickname</label>
-                  </Box>
-                  <Input
-                    id="inspect-nickname"
-                    value={editNickname}
-                    onChange={(e) => setEditNickname(e.target.value)}
-                    bg="var(--c-ivory)"
-                    h="38px"
-                  />
-                </Box>
-                <Box>
-                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-faculty">Faculty</label>
-                  </Box>
-                  <Input
-                    id="inspect-faculty"
-                    value={editFaculty}
-                    onChange={(e) => setInspectUser(prev => prev ? { ...prev, faculty: e.target.value } : null)}
-                    bg="var(--c-ivory)"
-                    h="38px"
-                  />
-                </Box>
-                <Box>
-                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-major">Major (สาขาวิชา)</label>
-                  </Box>
-                  <Input
-                    id="inspect-major"
-                    value={editMajor}
-                    onChange={(e) => setEditMajor(e.target.value)}
-                    bg="var(--c-ivory)"
-                    h="38px"
-                  />
-                </Box>
-                <Box>
-                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-house-position">House Position (ตำแหน่ง staff)</label>
-                  </Box>
-                  <Input
-                    id="inspect-house-position"
-                    value={editHousePosition}
-                    onChange={(e) => setEditHousePosition(e.target.value)}
-                    bg="var(--c-ivory)"
-                    placeholder="e.g. สันทนาการ, โสต"
-                    h="38px"
-                  />
-                </Box>
-                <Box>
-                  <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                    <label htmlFor="inspect-role">System Role</label>
-                  </Box>
-                  <Tooltip label={getRoleDescription(editRole)}>
-                    <select
-                      id="inspect-role"
-                      value={editRole}
-                      onChange={(e) => setEditRole(e.target.value)}
-                      className="admin-select-sm custom-select"
-                      aria-label="Edit System Role"
-                      title="Edit System Role"
-                    >
-                      <option value="student">student</option>
-                      <option value="staff">staff</option>
-                      <option value="media_admin">media_admin</option>
-                      <option value="moderator">moderator</option>
-                    </select>
-                  </Tooltip>
-                </Box>
-                <Button type="submit" bg="var(--c-chocolate)" color="white" h="40px" borderRadius="lg" cursor="pointer">
-                  Save Changes
-                </Button>
-              </VStack>
-
-              {/* Inspector local audit logs */}
-              <VStack align="stretch" gap={2} mt={2}>
-                <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
-                  Recent User Logs
-                </Heading>
-                <Box maxH="120px" overflowY="auto" border="1px solid" borderColor="border.subtle" borderRadius="lg" p={2}>
-                  {inspectUserLogs.map((log) => (
-                    <Box key={log.id} fontSize="3xs" borderBottom="1px solid" borderColor="border.subtle" py={1.5}>
-                      <Text color="fg.subtle">{new Date(log.created_at).toLocaleString()} - <strong>{log.action_type}</strong></Text>
-                      <Text>{log.details}</Text>
-                    </Box>
-                  ))}
-                  {inspectUserLogs.length === 0 && (
-                    <Text fontSize="2xs" fontStyle="italic" color="fg.subtle">No recent logs found for this user.</Text>
-                  )}
-                </Box>
-              </VStack>
-            </VStack>
-          </Box>
-        </Portal>
-      )}
-
-      {/* Whitelist Remove Confirmation Dialog */}
-      {userToDelete && (
-        <Dialog.Root open={!!userToDelete} onOpenChange={() => setUserToDelete(null)} role="alertdialog">
-          <Dialog.Backdrop bg="rgba(20, 16, 15, 0.7)" backdropFilter="blur(8px)" />
+        <Dialog.Root open={!!inspectUser} onOpenChange={() => setInspectUser(null)} placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
-              border="2px solid var(--c-chocolate)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
               color="var(--c-ink)"
-              borderRadius="2xl"
-              maxW="sm"
-              w="100%"
-              maxH="90vh"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
               p={6}
-              boxShadow="none"
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
               display="flex"
               flexDirection="column"
               position="relative"
             >
               <Dialog.Header p={0} mb={3}>
-                <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
-                    warning
-                  </Box>
-                  Confirm Whitelist Removal
+                <Dialog.Title fontSize="md" color="var(--c-chocolate)" fontWeight="700">
+                  User Audit & Inspector
                 </Dialog.Title>
               </Dialog.Header>
-              <Dialog.Body p={0} mb={5}>
-                <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                  Are you sure you want to remove user <strong>{userToDelete}</strong>? This action will revoke their whitelist status and soft-deactivate their profile.
-                </Text>
+
+              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" gap={4}>
+                <VStack align="stretch" gap={5}>
+                  <VStack align="stretch" gap={2} bg="var(--c-ivory)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle">
+                    <Text fontSize="xs"><strong>Student ID:</strong> {inspectUser.student_id}</Text>
+                    {inspectUserStats ? (
+                      <>
+                        <Text fontSize="xs"><strong>Collected cards count:</strong> {inspectUserStats.collectedCount} cards</Text>
+                        {inspectUser.role !== 'student' && (
+                          <Text fontSize="xs"><strong>Times collected by students:</strong> {inspectUserStats.collectedFromCount} times</Text>
+                        )}
+                      </>
+                    ) : (
+                      <Spinner size="xs" />
+                    )}
+                  </VStack>
+
+                  <VStack as="form" onSubmit={handleEditUser} gap={4} align="stretch">
+                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                      Manual Record Editor
+                    </Heading>
+                    <Box>
+                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                        <label htmlFor="inspect-nickname">Nickname</label>
+                      </Box>
+                      <Input
+                        id="inspect-nickname"
+                        value={editNickname}
+                        onChange={(e) => setEditNickname(e.target.value)}
+                        bg="var(--c-ivory)"
+                        h="38px"
+                      />
+                    </Box>
+                    <Box>
+                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                        <label htmlFor="inspect-faculty">Faculty</label>
+                      </Box>
+                      <Input
+                        id="inspect-faculty"
+                        value={editFaculty}
+                        onChange={(e) => setInspectUser(prev => prev ? { ...prev, faculty: e.target.value } : null)}
+                        bg="var(--c-ivory)"
+                        h="38px"
+                      />
+                    </Box>
+                    <Box>
+                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                        <label htmlFor="inspect-major">Major (สาขาวิชา)</label>
+                      </Box>
+                      <Input
+                        id="inspect-major"
+                        value={editMajor}
+                        onChange={(e) => setEditMajor(e.target.value)}
+                        bg="var(--c-ivory)"
+                        h="38px"
+                      />
+                    </Box>
+                    <Box>
+                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                        <label htmlFor="inspect-house-position">House Position (ตำแหน่ง staff)</label>
+                      </Box>
+                      <Input
+                        id="inspect-house-position"
+                        value={editHousePosition}
+                        onChange={(e) => setEditHousePosition(e.target.value)}
+                        bg="var(--c-ivory)"
+                        placeholder="e.g. สันทนาการ, โสต"
+                        h="38px"
+                      />
+                    </Box>
+                    <Box>
+                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                        <label htmlFor="inspect-role">System Role</label>
+                      </Box>
+                      <Tooltip label={getRoleDescription(editRole)}>
+                        <select
+                          id="inspect-role"
+                          value={editRole}
+                          onChange={(e) => setEditRole(e.target.value)}
+                          className="admin-select-sm custom-select"
+                          aria-label="Edit System Role"
+                          title="Edit System Role"
+                        >
+                          <option value="student">student</option>
+                          <option value="staff">staff</option>
+                          <option value="media_admin">media_admin</option>
+                          <option value="moderator">moderator</option>
+                        </select>
+                      </Tooltip>
+                    </Box>
+                    <Button type="submit" bg="var(--c-chocolate)" color="white" h="40px" borderRadius="lg" cursor="pointer">
+                      Save Changes
+                    </Button>
+                  </VStack>
+
+                  {/* Inspector local audit logs */}
+                  <VStack align="stretch" gap={2} mt={2}>
+                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                      Recent User Logs
+                    </Heading>
+                    <Box maxH="120px" overflowY="auto" border="1px solid" borderColor="border.subtle" borderRadius="lg" p={2}>
+                      {inspectUserLogs.map((log) => (
+                        <Box key={log.id} fontSize="3xs" borderBottom="1px solid" borderColor="border.subtle" py={1.5}>
+                          <Text color="fg.subtle">{new Date(log.created_at).toLocaleString()} - <strong>{log.action_type}</strong></Text>
+                          <Text>{log.details}</Text>
+                        </Box>
+                      ))}
+                      {inspectUserLogs.length === 0 && (
+                        <Text fontSize="2xs" fontStyle="italic" color="fg.subtle">No recent logs found for this user.</Text>
+                      )}
+                    </Box>
+                  </VStack>
+                </VStack>
               </Dialog.Body>
-              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                <Dialog.CloseTrigger asChild>
+
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                  onClick={() => setInspectUser(null)}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      )}
+
+      {/* Whitelist Remove Confirmation Dialog */}
+      {userToDelete && (
+        <Dialog.Root open={!!userToDelete} onOpenChange={() => setUserToDelete(null)} role="alertdialog" placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+          <Dialog.Positioner zIndex={2200} px={4}>
+            <Dialog.Content
+              bg="var(--c-ivory)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+              color="var(--c-ink)"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
+              p={6}
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
+              display="flex"
+              flexDirection="column"
+              position="relative"
+            >
+              <Box as="form" onSubmit={async (e) => {
+                e.preventDefault();
+                await handleRemoveWhitelist(userToDelete);
+                setUserToDelete(null);
+              }} display="flex" flexDirection="column" height="100%" width="100%" gap="12px">
+                <Dialog.Header p={0}>
+                  <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
+                    <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                      warning
+                    </Box>
+                    Confirm Whitelist Removal
+                  </Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body p={0} overflowY="auto">
+                  <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                    Are you sure you want to remove user <strong>{userToDelete}</strong>? This action will revoke their whitelist status and soft-deactivate their profile.
+                  </Text>
+                </Dialog.Body>
+                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                  <Dialog.CloseTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderColor="border.subtle"
+                      borderRadius="xl"
+                      cursor="pointer"
+                      h="40px"
+                      px={4}
+                    >
+                      Cancel
+                    </Button>
+                  </Dialog.CloseTrigger>
                   <Button
+                    type="submit"
                     size="sm"
-                    variant="outline"
-                    borderColor="border.subtle"
+                    bg="red.600"
+                    _hover={{ bg: "red.700" }}
+                    color="white"
                     borderRadius="xl"
                     cursor="pointer"
                     h="40px"
                     px={4}
                   >
-                    Cancel
+                    Confirm Delete
                   </Button>
-                </Dialog.CloseTrigger>
-                <Button
-                  size="sm"
-                  bg="red.600"
-                  _hover={{ bg: "red.700" }}
-                  color="white"
-                  borderRadius="xl"
-                  onClick={async () => {
-                    await handleRemoveWhitelist(userToDelete);
-                    setUserToDelete(null);
-                  }}
-                  cursor="pointer"
-                  h="40px"
-                  px={4}
-                >
-                  Confirm Delete
-                </Button>
-              </Dialog.Footer>
+                </Dialog.Footer>
+              </Box>
               <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-                <CloseButton size="sm" cursor="pointer" />
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
@@ -1972,70 +2017,88 @@ export function AdminDashboardPage() {
 
       {/* Bulk Delete Confirmation Dialog */}
       {isBulkDeleteOpen && (
-        <Dialog.Root open={isBulkDeleteOpen} onOpenChange={(e) => setIsBulkDeleteOpen(e.open)} role="alertdialog">
-          <Dialog.Backdrop bg="rgba(20, 16, 15, 0.7)" backdropFilter="blur(8px)" />
+        <Dialog.Root open={isBulkDeleteOpen} onOpenChange={(e) => setIsBulkDeleteOpen(e.open)} role="alertdialog" placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
-              border="2px solid var(--c-chocolate)"
+              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
               color="var(--c-ink)"
-              borderRadius="2xl"
-              maxW="sm"
-              w="100%"
-              maxH="90vh"
+              borderRadius={{ base: "t-3xl", md: "2xl" }}
+              width={{ base: "100%", md: "560px" }}
+              maxH={{ base: "92vh", md: "80vh" }}
               p={6}
-              boxShadow="none"
+              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
               display="flex"
               flexDirection="column"
               position="relative"
             >
-              <Dialog.Header p={0} mb={3}>
-                <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
-                    warning
-                  </Box>
-                  Confirm Bulk Removal
-                </Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body p={0} mb={5}>
-                <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                  Are you sure you want to remove <strong>{selectedStudentIds.length}</strong> selected users? This action will revoke their whitelist status, soft-deactivate their profiles, and revert their roles to student.
-                </Text>
-              </Dialog.Body>
-              <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                <Dialog.CloseTrigger asChild>
+              <Box as="form" onSubmit={async (e) => {
+                e.preventDefault();
+                await handleBulkDeleteConfirm();
+                setIsBulkDeleteOpen(false);
+              }} display="flex" flexDirection="column" height="100%" width="100%" gap="12px">
+                <Dialog.Header p={0}>
+                  <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
+                    <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                      warning
+                    </Box>
+                    Confirm Bulk Removal
+                  </Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body p={0} overflowY="auto">
+                  <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                    Are you sure you want to remove <strong>{selectedStudentIds.length}</strong> selected users? This action will revoke their whitelist status, soft-deactivate their profiles, and revert their roles to student.
+                  </Text>
+                </Dialog.Body>
+                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                  <Dialog.CloseTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      borderColor="border.subtle"
+                      borderRadius="xl"
+                      onClick={() => setIsBulkDeleteOpen(false)}
+                      cursor="pointer"
+                      h="40px"
+                      px={4}
+                    >
+                      Cancel
+                    </Button>
+                  </Dialog.CloseTrigger>
                   <Button
+                    type="submit"
                     size="sm"
-                    variant="outline"
-                    borderColor="border.subtle"
+                    bg="red.600"
+                    _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
+                    color="white"
                     borderRadius="xl"
-                    onClick={() => setIsBulkDeleteOpen(false)}
                     cursor="pointer"
                     h="40px"
                     px={4}
                   >
-                    Cancel
+                    Confirm Bulk Delete
                   </Button>
-                </Dialog.CloseTrigger>
-                <Button
-                  size="sm"
-                  bg="red.600"
-                  _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
-                  color="white"
-                  borderRadius="xl"
-                  onClick={async () => {
-                    await handleBulkDeleteConfirm();
-                    setIsBulkDeleteOpen(false);
-                  }}
-                  cursor="pointer"
-                  h="40px"
-                  px={4}
-                >
-                  Confirm Bulk Delete
-                </Button>
-              </Dialog.Footer>
+                </Dialog.Footer>
+              </Box>
               <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-                <CloseButton size="sm" cursor="pointer" />
+                <Button
+                  variant="ghost"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  color="var(--c-muted)"
+                  p={0}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    close
+                  </Box>
+                </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
           </Dialog.Positioner>
