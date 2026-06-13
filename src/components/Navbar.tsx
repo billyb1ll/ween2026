@@ -211,7 +211,7 @@ export function Navbar() {
   const { user, logout } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
-  const [emergencyMsg, setEmergencyMsg] = useState<string | null>(null);
+  const [emergencyAnnouncement, setEmergencyAnnouncement] = useState<string | null>(null);
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -227,9 +227,9 @@ export function Navbar() {
 
         if (active && data) {
           if (data.value && data.text_value) {
-            setEmergencyMsg(data.text_value);
+            setEmergencyAnnouncement(data.text_value);
           } else {
-            setEmergencyMsg(null);
+            setEmergencyAnnouncement(null);
           }
         }
       } catch (err) {
@@ -239,11 +239,11 @@ export function Navbar() {
     fetchEmergency();
 
     const channel = supabase
-      .channel("system_config_emergency")
+      .channel("system_config_realtime_stream")
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "system_config",
           filter: "key=eq.emergency_announcement",
@@ -252,9 +252,9 @@ export function Navbar() {
           if (active && payload.new) {
             const newRecord = payload.new as { value: boolean; text_value: string | null };
             if (newRecord.value && newRecord.text_value) {
-              setEmergencyMsg(newRecord.text_value);
+              setEmergencyAnnouncement(newRecord.text_value);
             } else {
-              setEmergencyMsg(null);
+              setEmergencyAnnouncement(null);
             }
           }
         }
@@ -359,184 +359,309 @@ export function Navbar() {
 
   return (
     <>
-      {emergencyMsg && (
-        <Box
-          position="fixed"
-          top={0}
-          left={0}
-          right={0}
-          bg="#d97706"
-          color="#4a2c11"
-          py={1.5}
-          px={4}
-          zIndex={9999}
-          fontSize="xs"
-          fontWeight="bold"
-          textAlign="center"
-          boxShadow="sm"
-          style={{ animation: "pulse 2s infinite ease-in-out" }}
-        >
-          <HStack justify="center" gap={2}>
-            <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#4a2c11" }}>
-              warning
-            </span>
-            <Text>{emergencyMsg}</Text>
-          </HStack>
-        </Box>
-      )}
-
-      {/* Desktop: Sticky top bar */}
-      <Box
-        display={{ base: "none", md: "block" }}
-        position="fixed"
-        top={emergencyMsg ? "32px" : 0}
+      <Flex
+        direction="column"
+        position="sticky"
+        top={0}
         left={0}
         right={0}
-        zIndex={1000}
         w="100%"
-        pt={4}
+        zIndex={1000}
+        pointerEvents="none"
       >
-        <Flex
-          as="nav"
-          aria-label="Main navigation"
-          align="center"
-          bg="color-mix(in srgb, var(--c-ivory) 80%, transparent)"
-          backdropFilter="blur(12px)"
-          borderRadius="full"
-          px={6}
-          py={3}
-          border="1px solid color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
-          boxShadow="var(--shadow-card)"
-          gap={2}
-          maxW="1200px"
-          mx="auto"
-          w={{ base: "calc(100% - 32px)", md: "90%" }}
-        >
-          <NavLink to="/">
-            <Flex
-              fontFamily="heading"
-              fontSize="xl"
-              fontWeight="700"
-              letterSpacing="0.1em"
-              mr={8}
-              transition="opacity 0.2s"
-              _hover={{ opacity: 0.8 }}
-              gap={1}
-            >
-              <Text color="red">Very</Text>
-              <Text color="orange">Ween</Text>
-            </Flex>
-          </NavLink>
-
-          <HStack gap={1}>
-            <NavItem to="/">Home</NavItem>
-            <NavItem to="/vibe-check">Vibe Check</NavItem>
-            <NavItem to="/board">Board</NavItem>
-            <NavItem to="/gallery">Gallery</NavItem>
-            {user && (user.role === "moderator" || user.role === "media_admin") && (
-              <NavItem to="/admin">Admin</NavItem>
-            )}
-            {user && (user.role === "moderator" || user.role === "staff") && (
-              <NavItem to="/staff">Staff</NavItem>
-            )}
-          </HStack>
-
-          {user ? (
-            <Box ml={6} position="relative" ref={desktopDropdownRef}>
-              <Button
-                type="button"
-                aria-label="User menu"
-                aria-expanded={dropdownOpen}
-                aria-haspopup="true"
-                w="40px"
-                h="40px"
-                minW="40px"
-                p={0}
-                borderRadius="full"
-                bg={user.profile_pic_url ? "transparent" : user.avatar_color}
-                color="white"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                fontWeight="700"
-                fontSize="sm"
-                cursor="pointer"
-                boxShadow="var(--shadow-ambient)"
-                transition="all 0.2s"
-                _hover={{ transform: "scale(1.05)" }}
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+        {/* Node A (Top Line): Emergency Broadcast Banner */}
+        {emergencyAnnouncement && (
+          <Box
+            w="100%"
+            bg="#d97706"
+            color="#4a2c11"
+            py={1.5}
+            px={4}
+            fontSize="xs"
+            fontWeight="bold"
+            textAlign="center"
+            boxShadow="sm"
+            pointerEvents="auto"
+            className="emergency-pulse"
+          >
+            <HStack justify="center" gap={2}>
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="16px"
+                color="#4a2c11"
               >
-                {user.profile_pic_url ? (
-                  <Image
-                    src={user.profile_pic_url}
-                    alt={user.nickname || "Avatar"}
-                    w="100%"
-                    h="100%"
-                    objectFit="cover"
-                    borderRadius="full"
-                  />
-                ) : (
-                  getInitials(user.nickname || user.student_id)
-                )}
-              </Button>
+                warning
+              </Box>
+              <Text>{emergencyAnnouncement}</Text>
+            </HStack>
+          </Box>
+        )}
 
-              {dropdownOpen && desktopCoords && (
-                <Portal>
-                  <Box
-                    ref={desktopPortalRef}
-                    position="fixed"
-                    top={`${desktopCoords.top}px`}
-                    right={`${desktopCoords.right}px`}
-                    bg="var(--c-white)"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                    boxShadow="var(--shadow-lagoon)"
-                    borderRadius="16px"
-                    p={4}
-                    minW="200px"
-                    zIndex={1000}
-                    animation="scale-in 0.2s var(--ease-out-quart)"
-                    role="menu"
-                  >
-                    <UserDropdownContent
-                      user={user}
-                      logout={logout}
-                      onClose={() => setDropdownOpen(false)}
-                    />
-                  </Box>
-                </Portal>
+        {/* Node B (Bottom Line - Desktop): Floating Capsule Navigation Menu Bar */}
+        <Box
+          display={{ base: "none", md: "block" }}
+          w="100%"
+          pt={emergencyAnnouncement ? 3 : 4}
+          pointerEvents="auto"
+        >
+          <Flex
+            as="nav"
+            aria-label="Main navigation"
+            align="center"
+            bg="color-mix(in srgb, var(--c-ivory) 80%, transparent)"
+            backdropFilter="blur(12px)"
+            borderRadius="full"
+            px={6}
+            py={3}
+            border="1px solid color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+            boxShadow="var(--shadow-card)"
+            gap={2}
+            maxW="1200px"
+            mx="auto"
+            w={{ base: "calc(100% - 32px)", md: "90%" }}
+          >
+            <NavLink to="/">
+              <Flex
+                fontFamily="heading"
+                fontSize="xl"
+                fontWeight="700"
+                letterSpacing="0.1em"
+                mr={8}
+                transition="opacity 0.2s"
+                _hover={{ opacity: 0.8 }}
+                gap={1}
+              >
+                <Text color="red">Very</Text>
+                <Text color="orange">Ween</Text>
+              </Flex>
+            </NavLink>
+
+            <HStack gap={1}>
+              <NavItem to="/">Home</NavItem>
+              <NavItem to="/vibe-check">Vibe Check</NavItem>
+              <NavItem to="/board">Board</NavItem>
+              <NavItem to="/gallery">Gallery</NavItem>
+              {user && (user.role === "moderator" || user.role === "media_admin") && (
+                <NavItem to="/admin">Admin</NavItem>
               )}
-            </Box>
-          ) : (
-            <Box ml={6}>
+              {user && (user.role === "moderator" || user.role === "staff") && (
+                <NavItem to="/staff">Staff</NavItem>
+              )}
+            </HStack>
+
+            {user ? (
+              <Box ml={6} position="relative" ref={desktopDropdownRef}>
+                <Button
+                  type="button"
+                  aria-label="User menu"
+                  aria-expanded={dropdownOpen}
+                  aria-haspopup="true"
+                  w="40px"
+                  h="40px"
+                  minW="40px"
+                  p={0}
+                  borderRadius="full"
+                  bg={user.profile_pic_url ? "transparent" : user.avatar_color}
+                  color="white"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontWeight="700"
+                  fontSize="sm"
+                  cursor="pointer"
+                  boxShadow="var(--shadow-ambient)"
+                  transition="all 0.2s"
+                  _hover={{ transform: "scale(1.05)" }}
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                >
+                  {user.profile_pic_url ? (
+                    <Image
+                      src={user.profile_pic_url}
+                      alt={user.nickname || "Avatar"}
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                      borderRadius="full"
+                    />
+                  ) : (
+                    getInitials(user.nickname || user.student_id)
+                  )}
+                </Button>
+
+                {dropdownOpen && desktopCoords && (
+                  <Portal>
+                    <Box
+                      ref={desktopPortalRef}
+                      position="fixed"
+                      top={`${desktopCoords.top}px`}
+                      right={`${desktopCoords.right}px`}
+                      bg="var(--c-white)"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      boxShadow="var(--shadow-lagoon)"
+                      borderRadius="16px"
+                      p={4}
+                      minW="200px"
+                      zIndex={1000}
+                      animation="scale-in 0.2s var(--ease-out-quart)"
+                      role="menu"
+                    >
+                      <UserDropdownContent
+                        user={user}
+                        logout={logout}
+                        onClose={() => setDropdownOpen(false)}
+                      />
+                    </Box>
+                  </Portal>
+                )}
+              </Box>
+            ) : (
+              <Box ml={6}>
+                <NavLink to="/login">
+                  <Box
+                    as="span"
+                    display="inline-flex"
+                    alignItems="center"
+                    fontSize="sm"
+                    fontWeight="600"
+                    letterSpacing="0.05em"
+                    color="white"
+                    bg="accent.solid"
+                    px={6}
+                    py={2.5}
+                    borderRadius="full"
+                    transition="all 0.3s var(--ease-out-quart)"
+                    boxShadow="0 4px 14px rgba(124, 86, 63, 0.2)"
+                    _hover={{
+                      transform: "translateY(-1px)",
+                      boxShadow: "0 6px 20px rgba(124, 86, 63, 0.3)",
+                    }}
+                    _active={{ transform: "scale(0.97)" }}
+                  >
+                    Join Now
+                  </Box>
+                </NavLink>
+              </Box>
+            )}
+          </Flex>
+        </Box>
+
+        {/* Node B (Bottom Line - Mobile): Mobile top bar with brand */}
+        <Box
+          display={{ base: "block", md: "none" }}
+          w="100%"
+          bg="rgba(var(--c-ivory-rgb), 0.92)"
+          backdropFilter="blur(12px)"
+          borderBottom="1px solid"
+          borderColor="border.subtle"
+          pointerEvents="auto"
+        >
+          <Flex align="center" justify="space-between" px={5} py={3}>
+            <NavLink to="/">
+              <Text
+                fontFamily="heading"
+                color="accent.solid"
+                fontSize="lg"
+                fontWeight="700"
+                letterSpacing="0.1em"
+              >
+                <HStack>
+                  <Text color="red">Very</Text>
+                  <Text color="orange">Ween</Text>
+                </HStack>
+              </Text>
+            </NavLink>
+
+            {user ? (
+              <Box position="relative" ref={mobileDropdownRef}>
+                <Button
+                  type="button"
+                  aria-label="User menu"
+                  aria-expanded={mobileDropdownOpen}
+                  aria-haspopup="true"
+                  w="44px"
+                  h="44px"
+                  minW="44px"
+                  p={0}
+                  borderRadius="full"
+                  bg={user.profile_pic_url ? "transparent" : user.avatar_color}
+                  color="white"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontWeight="700"
+                  fontSize="sm"
+                  cursor="pointer"
+                  boxShadow="var(--shadow-ambient)"
+                  transition="all 0.2s"
+                  _hover={{ transform: "scale(1.05)" }}
+                  onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
+                >
+                  {user.profile_pic_url ? (
+                    <Image
+                      src={user.profile_pic_url}
+                      alt={user.nickname || "Avatar"}
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                      borderRadius="full"
+                    />
+                  ) : (
+                    getInitials(user.nickname || user.student_id)
+                  )}
+                </Button>
+
+                {mobileDropdownOpen && mobileCoords && (
+                  <Portal>
+                    <Box
+                      ref={mobilePortalRef}
+                      position="fixed"
+                      top={`${mobileCoords.top}px`}
+                      right={`${mobileCoords.right}px`}
+                      bg="var(--c-white)"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      boxShadow="var(--shadow-lagoon)"
+                      borderRadius="16px"
+                      p={4}
+                      minW="180px"
+                      zIndex={1000}
+                      animation="scale-in 0.2s var(--ease-out-quart)"
+                      role="menu"
+                    >
+                      <UserDropdownContent
+                        user={user}
+                        logout={logout}
+                        onClose={() => setMobileDropdownOpen(false)}
+                      />
+                    </Box>
+                  </Portal>
+                )}
+              </Box>
+            ) : (
               <NavLink to="/login">
                 <Box
-                  as="span"
-                  display="inline-flex"
+                  className="material-symbols-outlined"
+                  color="fg.subtle"
+                  fontSize="xl"
+                  w="44px"
+                  h="44px"
+                  display="flex"
                   alignItems="center"
-                  fontSize="sm"
-                  fontWeight="600"
-                  letterSpacing="0.05em"
-                  color="white"
-                  bg="accent.solid"
-                  px={6}
-                  py={2.5}
+                  justifyContent="center"
                   borderRadius="full"
-                  transition="all 0.3s var(--ease-out-quart)"
-                  boxShadow="0 4px 14px rgba(124, 86, 63, 0.2)"
-                  _hover={{
-                    transform: "translateY(-1px)",
-                    boxShadow: "0 6px 20px rgba(124, 86, 63, 0.3)",
-                  }}
-                  _active={{ transform: "scale(0.97)" }}
+                  bg="bg.hero"
+                  transition="background 0.2s"
+                  _hover={{ bg: "bg.elevated" }}
                 >
-                  Join Now
+                  person
                 </Box>
               </NavLink>
-            </Box>
-          )}
-        </Flex>
-      </Box>
+            )}
+          </Flex>
+        </Box>
+      </Flex>
 
       {/* Mobile: Dock bottom bar */}
       <Box
@@ -570,122 +695,6 @@ export function Navbar() {
           )}
           {user && (user.role === "moderator" || user.role === "staff") && (
             <MobileDockItem to="/staff" icon="shield_person" label="Staff" />
-          )}
-        </Flex>
-      </Box>
-
-      {/* Mobile top bar with brand */}
-      <Box
-        display={{ base: "block", md: "none" }}
-        position="sticky"
-        top={emergencyMsg ? "32px" : 0}
-        zIndex={40}
-        bg="rgba(var(--c-ivory-rgb), 0.92)"
-        backdropFilter="blur(12px)"
-        borderBottom="1px solid"
-        borderColor="border.subtle"
-      >
-        <Flex align="center" justify="space-between" px={5} py={3}>
-          <NavLink to="/">
-            <Text
-              fontFamily="heading"
-              color="accent.solid"
-              fontSize="lg"
-              fontWeight="700"
-              letterSpacing="0.1em"
-            >
-              <HStack>
-                <Text color="red">Very</Text>
-                <Text color="orange">Ween</Text>
-              </HStack>
-            </Text>
-          </NavLink>
-
-          {user ? (
-            <Box position="relative" ref={mobileDropdownRef}>
-              <Button
-                type="button"
-                aria-label="User menu"
-                aria-expanded={mobileDropdownOpen}
-                aria-haspopup="true"
-                w="44px"
-                h="44px"
-                minW="44px"
-                p={0}
-                borderRadius="full"
-                bg={user.profile_pic_url ? "transparent" : user.avatar_color}
-                color="white"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                fontWeight="700"
-                fontSize="sm"
-                cursor="pointer"
-                boxShadow="var(--shadow-ambient)"
-                transition="all 0.2s"
-                _hover={{ transform: "scale(1.05)" }}
-                onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
-              >
-                {user.profile_pic_url ? (
-                  <Image
-                    src={user.profile_pic_url}
-                    alt={user.nickname || "Avatar"}
-                    w="100%"
-                    h="100%"
-                    objectFit="cover"
-                    borderRadius="full"
-                  />
-                ) : (
-                  getInitials(user.nickname || user.student_id)
-                )}
-              </Button>
-
-              {mobileDropdownOpen && mobileCoords && (
-                <Portal>
-                  <Box
-                    ref={mobilePortalRef}
-                    position="fixed"
-                    top={`${mobileCoords.top}px`}
-                    right={`${mobileCoords.right}px`}
-                    bg="var(--c-white)"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                    boxShadow="var(--shadow-lagoon)"
-                    borderRadius="16px"
-                    p={4}
-                    minW="180px"
-                    zIndex={1000}
-                    animation="scale-in 0.2s var(--ease-out-quart)"
-                    role="menu"
-                  >
-                    <UserDropdownContent
-                      user={user}
-                      logout={logout}
-                      onClose={() => setMobileDropdownOpen(false)}
-                    />
-                  </Box>
-                </Portal>
-              )}
-            </Box>
-          ) : (
-            <NavLink to="/login">
-              <Box
-                className="material-symbols-outlined"
-                color="fg.subtle"
-                fontSize="xl"
-                w="44px"
-                h="44px"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                borderRadius="full"
-                bg="bg.hero"
-                transition="background 0.2s"
-                _hover={{ bg: "bg.elevated" }}
-              >
-                person
-              </Box>
-            </NavLink>
           )}
         </Flex>
       </Box>
