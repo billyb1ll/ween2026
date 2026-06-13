@@ -16,6 +16,7 @@
   --c-outline: #c2c7c9;
   --c-error: #ba1a1a;
   --c-error-rgb: 186, 26, 26;
+  --c-orange: #e28743;
 
   /* State colors (replacing hard-coded values) */
   --c-state-liked: #c0392b;
@@ -393,6 +394,42 @@ a:hover {
 
 .emergency-pulse {
   animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translate3d(100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    background-color: color-mix(in srgb, var(--c-orange, #e28743) 100%, transparent);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--c-orange, #e28743) 85%, var(--c-chocolate) 15%);
+  }
+}
+
+.emergency-banner {
+  width: 100%;
+  animation: pulseGlow 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.emergency-marquee {
+  display: inline-flex;
+  animation: marquee 25s linear infinite;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 

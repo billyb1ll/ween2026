@@ -20,7 +20,7 @@ import { getImmichConfig } from "../utils/immich";
 import { toaster } from "./ui/toaster";
 import { useUser } from "../context/UserContext";
 import type { User } from "../context/UserContext";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 
 interface NavItemProps {
@@ -370,33 +370,53 @@ export function Navbar() {
         pointerEvents="none"
       >
         {/* Node A (Top Line): Emergency Broadcast Banner */}
-        {emergencyAnnouncement && (
-          <Box
-            w="100%"
-            bg="#d97706"
-            color="#4a2c11"
-            py={1.5}
-            px={4}
-            fontSize="xs"
-            fontWeight="bold"
-            textAlign="center"
-            boxShadow="sm"
-            pointerEvents="auto"
-            className="emergency-pulse"
-          >
-            <HStack justify="center" gap={2}>
+        <AnimatePresence>
+          {emergencyAnnouncement && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{ overflow: "hidden", width: "100%", pointerEvents: "auto" }}
+            >
               <Box
-                as="span"
-                className="material-symbols-outlined"
-                fontSize="16px"
+                w="100%"
+                className="emergency-banner"
                 color="#4a2c11"
+                py={1.5}
+                px={4}
+                fontSize="xs"
+                fontWeight="bold"
+                boxShadow="sm"
               >
-                warning
+                <Box className="emergency-marquee">
+                  <HStack gap={2} display="inline-flex" mr={12}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="16px"
+                      color="#4a2c11"
+                    >
+                      warning
+                    </Box>
+                    <Text>{emergencyAnnouncement}</Text>
+                  </HStack>
+                  <HStack gap={2} display="inline-flex" mr={12}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="16px"
+                      color="#4a2c11"
+                    >
+                      warning
+                    </Box>
+                    <Text>{emergencyAnnouncement}</Text>
+                  </HStack>
+                </Box>
               </Box>
-              <Text>{emergencyAnnouncement}</Text>
-            </HStack>
-          </Box>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Node B (Bottom Line - Desktop): Floating Capsule Navigation Menu Bar */}
         <Box
