@@ -74,6 +74,13 @@ const STAFF_ROLES = [
   "ทะเบียน",
 ];
 
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
 export function ProfileEditPage() {
   const navigate = useNavigate();
   const { user, updateProfile } = useUser();
@@ -305,6 +312,38 @@ export function ProfileEditPage() {
                   </Text>
                 </Box>
               )}
+
+            {/* Live Profile Avatar Preview */}
+            <Flex justify="center" mt={1} mb={2}>
+              <Box
+                borderRadius="full"
+                overflow="hidden"
+                w="120px"
+                h="120px"
+                border="3px solid var(--c-chocolate)"
+                boxShadow="var(--shadow-card)"
+                bg={avatarColor}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                color="white"
+                fontWeight="700"
+                fontSize="2xl"
+                position="relative"
+              >
+                {profilePicUrl ? (
+                  <Image
+                    src={profilePicUrl}
+                    alt="Avatar Preview"
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                  />
+                ) : (
+                  getInitials(nickname || user?.student_id || "?")
+                )}
+              </Box>
+            </Flex>
 
             <VStack align="stretch" gap={4}>
               {/* Nickname */}
@@ -662,23 +701,24 @@ export function ProfileEditPage() {
                   </Button>
                 </Flex>
                 {profilePicUrl && (
-                  <Box
-                    mt={2}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    colorPalette="red"
+                    onClick={() => {
+                      setProfilePicUrl("");
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                    }}
+                    h="44px"
                     borderRadius="xl"
-                    overflow="hidden"
-                    maxH="120px"
+                    cursor="pointer"
+                    _hover={{ bg: "rgba(186, 26, 26, 0.05)" }}
                     w="100%"
-                    border="1px solid"
-                    borderColor="border.subtle"
                   >
-                    <Image
-                      src={profilePicUrl}
-                      alt="Preview"
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                    />
-                  </Box>
+                    Remove Photo
+                  </Button>
                 )}
               </VStack>
             </VStack>
