@@ -65,6 +65,7 @@ function AppContent() {
         pb={{ base: 'calc(var(--dock-height) + 16px)', md: 0 }}
         style={{ outline: 'none' }}
       >
+
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             {/* Public/Standard Routes */}
@@ -117,5 +118,4 @@ function App() {
     </UserProvider>
   )
 }
-
 export default App

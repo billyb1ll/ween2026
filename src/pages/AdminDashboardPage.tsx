@@ -14,6 +14,7 @@ import {
   Tabs,
   Textarea,
   Dialog,
+  NativeSelect,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
@@ -114,6 +115,37 @@ interface VibeMission {
   target_role: string
   required_count: number
 }
+
+const THAI_FACULTIES = [
+  "แพทยศาสตร์ศิริราชพยาบาล (SI)",
+  "วิทยาศาสตร์ (SC)",
+  "แพทยศาสตร์โรงพยาบาลรามาฯ (RA)",
+  "ทันตแพทยศาสตร์ (DT)",
+  "เทคนิคการแพทย์ (MT)",
+  "สาธารณสุขศาสตร์ (PH)",
+  "พยาบาลศาสตร์ (NS)",
+  "กายภาพบำบัด (PT)",
+  "โรงเรียนพยาบาลรามาธิบดี (NR)",
+  "วิศวกรรมศาสตร์ (EG)",
+  "สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)",
+  "วิทยาเขตกาญจนบุรี (KA)",
+  "สัตวแพทยศาสตร์ (VS)",
+  "หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)",
+  "สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)",
+  "โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)",
+  "โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)",
+  "ศิลปศาสตร์ (LA)",
+  "วิทยาลัยศาสนศึกษา (CRS)",
+  "วิทยาลัยนานาชาติ (IC)",
+  "เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)",
+  "โรงเรียนกายอุปกรณ์สิรินธร (PO)",
+  "วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)",
+  "คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)",
+  "วิทยาลับดุริยางคศิลป์ (MS)",
+  "วิทยาลัยราชสุดา (RS)",
+  "เภสัชศาสตร์ (PY)",
+  "เวชศาสตร์เขตร้อน (TM)",
+];
 
 export function AdminDashboardPage() {
   const { user } = useUser()
@@ -1778,13 +1810,33 @@ export function AdminDashboardPage() {
                       <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
                         <label htmlFor="inspect-faculty">Faculty</label>
                       </Box>
-                      <Input
-                        id="inspect-faculty"
-                        value={editFaculty}
-                        onChange={(e) => setInspectUser(prev => prev ? { ...prev, faculty: e.target.value } : null)}
-                        bg="var(--c-ivory)"
-                        h="38px"
-                      />
+                      <NativeSelect.Root width="100%">
+                        <NativeSelect.Field
+                          id="inspect-faculty"
+                          aria-label="Faculty"
+                          title="Faculty"
+                          value={editFaculty}
+                          onChange={(e) => setEditFaculty(e.currentTarget.value)}
+                          bg="var(--c-ivory)"
+                          h="38px"
+                          borderRadius="md"
+                          border="1px solid"
+                          borderColor="border.subtle"
+                          px={3}
+                          _focus={{ borderColor: "accent.solid" }}
+                        >
+                          <option value="">Select Faculty...</option>
+                          {THAI_FACULTIES.map((fac) => {
+                            const cleanVal = fac.split(" (")[0];
+                            return (
+                              <option key={fac} value={cleanVal}>
+                                {fac}
+                              </option>
+                            );
+                          })}
+                        </NativeSelect.Field>
+                        <NativeSelect.Indicator />
+                      </NativeSelect.Root>
                     </Box>
                     <Box>
                       <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>

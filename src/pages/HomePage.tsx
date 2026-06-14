@@ -1,11 +1,4 @@
-import {
-  Box,
-  Flex,
-  Heading,
-  HStack,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Flex, Heading, HStack, Text, VStack } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getImmichConfig } from "../utils/immich";
@@ -95,63 +88,65 @@ export function HomePage() {
   const variants = cardVariants(shouldReduceMotion);
 
   const [nextEvent, setNextEvent] = useState({
-    title: 'First Meet',
-    isoTime: '',
-  })
-  const [countdownText, setCountdownText] = useState('')
+    title: "First Meet",
+    isoTime: "",
+  });
+  const [countdownText, setCountdownText] = useState("");
 
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         const { data } = await supabase
-          .from('event_config')
-          .select('*')
-          .eq('key', 'next_event')
-          .single()
+          .from("event_config")
+          .select("*")
+          .eq("key", "next_event")
+          .single();
         if (data) {
           setNextEvent({
             title: data.title,
             isoTime: data.event_time,
-          })
+          });
         }
       } catch (err) {
-        console.error('Error fetching event config:', err)
+        console.error("Error fetching event config:", err);
       }
-    }
-    fetchEvent()
-  }, [])
+    };
+    fetchEvent();
+  }, []);
 
   useEffect(() => {
-    if (!nextEvent.isoTime) return
+    if (!nextEvent.isoTime) return;
 
     const calculateCountdown = () => {
-      const target = new Date(nextEvent.isoTime).getTime()
-      const now = Date.now()
-      const diff = target - now
+      const target = new Date(nextEvent.isoTime).getTime();
+      const now = Date.now();
+      const diff = target - now;
 
       if (diff <= 0) {
-        setCountdownText('Event has started!')
-        return
+        setCountdownText("Event has started!");
+        return;
       }
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      let countdownStr = ''
-      if (days > 0) countdownStr += `${days}d `
-      countdownStr += `${hours.toString().padStart(2, '0')}h `
-      countdownStr += `${minutes.toString().padStart(2, '0')}m `
-      countdownStr += `${seconds.toString().padStart(2, '0')}s`
+      let countdownStr = "";
+      if (days > 0) countdownStr += `${days}d `;
+      countdownStr += `${hours.toString().padStart(2, "0")}h `;
+      countdownStr += `${minutes.toString().padStart(2, "0")}m `;
+      countdownStr += `${seconds.toString().padStart(2, "0")}s`;
 
-      setCountdownText(`Starts in ${countdownStr}`)
-    }
+      setCountdownText(`Starts in ${countdownStr}`);
+    };
 
-    calculateCountdown()
-    const timer = setInterval(calculateCountdown, 1000)
-    return () => clearInterval(timer)
-  }, [nextEvent.isoTime])
+    calculateCountdown();
+    const timer = setInterval(calculateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [nextEvent.isoTime]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -161,8 +156,6 @@ export function HomePage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-
-
 
   return (
     <Box position="relative">
@@ -273,7 +266,8 @@ export function HomePage() {
                 boxShadow="0 6px 20px color-mix(in srgb, var(--c-chocolate) 25%, transparent)"
                 _hover={{
                   transform: "translateY(-2px)",
-                  boxShadow: "0 10px 30px color-mix(in srgb, var(--c-chocolate) 35%, transparent)",
+                  boxShadow:
+                    "0 10px 30px color-mix(in srgb, var(--c-chocolate) 35%, transparent)",
                 }}
                 _active={{ transform: "scale(0.97)" }}
               >
@@ -464,7 +458,8 @@ function FeatureCardLarge({
           role="group"
           _hover={{
             transform: "translateY(-4px)",
-            boxShadow: "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
+            boxShadow:
+              "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
           }}
         >
           {/* Ambient glow */}
@@ -632,7 +627,8 @@ function FeatureCardWide({
           role="group"
           _hover={{
             transform: "translateY(-4px)",
-            boxShadow: "0 0 40px color-mix(in srgb, var(--c-chocolate) 30%, transparent)",
+            boxShadow:
+              "0 0 40px color-mix(in srgb, var(--c-chocolate) 30%, transparent)",
           }}
         >
           {/* Dot pattern */}
@@ -883,7 +879,7 @@ function FeatureCardEvent({
               {eventTitle}
             </Heading>
             <Text fontSize="sm" color="brand.fg" fontWeight="600">
-              {countdownText || 'Loading countdown...'}
+              {countdownText || "Loading countdown..."}
             </Text>
           </VStack>
           <Box

@@ -70,10 +70,14 @@ export function VibeCheckPage() {
   const [deck, setDeck] = useState<StaffProfile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [animatingDir, setAnimatingDir] = useState<"left" | "right" | null>(null);
+  const [animatingDir, setAnimatingDir] = useState<"left" | "right" | null>(
+    null,
+  );
 
   // Game/Mission States
-  const [currentMission, setCurrentMission] = useState<VibeMission | null>(null);
+  const [currentMission, setCurrentMission] = useState<VibeMission | null>(
+    null,
+  );
   const [collectedIds, setCollectedIds] = useState<Set<string>>(new Set());
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [lockoutTimeLeft, setLockoutTimeLeft] = useState(0);
@@ -84,7 +88,8 @@ export function VibeCheckPage() {
   const [isBookOpen, setIsBookOpen] = useState(false);
   const [allStaff, setAllStaff] = useState<DBStaff[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaffDetail, setSelectedStaffDetail] = useState<DBStaff | null>(null);
+  const [selectedStaffDetail, setSelectedStaffDetail] =
+    useState<DBStaff | null>(null);
 
   // Mission Clear Celebration State
   const [celebrationOpen, setCelebrationOpen] = useState(false);
@@ -164,24 +169,28 @@ export function VibeCheckPage() {
         .select("staff_id")
         .eq("student_id", user.student_id);
 
-      const collectedSet = new Set((collectedData ?? []).map((c) => c.staff_id));
+      const collectedSet = new Set(
+        (collectedData ?? []).map((c) => c.staff_id),
+      );
       setCollectedIds(collectedSet);
 
       // 3. Fetch all whitelisted staff (for the Collection Book)
       const { data: staffData } = await supabase
         .from("users")
-        .select("student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role, house_position")
+        .select(
+          "student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role, house_position",
+        )
         .in("role", ["staff", "media_admin", "moderator"]);
 
       if (staffData) {
         const sortedStaff = (staffData as DBStaff[]).sort((a, b) =>
-          (a.nickname || "").localeCompare(b.nickname || "")
+          (a.nickname || "").localeCompare(b.nickname || ""),
         );
         setAllStaff(sortedStaff);
 
         // Filter uncollected staff for the swipe deck
         const uncollected = (staffData as DBStaff[]).filter(
-          (s) => !collectedSet.has(s.student_id)
+          (s) => !collectedSet.has(s.student_id),
         );
 
         // Shuffle deck locally to randomize
@@ -198,8 +207,14 @@ export function VibeCheckPage() {
           images:
             s.images && s.images.length > 0
               ? s.images
-              : [s.profile_pic_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&h=700&fit=crop"],
-          tags: s.tags && s.tags.length > 0 ? s.tags : [s.faculty || "Baan 7", "Staff"],
+              : [
+                  s.profile_pic_url ||
+                    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&h=700&fit=crop",
+                ],
+          tags:
+            s.tags && s.tags.length > 0
+              ? s.tags
+              : [s.faculty || "Baan 7", "Staff"],
         }));
 
         setDeck(secureDeck);
@@ -209,7 +224,9 @@ export function VibeCheckPage() {
         if (activeMission) {
           const reqRole = activeMission.target_role;
           const collectedCount = (staffData as DBStaff[]).filter(
-            (s) => collectedSet.has(s.student_id) && (s.major === reqRole || s.role === reqRole)
+            (s) =>
+              collectedSet.has(s.student_id) &&
+              (s.major === reqRole || s.role === reqRole),
           ).length;
           setCollectedCountForMission(collectedCount);
         }
@@ -312,7 +329,7 @@ export function VibeCheckPage() {
             x.set(0);
             setAnimatingDir(null);
           },
-          shouldReduceMotion ? 100 : 250
+          shouldReduceMotion ? 100 : 250,
         );
       } catch (err) {
         console.error("Secure swipe validation failed:", err);
@@ -325,7 +342,15 @@ export function VibeCheckPage() {
         setAnimatingDir(null);
       }
     },
-    [deck, currentIndex, user, currentMission, shouldReduceMotion, x, fetchGameData]
+    [
+      deck,
+      currentIndex,
+      user,
+      currentMission,
+      shouldReduceMotion,
+      x,
+      fetchGameData,
+    ],
   );
 
   const formatTime = (ms: number) => {
@@ -342,7 +367,7 @@ export function VibeCheckPage() {
     (s) =>
       (s.nickname || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.faculty || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.major || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (s.major || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const groupedStaffData = useMemo(() => {
@@ -405,7 +430,12 @@ export function VibeCheckPage() {
           aria-label="Open Collection Book"
           title="Open Collection Book"
         >
-          <Box as="span" className="material-symbols-outlined" fontSize="16px" mr={1}>
+          <Box
+            as="span"
+            className="material-symbols-outlined"
+            fontSize="16px"
+            mr={1}
+          >
             menu_book
           </Box>
           Collection ({collectedIds.size}/{allStaff.length})
@@ -437,17 +467,41 @@ export function VibeCheckPage() {
             pointerEvents="none"
           />
           <HStack justify="center" gap={1.5} color="accent.solid" mb={1.5}>
-            <Box as="span" className="material-symbols-outlined" fontSize="16px">
+            <Box
+              as="span"
+              className="material-symbols-outlined"
+              fontSize="16px"
+            >
               military_tech
             </Box>
-            <Text fontSize="xs" fontWeight="700" textTransform="uppercase" letterSpacing="0.05em">
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              textTransform="uppercase"
+              letterSpacing="0.05em"
+            >
               Active Quest
             </Text>
           </HStack>
-          <Heading as="h2" fontSize="sm" color="chocolate.800" fontWeight="800" mb={2} px={2}>
-            Collect {currentMission.required_count} {currentMission.target_role} Staff Members
+          <Heading
+            as="h2"
+            fontSize="sm"
+            color="chocolate.800"
+            fontWeight="800"
+            mb={2}
+            px={2}
+          >
+            Collect {currentMission.required_count} {currentMission.target_role}{" "}
+            Staff Members
           </Heading>
-          <Box w="100%" bg="color-mix(in srgb, var(--c-chocolate) 10%, transparent)" h="8px" borderRadius="full" mb={2.5} overflow="hidden">
+          <Box
+            w="100%"
+            bg="color-mix(in srgb, var(--c-chocolate) 10%, transparent)"
+            h="8px"
+            borderRadius="full"
+            mb={2.5}
+            overflow="hidden"
+          >
             <Box
               bg="accent.solid"
               h="100%"
@@ -458,18 +512,27 @@ export function VibeCheckPage() {
           </Box>
           <Flex justify="space-between" align="center" px={1}>
             <Text fontSize="2xs" color="fg.muted" fontWeight="700">
-              Progress: {collectedCountForMission} / {currentMission.required_count}
+              Progress: {collectedCountForMission} /{" "}
+              {currentMission.required_count}
             </Text>
             <Box
               fontSize="2xs"
               fontWeight="700"
               color={strikeCount >= 4 ? "red.600" : "chocolate.600"}
-              bg={strikeCount >= 4 ? "red.50" : "color-mix(in srgb, var(--c-chocolate) 5%, transparent)"}
+              bg={
+                strikeCount >= 4
+                  ? "red.50"
+                  : "color-mix(in srgb, var(--c-chocolate) 5%, transparent)"
+              }
               px={2.5}
               py={0.5}
               borderRadius="full"
               border="1px solid"
-              borderColor={strikeCount >= 4 ? "red.200" : "color-mix(in srgb, var(--c-chocolate) 15%, transparent)"}
+              borderColor={
+                strikeCount >= 4
+                  ? "red.200"
+                  : "color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+              }
             >
               Mistakes Left: {Math.max(0, 5 - strikeCount)}/5
             </Box>
@@ -551,7 +614,13 @@ export function VibeCheckPage() {
               }
             >
               {/* Card visual elements */}
-              <Box position="relative" w="100%" h="100%" userSelect="none" pointerEvents="none">
+              <Box
+                position="relative"
+                w="100%"
+                h="100%"
+                userSelect="none"
+                pointerEvents="none"
+              >
                 <Image
                   src={currentProfile.images[0]}
                   alt={currentProfile.name}
@@ -623,7 +692,12 @@ export function VibeCheckPage() {
                   color="white"
                 >
                   <VStack align="start" gap={1}>
-                    <Heading as="h3" fontSize="lg" fontWeight="700" textShadow="sm">
+                    <Heading
+                      as="h3"
+                      fontSize="lg"
+                      fontWeight="700"
+                      textShadow="sm"
+                    >
                       {currentProfile.name}
                     </Heading>
                     <Text fontSize="xs" opacity={0.9} lineClamp={2}>
@@ -668,10 +742,21 @@ export function VibeCheckPage() {
               p={6}
               textAlign="center"
             >
-              <Box className="material-symbols-outlined" fontSize="4xl" color="var(--c-chocolate)" mb={3}>
+              <Box
+                className="material-symbols-outlined"
+                fontSize="4xl"
+                color="var(--c-chocolate)"
+                mb={3}
+              >
                 lock
               </Box>
-              <Heading as="h3" fontSize="md" color="white" fontWeight="700" mb={1}>
+              <Heading
+                as="h3"
+                fontSize="md"
+                color="white"
+                fontWeight="700"
+                mb={1}
+              >
                 Vibe Lock active!
               </Heading>
               <Text fontSize="xs" color="whiteAlpha.700" maxW="240px" mb={4}>
@@ -692,15 +777,33 @@ export function VibeCheckPage() {
             </Box>
           ) : (
             /* Empty Deck state */
-            <Flex direction="column" align="center" justify="center" p={6} textAlign="center">
-              <Box className="material-symbols-outlined" fontSize="4xl" color="accent.solid" mb={2}>
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              p={6}
+              textAlign="center"
+            >
+              <Box
+                className="material-symbols-outlined"
+                fontSize="4xl"
+                color="accent.solid"
+                mb={2}
+              >
                 psychology_alt
               </Box>
-              <Heading as="h3" fontSize="sm" color="fg.default" fontWeight="700" mb={1}>
+              <Heading
+                as="h3"
+                fontSize="sm"
+                color="fg.default"
+                fontWeight="700"
+                mb={1}
+              >
                 Out of cards!
               </Heading>
               <Text fontSize="xs" color="fg.muted" maxW="220px" mb={4}>
-                You swiped through all available staff deck cards. Wait for more whitelist entries!
+                You swiped through all available staff deck cards. Wait for more
+                whitelist entries!
               </Text>
               <Button
                 size="sm"
@@ -738,7 +841,11 @@ export function VibeCheckPage() {
             aria-label="Skip card"
             title="Skip card"
           >
-            <Box as="span" className="material-symbols-outlined" fontSize="24px">
+            <Box
+              as="span"
+              className="material-symbols-outlined"
+              fontSize="24px"
+            >
               close
             </Box>
           </Button>
@@ -757,7 +864,12 @@ export function VibeCheckPage() {
             aria-label="Collect card"
             title="Collect card"
           >
-            <Box as="span" className="material-symbols-outlined" fontSize="24px" fontVariationSettings="'FILL' 1">
+            <Box
+              as="span"
+              className="material-symbols-outlined"
+              fontSize="24px"
+              fontVariationSettings="'FILL' 1"
+            >
               check
             </Box>
           </Button>
@@ -766,8 +878,15 @@ export function VibeCheckPage() {
 
       {/* 5. Swipe Book Collection Dialog */}
       {isBookOpen && (
-        <Dialog.Root open={isBookOpen} onOpenChange={(e) => setIsBookOpen(e.open)} placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={isBookOpen}
+          onOpenChange={(e) => setIsBookOpen(e.open)}
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={2000} px={4}>
             <Dialog.Content
               width={{ base: "100%", md: "560px" }}
@@ -784,7 +903,11 @@ export function VibeCheckPage() {
             >
               <Dialog.Header p={0} mb={4}>
                 <VStack align="start" gap={0}>
-                  <Dialog.Title fontSize="md" color="accent.solid" fontWeight="700">
+                  <Dialog.Title
+                    fontSize="md"
+                    color="accent.solid"
+                    fontWeight="700"
+                  >
                     Sticker Collection Album
                   </Dialog.Title>
                   <Text fontSize="3xs" color="fg.muted">
@@ -793,7 +916,13 @@ export function VibeCheckPage() {
                 </VStack>
               </Dialog.Header>
 
-              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column">
+              <Dialog.Body
+                p={0}
+                flex={1}
+                overflowY="auto"
+                display="flex"
+                flexDirection="column"
+              >
                 {/* Filter Search Input */}
                 <Input
                   placeholder="Search whitelisted staff members..."
@@ -814,8 +943,18 @@ export function VibeCheckPage() {
                 <Box flex={1} overflowY="auto" pb={4}>
                   <VStack align="stretch" gap={6}>
                     {groupedStaffData.sortedKeys.length === 0 ? (
-                      <Flex h="150px" align="center" justify="center" direction="column">
-                        <Box as="span" className="material-symbols-outlined" fontSize="36px" color="var(--c-muted)">
+                      <Flex
+                        h="150px"
+                        align="center"
+                        justify="center"
+                        direction="column"
+                      >
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="36px"
+                          color="var(--c-muted)"
+                        >
                           search_off
                         </Box>
                         <Text fontSize="xs" color="fg.subtle" mt={2}>
@@ -825,8 +964,12 @@ export function VibeCheckPage() {
                     ) : (
                       groupedStaffData.sortedKeys.map((pos) => {
                         const staffInGroup = groupedStaffData.grouped[pos];
-                        const collectedInGroup = staffInGroup.filter((s) => collectedIds.has(s.student_id));
-                        const lockedInGroup = staffInGroup.filter((s) => !collectedIds.has(s.student_id));
+                        const collectedInGroup = staffInGroup.filter((s) =>
+                          collectedIds.has(s.student_id),
+                        );
+                        const lockedInGroup = staffInGroup.filter(
+                          (s) => !collectedIds.has(s.student_id),
+                        );
 
                         return (
                           <Box key={pos} w="100%">
@@ -843,9 +986,17 @@ export function VibeCheckPage() {
                               justifyContent="space-between"
                               alignItems="center"
                             >
-                              <Text as="span" fontWeight="800">{pos}</Text>
-                              <Text as="span" fontSize="2xs" color="fg.subtle" fontWeight="700">
-                                ({collectedInGroup.length}/{staffInGroup.length})
+                              <Text as="span" fontWeight="800">
+                                {pos}
+                              </Text>
+                              <Text
+                                as="span"
+                                fontSize="2xs"
+                                color="fg.subtle"
+                                fontWeight="700"
+                              >
+                                ({collectedInGroup.length}/{staffInGroup.length}
+                                )
                               </Text>
                             </Heading>
                             <Flex gap={4} flexWrap="wrap" justify="start">
@@ -890,7 +1041,14 @@ export function VibeCheckPage() {
                                         objectFit="cover"
                                       />
                                     ) : (
-                                      <Flex w="100%" h="100%" align="center" justify="center" color="white" fontWeight="700">
+                                      <Flex
+                                        w="100%"
+                                        h="100%"
+                                        align="center"
+                                        justify="center"
+                                        color="white"
+                                        fontWeight="700"
+                                      >
                                         {getInitials(s.nickname || "?")}
                                       </Flex>
                                     )}
@@ -905,7 +1063,11 @@ export function VibeCheckPage() {
                                   >
                                     {s.nickname || "Staff"}
                                   </Text>
-                                  <Text fontSize="3xs" color="fg.subtle" lineClamp={1}>
+                                  <Text
+                                    fontSize="3xs"
+                                    color="fg.subtle"
+                                    lineClamp={1}
+                                  >
                                     {s.major || "Staff"}
                                   </Text>
                                 </Box>
@@ -936,7 +1098,13 @@ export function VibeCheckPage() {
                                       alignItems="center"
                                       justifyContent="center"
                                     >
-                                      <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="32px" opacity={0.4}>
+                                      <Box
+                                        as="span"
+                                        className="material-symbols-outlined"
+                                        color="var(--c-muted)"
+                                        fontSize="32px"
+                                        opacity={0.4}
+                                      >
                                         person
                                       </Box>
                                       <Flex
@@ -949,7 +1117,13 @@ export function VibeCheckPage() {
                                         justifyContent="center"
                                         bg="blackAlpha.50"
                                       >
-                                        <Box as="span" className="material-symbols-outlined" color="var(--c-muted)" fontSize="16px" opacity={0.6}>
+                                        <Box
+                                          as="span"
+                                          className="material-symbols-outlined"
+                                          color="var(--c-muted)"
+                                          fontSize="16px"
+                                          opacity={0.6}
+                                        >
                                           lock
                                         </Box>
                                       </Flex>
@@ -964,7 +1138,12 @@ export function VibeCheckPage() {
                                     >
                                       {lockedLabel}
                                     </Text>
-                                    <Text fontSize="3xs" color="fg.subtle" opacity={0.6} lineClamp={1}>
+                                    <Text
+                                      fontSize="3xs"
+                                      color="fg.subtle"
+                                      opacity={0.6}
+                                      lineClamp={1}
+                                    >
                                       Locked
                                     </Text>
                                   </Box>
@@ -979,7 +1158,12 @@ export function VibeCheckPage() {
                 </Box>
               </Dialog.Body>
 
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -994,7 +1178,11 @@ export function VibeCheckPage() {
                   p={0}
                   onClick={() => setIsBookOpen(false)}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -1006,8 +1194,15 @@ export function VibeCheckPage() {
 
       {/* 6. Collected Card Details Dialog */}
       {selectedStaffDetail && (
-        <Dialog.Root open={!!selectedStaffDetail} onOpenChange={() => setSelectedStaffDetail(null)} placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={!!selectedStaffDetail}
+          onOpenChange={() => setSelectedStaffDetail(null)}
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={2100} px={4}>
             <Dialog.Content
               width={{ base: "100%", md: "560px" }}
@@ -1023,7 +1218,11 @@ export function VibeCheckPage() {
               position="relative"
             >
               <Dialog.Header p={0} mb={4}>
-                <Dialog.Title fontSize="sm" color="accent.solid" fontWeight="700">
+                <Dialog.Title
+                  fontSize="sm"
+                  color="accent.solid"
+                  fontWeight="700"
+                >
                   Collector's Intel
                 </Dialog.Title>
               </Dialog.Header>
@@ -1032,7 +1231,10 @@ export function VibeCheckPage() {
                 <VStack gap={4} align="stretch">
                   <HStack gap={4}>
                     <Image
-                      src={selectedStaffDetail.profile_pic_url || "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"}
+                      src={
+                        selectedStaffDetail.profile_pic_url ||
+                        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"
+                      }
                       alt={selectedStaffDetail.nickname || "Staff"}
                       w="72px"
                       h="72px"
@@ -1042,22 +1244,49 @@ export function VibeCheckPage() {
                       borderColor="accent.solid"
                     />
                     <VStack align="start" gap={0.5}>
-                      <Heading as="h4" fontSize="md" color="fg.default" fontWeight="700">
+                      <Heading
+                        as="h4"
+                        fontSize="md"
+                        color="fg.default"
+                        fontWeight="700"
+                      >
                         {selectedStaffDetail.nickname}
                       </Heading>
-                      <Text fontSize="2xs" color="accent.solid" fontWeight="700">
-                        {selectedStaffDetail.major} ({selectedStaffDetail.faculty})
+                      <Text
+                        fontSize="2xs"
+                        color="accent.solid"
+                        fontWeight="700"
+                      >
+                        {selectedStaffDetail.major} (
+                        {selectedStaffDetail.faculty})
                       </Text>
                       {selectedStaffDetail.ig && (
-                        <Text fontSize="2xs" color="var(--c-chocolate)" fontWeight="600">
+                        <Text
+                          fontSize="2xs"
+                          color="var(--c-chocolate)"
+                          fontWeight="600"
+                        >
                           IG: @{selectedStaffDetail.ig}
                         </Text>
                       )}
                     </VStack>
                   </HStack>
 
-                  <Box bg="bg.hero" p={3.5} borderRadius="xl" border="1px solid" borderColor="border.subtle">
-                    <Text fontSize="xs" fontWeight="700" color="accent.solid" mb={1} textTransform="uppercase" letterSpacing="0.05em">
+                  <Box
+                    bg="bg.hero"
+                    p={3.5}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                  >
+                    <Text
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="accent.solid"
+                      mb={1}
+                      textTransform="uppercase"
+                      letterSpacing="0.05em"
+                    >
                       Bio / คำโปรย
                     </Text>
                     <Text fontSize="xs" color="fg.default" lineHeight="1.6">
@@ -1065,33 +1294,47 @@ export function VibeCheckPage() {
                     </Text>
                   </Box>
 
-                  {selectedStaffDetail.images && selectedStaffDetail.images.length > 0 && (
-                    <VStack align="stretch" gap={1.5}>
-                      <Text fontSize="2xs" fontWeight="700" color="accent.solid" textTransform="uppercase" letterSpacing="0.05em">
-                        Staff Photo Pool
-                      </Text>
-                      <HStack gap={2} overflowX="auto" pb={1}>
-                        {selectedStaffDetail.images.map((imgUrl: string, idx: number) => (
-                          <Image
-                            key={idx}
-                            src={imgUrl}
-                            alt={`Staff upload ${idx}`}
-                            w="90px"
-                            h="120px"
-                            objectFit="cover"
-                            borderRadius="lg"
-                            border="1px solid"
-                            borderColor="border.subtle"
-                            flexShrink={0}
-                          />
-                        ))}
-                      </HStack>
-                    </VStack>
-                  )}
+                  {selectedStaffDetail.images &&
+                    selectedStaffDetail.images.length > 0 && (
+                      <VStack align="stretch" gap={1.5}>
+                        <Text
+                          fontSize="2xs"
+                          fontWeight="700"
+                          color="accent.solid"
+                          textTransform="uppercase"
+                          letterSpacing="0.05em"
+                        >
+                          Staff Photo Pool
+                        </Text>
+                        <HStack gap={2} overflowX="auto" pb={1}>
+                          {selectedStaffDetail.images.map(
+                            (imgUrl: string, idx: number) => (
+                              <Image
+                                key={idx}
+                                src={imgUrl}
+                                alt={`Staff upload ${idx}`}
+                                w="90px"
+                                h="120px"
+                                objectFit="cover"
+                                borderRadius="lg"
+                                border="1px solid"
+                                borderColor="border.subtle"
+                                flexShrink={0}
+                              />
+                            ),
+                          )}
+                        </HStack>
+                      </VStack>
+                    )}
                 </VStack>
               </Dialog.Body>
 
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -1106,7 +1349,11 @@ export function VibeCheckPage() {
                   p={0}
                   onClick={() => setSelectedStaffDetail(null)}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -1135,8 +1382,15 @@ export function VibeCheckPage() {
             textAlign="center"
           >
             <VStack gap={5} maxW="320px">
-              <Box fontSize="3xl" animation="scale-in 0.5s ease" color="accent.solid">
-                <span className="material-symbols-outlined" style={{ fontSize: "48px" }}>
+              <Box
+                fontSize="3xl"
+                animation="scale-in 0.5s ease"
+                color="accent.solid"
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: "48px" }}
+                >
                   military_tech
                 </span>
               </Box>
@@ -1144,7 +1398,8 @@ export function VibeCheckPage() {
                 Quest Complete!
               </Heading>
               <Text fontSize="xs" color="whiteAlpha.800" lineHeight="1.6">
-                Excellent! You successfully collected enough staff matching the target mission. You have unlocked the next mission.
+                Excellent! You successfully collected enough staff matching the
+                target mission. You have unlocked the next mission.
               </Text>
               <Box
                 border="1.5px dashed"
@@ -1154,7 +1409,12 @@ export function VibeCheckPage() {
                 py={2.5}
                 bg="whiteAlpha.100"
               >
-                <Text fontSize="2xs" color="accent.solid" textTransform="uppercase" letterSpacing="0.08em">
+                <Text
+                  fontSize="2xs"
+                  color="accent.solid"
+                  textTransform="uppercase"
+                  letterSpacing="0.08em"
+                >
                   Stamps Earned
                 </Text>
                 <Text fontSize="sm" fontWeight="bold" color="white">
