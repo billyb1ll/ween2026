@@ -624,7 +624,7 @@ export function VibeCheckPage() {
               >
                 <Image
                   src={currentProfile.images[0]}
-                  alt={currentProfile.name}
+                  alt={`Portrait photo of Baan 7 staff member ${currentProfile.name}`}
                   w="100%"
                   h="100%"
                   objectFit="cover"
@@ -1036,7 +1036,7 @@ export function VibeCheckPage() {
                                       <Image
                                         draggable={false}
                                         src={s.profile_pic_url}
-                                        alt={s.nickname || "Staff"}
+                                        alt={`${s.nickname || "Staff"}'s collection sticker portrait`}
                                         w="100%"
                                         h="100%"
                                         objectFit="cover"
@@ -1236,7 +1236,7 @@ export function VibeCheckPage() {
                         selectedStaffDetail.profile_pic_url ||
                         "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"
                       }
-                      alt={selectedStaffDetail.nickname || "Staff"}
+                      alt={`${selectedStaffDetail.nickname || "Staff"}'s detailed profile portrait`}
                       w="72px"
                       h="72px"
                       borderRadius="full"
@@ -1313,7 +1313,7 @@ export function VibeCheckPage() {
                               <Image
                                 key={idx}
                                 src={imgUrl}
-                                alt={`Staff upload ${idx}`}
+                                alt={`Orientation activity photo ${idx + 1} uploaded by ${selectedStaffDetail.nickname || "Staff"}`}
                                 w="90px"
                                 h="120px"
                                 objectFit="cover"

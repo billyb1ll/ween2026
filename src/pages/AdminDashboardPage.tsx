@@ -1156,8 +1156,11 @@ export function AdminDashboardPage() {
               {/* Add Mission Form */}
               <Flex as="form" onSubmit={handleAddMission} gap={3} flexWrap="wrap" align="end" bg="var(--c-ivory)" p={4} borderRadius="xl">
                 <VStack align="start" gap={1}>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">Target Staff Category</Text>
+                  <Box fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                    <label htmlFor="add-mission-target">Target Staff Category</label>
+                  </Box>
                   <select
+                    id="add-mission-target"
                     value={newMissionTarget}
                     onChange={(e) => setNewMissionTarget(e.target.value)}
                     className="admin-select-white-sm custom-select"
@@ -1297,9 +1300,12 @@ export function AdminDashboardPage() {
                   />
                 </VStack>
                 <VStack align="start" gap={1}>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Role Assignment</Text>
+                  <Box fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                    <label htmlFor="add-user-role">Role Assignment</label>
+                  </Box>
                   <Tooltip label={getRoleDescription(newRole)}>
                     <select
+                      id="add-user-role"
                       value={newRole}
                       onChange={(e) => setNewRole(e.target.value)}
                       className="admin-select-lg custom-select"
@@ -1804,7 +1810,7 @@ export function AdminDashboardPage() {
                       justifyContent="center"
                     >
                       {inspectUser.profile_pic_url ? (
-                        <img src={inspectUser.profile_pic_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <Image src={inspectUser.profile_pic_url} alt={`${inspectUser.nickname || 'User'}'s profile picture`} w="100%" h="100%" objectFit="cover" />
                       ) : (
                         <Text color="white" fontWeight="800" fontSize="lg">
                           {(inspectUser.nickname || 'NN').substring(0, 2).toUpperCase()}
@@ -1880,7 +1886,7 @@ export function AdminDashboardPage() {
                               {inspectUserStats.unlockedStaff.map(staff => (
                                 <Flex key={staff.staff_id} align="center" gap={2} bg="var(--c-white)" p={1} pr={3} borderRadius="full" border="1px solid" borderColor="border.subtle" boxShadow="sm">
                                   {staff.profile_pic_url ? (
-                                    <Image src={staff.profile_pic_url} alt={staff.nickname} w="24px" h="24px" borderRadius="full" objectFit="cover" />
+                                    <Image src={staff.profile_pic_url} alt={`${staff.nickname}'s profile picture`} w="24px" h="24px" borderRadius="full" objectFit="cover" />
                                   ) : (
                                     <Flex w="24px" h="24px" borderRadius="full" bg={staff.avatar_color} color="white" align="center" justify="center" fontSize="10px" fontWeight="700">
                                       {staff.nickname.substring(0, 2).toUpperCase()}
@@ -1968,6 +1974,8 @@ export function AdminDashboardPage() {
                           value={editHousePosition}
                           onChange={(e) => setEditHousePosition(e.target.value)}
                           className="admin-select-sm custom-select"
+                          aria-label="House Position"
+                          title="House Position"
                         >
                           <option value="">None / Unknown</option>
                           {STAFF_ROLES.map((role) => (
@@ -1986,8 +1994,8 @@ export function AdminDashboardPage() {
                           value={editRole}
                           onChange={(e) => setEditRole(e.target.value)}
                           className="admin-select-sm custom-select"
-                          aria-label="Edit System Role"
-                          title="Edit System Role"
+                          aria-label="System Role"
+                          title="System Role"
                         >
                           <option value="student">student</option>
                           <option value="staff">staff</option>

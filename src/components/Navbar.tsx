@@ -500,7 +500,7 @@ export function Navbar() {
                     {user.profile_pic_url ? (
                       <Image
                         src={user.profile_pic_url}
-                        alt={user.nickname || "Avatar"}
+                        alt={user.nickname ? `${user.nickname}'s profile picture` : "Your profile picture"}
                         w="100%"
                         h="100%"
                         objectFit="cover"
@@ -622,7 +622,7 @@ export function Navbar() {
                   {user.profile_pic_url ? (
                     <Image
                       src={user.profile_pic_url}
-                      alt={user.nickname || "Avatar"}
+                      alt={user.nickname ? `${user.nickname}'s profile picture` : "Your profile picture"}
                       w="100%"
                       h="100%"
                       objectFit="cover"

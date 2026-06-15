@@ -379,7 +379,7 @@ export function ProfileEditPage() {
                 <HStack gap={3} align="center" w={{ base: "100%", md: "auto" }}>
                   <Image
                     src={`${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=thumbnail`}
-                    alt="Suggested avatar asset"
+                    alt={`Suggested profile picture automatically detected for ${user?.nickname || 'you'}`}
                     w="48px"
                     h="48px"
                     borderRadius="full"
@@ -488,7 +488,7 @@ export function ProfileEditPage() {
                 {profilePicUrl ? (
                   <Image
                     src={profilePicUrl}
-                    alt="Avatar Preview"
+                    alt={`Profile picture preview for ${nickname || user?.nickname || 'user'}`}
                     w="100%"
                     h="100%"
                     objectFit="cover"

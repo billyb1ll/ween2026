@@ -348,7 +348,7 @@ export function GalleryPage() {
                       transform={selectedPersonId === person.id ? "scale(1.08)" : "none"}
                     >
                       <Box w="44px" h="44px" minW="44px" minH="44px" borderRadius="full" overflow="hidden" border="2px solid var(--c-chocolate)" bg="var(--c-ivory)">
-                        <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt={person.name} w="100%" h="100%" objectFit="cover" draggable={false} />
+                        <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt={`Face crop of ${person.name || "detected person"} from gallery album`} w="100%" h="100%" objectFit="cover" draggable={false} />
                       </Box>
                     </Box>
                     <Text fontSize="2xs" fontWeight="600" color={selectedPersonId === person.id ? "accent.solid" : "fg.muted"} textAlign="center" maxW="60px" truncate>
@@ -425,7 +425,7 @@ export function GalleryPage() {
                 >
                   <Box w="44px" h="44px" minW="44px" minH="44px" borderRadius="full" border={selectedPersonId === person.id ? "2px solid var(--c-chocolate)" : "2px dashed var(--c-chocolate)"} p="2px" transition="all 0.3s var(--ease-out-quart)" transform={selectedPersonId === person.id ? "scale(1.1)" : "none"}>
                     <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
-                      <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt="Face target" w="100%" h="100%" objectFit="cover" draggable={false} />
+                      <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt="Anonymous face detected in orientation album" w="100%" h="100%" objectFit="cover" draggable={false} />
                     </Box>
                   </Box>
                 </VStack>
@@ -476,7 +476,7 @@ export function GalleryPage() {
             <Dialog.Content bg="var(--c-ivory)" border={{ base: "none", md: "2px solid var(--c-chocolate)" }} color="var(--c-ink)" borderRadius={{ base: "t-3xl", md: "2xl" }} width={{ base: "100%", md: "640px" }} maxH={{ base: "90vh", sm: "80vh" }} p={6} boxShadow="var(--shadow-card)" display="flex" flexDirection="column" position="relative" overflowY="auto">
               <VStack align="stretch" gap={4}>
                 <Box borderRadius="lg" overflow="hidden" maxH="55vh">
-                  <Image src={`${proxyUrl}/assets/${selectedAsset.id}/thumbnail?size=is_preview`} alt="Preview asset" w="100%" h="auto" maxH="55vh" objectFit="contain" mx="auto" />
+                  <Image src={`${proxyUrl}/assets/${selectedAsset.id}/thumbnail?size=is_preview`} alt="Full preview of orientation activity photo" w="100%" h="auto" maxH="55vh" objectFit="contain" mx="auto" />
                 </Box>
                 <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
                   <Dialog.CloseTrigger asChild>

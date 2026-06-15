@@ -814,7 +814,7 @@ export function BoardPage() {
                 {inspectedUser.profile_pic_url ? (
                   <Image
                     src={inspectedUser.profile_pic_url}
-                    alt="Avatar"
+                    alt={`${inspectedUser.nickname || 'User'}'s profile picture`}
                     w="100%"
                     h="100%"
                     objectFit="cover"
@@ -1019,7 +1019,7 @@ export function BoardPage() {
                           {memoryImage ? (
                             <Flex align="center" gap={3} bg="bg.muted" p={2} borderRadius="md" position="relative">
                               <Box w="40px" h="40px" borderRadius="sm" overflow="hidden">
-                                <Image src={URL.createObjectURL(memoryImage)} alt="Preview" w="100%" h="100%" objectFit="cover" />
+                                <Image src={URL.createObjectURL(memoryImage)} alt={`Selected image preview: ${memoryImage.name}`} w="100%" h="100%" objectFit="cover" />
                               </Box>
                               <Text fontSize="xs" color="fg.subtle" lineClamp={1} flex={1}>
                                 {memoryImage.name}
@@ -1459,7 +1459,7 @@ function CommentSection({
                   {comment.author?.profile_pic_url ? (
                     <Image
                       src={comment.author.profile_pic_url}
-                      alt={comment.author.nickname || "Avatar"}
+                      alt={comment.author.nickname ? `${comment.author.nickname}'s profile picture` : "User's profile picture"}
                       w="100%"
                       h="100%"
                       objectFit="cover"
@@ -1663,7 +1663,7 @@ const HypeCard = memo(function HypeCard({
           {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
-              alt={post.author.nickname || "Avatar"}
+              alt={isAnon ? "Anonymous user's profile picture" : `${post.author.nickname || 'User'}'s profile picture`}
               w="100%"
               h="100%"
               objectFit="cover"
@@ -1960,7 +1960,7 @@ const MemoryCard = memo(function MemoryCard({
           {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
-              alt={post.author.nickname || "Avatar"}
+              alt={isAnon ? "Anonymous user's profile picture" : `${post.author.nickname || 'User'}'s profile picture`}
               w="100%"
               h="100%"
               objectFit="cover"
@@ -2007,7 +2007,7 @@ const MemoryCard = memo(function MemoryCard({
       </Text>
       {post.image_url && (
         <Box mb={3} borderRadius="lg" overflow="hidden" boxShadow="sm" maxH="240px">
-          <Image src={post.image_url} alt="Memory Attachment" w="100%" h="100%" objectFit="cover" />
+          <Image src={post.image_url} alt={`Memory board photo shared by ${isAnon ? 'Anonymous' : (post.author.nickname || 'User')}`} w="100%" h="100%" objectFit="cover" />
         </Box>
       )}
       <Flex gap={3} align="center">

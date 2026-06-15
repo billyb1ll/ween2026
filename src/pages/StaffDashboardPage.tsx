@@ -488,7 +488,7 @@ export function StaffDashboardPage() {
                           >
                             <Image
                               src={url}
-                              alt={`Photo ${idx + 1}`}
+                              alt={`Uploaded staff orientation activity photo preview ${idx + 1}`}
                               w="100%"
                               h="100%"
                               objectFit="cover"
