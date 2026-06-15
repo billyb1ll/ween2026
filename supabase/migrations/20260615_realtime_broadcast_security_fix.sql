@@ -14,7 +14,7 @@ ON realtime.messages
 FOR SELECT
 TO authenticated, anon
 USING (
-  realtime.messages.extension IN ('broadcast', 'presence')
+  realtime.messages.extension IN ('broadcast', 'presence', 'postgres_changes')
   AND (
     realtime.messages.topic LIKE 'board:%:stream' OR
     realtime.messages.topic = 'board:global:presence' OR
@@ -22,23 +22,16 @@ USING (
   )
 );
 
--- 4. INSERT policy: Allow publishing broadcast & presence only if the payload contains a valid, unexpired session token
+-- 4. INSERT policy: Allow publishing to private board topics for authenticated and anon roles
 CREATE POLICY "authenticated_can_insert_messages"
 ON realtime.messages
 FOR INSERT
 TO authenticated, anon
 WITH CHECK (
   realtime.messages.extension IN ('broadcast', 'presence')
-  AND EXISTS (
-    SELECT 1
-    FROM public.user_sessions s
-    WHERE (
-      -- Extract session_token from payload (handles direct broadcast payload and nested presence track payload)
-      s.session_token::text = (realtime.messages.payload ->> 'session_token') OR
-      s.session_token::text = (realtime.messages.payload -> 'payload' ->> 'session_token') OR
-      -- Fallback to auth.uid() in case they are logged in via standard Supabase Auth
-      s.session_token = auth.uid()
-    )
-    AND s.expires_at > NOW()
+  AND (
+    realtime.messages.topic LIKE 'board:%:stream' OR
+    realtime.messages.topic = 'board:global:presence' OR
+    realtime.messages.topic LIKE 'global-comment-counts-%'
   )
 );
