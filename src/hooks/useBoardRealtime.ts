@@ -20,6 +20,7 @@ export interface DBPost {
   type: BoardTab
   liked_by: string[]
   image_url: string | null
+  is_pinned?: boolean
   author: {
     student_id: string
     nickname: string | null
@@ -38,6 +39,8 @@ export interface UseBoardRealtimeReturn {
   onlineCount: number
   handleCreatePost: (content: string, tags: string[], isAnon: boolean, imageUrl?: string | null) => Promise<void>
   handleLikePost: (postId: number) => Promise<void>
+  handlePinPost: (postId: number, currentStatus: boolean) => Promise<void>
+  handleDeletePost: (postId: number) => Promise<void>
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -67,6 +70,7 @@ function mapPost(p: any): DBPost {
     type: p.type as BoardTab,
     liked_by: Array.isArray(p.liked_by) ? p.liked_by : [],
     image_url: p.image_url ?? null,
+    is_pinned: p.is_pinned ?? false,
     author: {
       student_id: p.author?.student_id ?? '',
       nickname: p.author?.nickname ?? 'Guest Whitelist',
@@ -114,6 +118,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)')
           .eq('type', activeTab)
           .eq('is_hidden', false)
+          .order('is_pinned', { ascending: false, nullsFirst: false })
           .order('created_at', { ascending: false })
           .limit(50)
 
@@ -193,8 +198,14 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
               p.id === updated.id
                 ? {
                     ...p,
+                    content: updated.content ?? p.content,
                     likes: updated.likes ?? p.likes,
                     liked_by: Array.isArray(updated.liked_by) ? updated.liked_by : p.liked_by,
+                    tags: Array.isArray(updated.tags) ? updated.tags : p.tags,
+                    is_anonymous: updated.is_anonymous ?? p.is_anonymous,
+                    is_hidden: updated.is_hidden ?? p.is_hidden,
+                    image_url: updated.image_url ?? p.image_url,
+                    is_pinned: updated.is_pinned ?? p.is_pinned,
                   }
                 : p
             )
@@ -220,14 +231,16 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         setOnlineCount((prev) => Math.max(1, prev - leftPresences.length))
       })
-      // ── UPDATE: system_config ──
+      // ── system_config ──
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'system_config' },
+        { event: '*', schema: 'public', table: 'system_config' },
         (payload) => {
-          const { key, value } = payload.new
-          if (key === 'enable_hype_board') setHypeActive(value)
-          if (key === 'enable_memory_board') setMemoryActive(value)
+          const record = (payload.new || payload.old) as { key?: string; value?: boolean } | null
+          if (!record) return
+          const { key, value } = record
+          if (key === 'enable_hype_board') setHypeActive(value ?? true)
+          if (key === 'enable_memory_board') setMemoryActive(value ?? true)
         }
       )
       .subscribe(async (status, err) => {
@@ -267,7 +280,8 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         (payload) => {
           const commentId = payload.old.id
           console.log('[Realtime global comment delete] ID:', commentId)
-          const postId = Number(payload.old.post_id)
+          const postId = payload.old.post_id ? Number(payload.old.post_id) : null
+          if (!postId) return
           setPosts((prev) =>
             prev.map((p) =>
               p.id === postId
@@ -403,6 +417,55 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     [user]
   )
 
+  // ── Admin: Pin post ───────────────────────────────────────────────────────
+  const handlePinPost = useCallback(
+    async (postId: number, currentStatus: boolean) => {
+      if (!user || user.role !== 'moderator') return
+
+      try {
+        const { error } = await supabase
+          .from('posts')
+          .update({ is_pinned: !currentStatus })
+          .eq('id', postId)
+
+        if (error) throw error
+
+        toaster.create({
+          title: !currentStatus ? 'Post pinned' : 'Post unpinned',
+          type: 'success',
+        })
+      } catch (err) {
+        console.error('[Board] Pin error:', err)
+        toaster.create({ title: 'Error pinning post', type: 'error' })
+      }
+    },
+    [user]
+  )
+
+  // ── Admin: Delete post ────────────────────────────────────────────────────
+  const handleDeletePost = useCallback(
+    async (postId: number) => {
+      if (!user || user.role !== 'moderator') return
+
+      // Optimistic delete
+      setPosts((prev) => prev.filter((p) => p.id !== postId))
+
+      try {
+        const { error } = await supabase.from('posts').delete().eq('id', postId)
+        if (error) throw error
+
+        toaster.create({
+          title: 'Post deleted',
+          type: 'success',
+        })
+      } catch (err) {
+        console.error('[Board] Delete error:', err)
+        toaster.create({ title: 'Error deleting post', type: 'error' })
+      }
+    },
+    [user]
+  )
+
   return {
     posts,
     loading,
@@ -412,5 +475,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     onlineCount,
     handleCreatePost,
     handleLikePost,
+    handlePinPost,
+    handleDeletePost,
   }
 }
