@@ -1136,7 +1136,16 @@ export function AdminDashboardPage() {
                         </Table.Cell>
                         <Table.Cell fontWeight="600">{m.required_count} cards</Table.Cell>
                         <Table.Cell textAlign="right">
-                          <Button size="xs" variant="ghost" colorPalette="red" onClick={() => handleRemoveMission(m.id, m.sequence_order)} cursor="pointer">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            colorPalette="red"
+                            onClick={() => handleRemoveMission(m.id, m.sequence_order)}
+                            cursor="pointer"
+                            h={{ base: "40px", md: "28px" }}
+                            px={{ base: 4, md: 3 }}
+                            fontSize="xs"
+                          >
                             Delete
                           </Button>
                         </Table.Cell>
@@ -1196,7 +1205,7 @@ export function AdminDashboardPage() {
                     maxW="90px"
                   />
                 </VStack>
-                <Button type="submit" bg="var(--c-chocolate)" color="white" h="38px" px={4} borderRadius="lg" cursor="pointer">
+                <Button type="submit" bg="var(--c-chocolate)" color="white" h={{ base: "40px", md: "38px" }} px={4} borderRadius="lg" cursor="pointer">
                   Append Quest
                 </Button>
               </Flex>
@@ -1342,10 +1351,10 @@ export function AdminDashboardPage() {
                 mb={4}
               >
                 <Tabs.List borderColor="border.subtle">
-                  <Tabs.Trigger value="student" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2}>
+                  <Tabs.Trigger value="student" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2} h={{ base: "40px", md: "auto" }}>
                     Freshmen Only ({whitelistedUsers.filter(u => u.role === 'student').length})
                   </Tabs.Trigger>
-                  <Tabs.Trigger value="staff" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2}>
+                  <Tabs.Trigger value="staff" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2} h={{ base: "40px", md: "auto" }}>
                     Staff & Moderators ({whitelistedUsers.filter(u => u.role !== 'student').length})
                   </Tabs.Trigger>
                 </Tabs.List>
@@ -1531,7 +1540,7 @@ export function AdminDashboardPage() {
                   color="white"
                   onClick={() => handleToggleConfig('enable_hype_board', enableHypeBoard)}
                   cursor="pointer"
-                  h="38px"
+                  h={{ base: "40px", md: "38px" }}
                   px={4}
                   borderRadius="lg"
                 >
@@ -1550,7 +1559,7 @@ export function AdminDashboardPage() {
                   color="white"
                   onClick={() => handleToggleConfig('enable_memory_board', enableMemoryBoard)}
                   cursor="pointer"
-                  h="38px"
+                  h={{ base: "40px", md: "38px" }}
                   px={4}
                   borderRadius="lg"
                 >
@@ -2179,7 +2188,7 @@ export function AdminDashboardPage() {
               onClick={() => setIsBulkDeleteOpen(true)}
               cursor="pointer"
               fontSize="xs"
-              h="36px"
+              h={{ base: "40px", md: "36px" }}
               px={4}
             >
               Remove Selected (ลบรายชื่อที่เลือก)

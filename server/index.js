@@ -210,35 +210,45 @@ app.put('/api/immich/people/:id', async (req, res) => {
 })
 
 app.get('/api/immich/people/:id/thumbnail', async (req, res) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
     const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/people/${req.params.id}/thumbnail`, {
-      headers: { 'x-api-key': IMMICH_API_KEY }
+      headers: { 'x-api-key': IMMICH_API_KEY },
+      signal: controller.signal
     })
-    if (!response.ok) return res.status(response.status).send('Thumbnail fetch failed')
+    clearTimeout(timeoutId)
+    if (!response.ok) return res.status(404).send(Buffer.from(''))
     
     res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg')
     const arrayBuffer = await response.arrayBuffer()
     res.send(Buffer.from(arrayBuffer))
   } catch (error) {
+    clearTimeout(timeoutId)
     console.error('Immich proxy error (person thumbnail):', error)
-    res.status(500).send('Proxy error')
+    res.status(404).send(Buffer.from(''))
   }
 })
 
 app.get('/api/immich/assets/:id/thumbnail', async (req, res) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
     const size = req.query.size || 'thumbnail'
     const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/assets/${req.params.id}/thumbnail?size=${size}`, {
-      headers: { 'x-api-key': IMMICH_API_KEY }
+      headers: { 'x-api-key': IMMICH_API_KEY },
+      signal: controller.signal
     })
-    if (!response.ok) return res.status(response.status).send('Thumbnail fetch failed')
+    clearTimeout(timeoutId)
+    if (!response.ok) return res.status(404).send(Buffer.from(''))
     
     res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg')
     const arrayBuffer = await response.arrayBuffer()
     res.send(Buffer.from(arrayBuffer))
   } catch (error) {
+    clearTimeout(timeoutId)
     console.error('Immich proxy error (asset thumbnail):', error)
-    res.status(500).send('Proxy error')
+    res.status(404).send(Buffer.from(''))
   }
 })
 

@@ -4,11 +4,16 @@ export default async function handler(req, res) {
   const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
   if (req.method === 'GET') {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
     try {
       const imgSize = size || 'thumbnail'
       const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/assets/${id}/thumbnail?size=${imgSize}`, {
-        headers: { 'x-api-key': IMMICH_API_KEY }
+        headers: { 'x-api-key': IMMICH_API_KEY },
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
+      
       if (!response.ok) {
         return res.status(404).send(Buffer.from(''))
       }
@@ -19,6 +24,7 @@ export default async function handler(req, res) {
       const arrayBuffer = await response.arrayBuffer()
       return res.send(Buffer.from(arrayBuffer))
     } catch (error) {
+      clearTimeout(timeoutId)
       console.error('Proxy assets thumbnail error:', error)
       // Return 404 empty buffer instead of hanging/crashing
       return res.status(404).send(Buffer.from(''))

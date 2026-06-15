@@ -14,7 +14,7 @@ import {
   Dialog,
   Skeleton,
 } from "@chakra-ui/react";
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { useUser, type User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -24,6 +24,7 @@ import {
 } from "../hooks/useBoardRealtime";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ function LivePresenceBadge({ count }: { count: number }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
+      style={{ display: "inline-flex" }}
     >
       <Flex
         align="center"
@@ -120,6 +122,7 @@ export function BoardPage() {
   const [visibleCount, setVisibleCount] = useState(6);
   const [prevVisibleCount, setPrevVisibleCount] = useState(6);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(1);
   const [inspectedUser, setInspectedUser] = useState<User | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isInspectorLoading, setIsInspectorLoading] = useState(false);
@@ -134,19 +137,49 @@ export function BoardPage() {
     submitting,
     hypeActive,
     memoryActive,
-    onlineCount,
     handleCreatePost,
     handleLikePost,
     handlePinPost,
     handleDeletePost,
   } = useBoardRealtime(activeTab, user);
 
+  useEffect(() => {
+    const presenceChannel: RealtimeChannel = supabase.channel("board:global:presence", {
+      config: { private: true },
+    });
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        setOnlineCount(Object.keys(state).length);
+      })
+      .on("presence", { event: "join" }, ({ newPresences }) => {
+        setOnlineCount((prev) => prev + newPresences.length);
+      })
+      .on("presence", { event: "leave" }, ({ leftPresences }) => {
+        setOnlineCount((prev) => Math.max(1, prev - leftPresences.length));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED" && user) {
+          await presenceChannel.track({
+            user_id: user.student_id,
+            nickname: user.nickname,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [user]);
+
   const isStaff = user?.role === 'staff' || user?.role === 'moderator' || user?.role === 'media_admin';
   const effectiveHypeActive = hypeActive || isStaff;
   const effectiveMemoryActive = memoryActive || isStaff;
   const isMemoryAccessible = effectiveMemoryActive || (user && user.role !== "student");
 
-  const handleInspectUser = async (userId: string) => {
+  const handleInspectUser = useCallback(async (userId: string) => {
     setIsInspectorOpen(true);
     setIsInspectorLoading(true);
     setInspectedUser(null);
@@ -160,7 +193,7 @@ export function BoardPage() {
     } finally {
       setIsInspectorLoading(false);
     }
-  };
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -267,7 +300,7 @@ export function BoardPage() {
 
         {/* Live Presence Badge */}
         {(effectiveHypeActive || isMemoryAccessible) && (
-          <Box display="flex" gap={2} ml="auto">
+          <Box display="flex" gap={2} mx="auto" justifyContent="center" w="fit-content">
             <LivePresenceBadge count={onlineCount} />
           </Box>
         )}
@@ -332,7 +365,17 @@ export function BoardPage() {
             >
               Filter by:
             </Text>
-            <HStack gap={2} flexWrap="wrap">
+            <HStack
+              gap={2}
+              overflowX="auto"
+              whiteSpace="nowrap"
+              w="100%"
+              css={{
+                "&::-webkit-scrollbar": { display: "none" },
+                "-ms-overflow-style": "none",
+                "scrollbar-width": "none",
+              }}
+            >
               {categories.map((cat) => (
                 <Button
                   key={cat.value}
@@ -345,7 +388,8 @@ export function BoardPage() {
                   }}
                   px={4}
                   py={2}
-                  h="auto"
+                  h={{ base: "40px", md: "44px" }}
+                  minH={{ base: "40px", md: "44px" }}
                   borderRadius="full"
                   fontSize="xs"
                   fontWeight="600"
@@ -366,7 +410,6 @@ export function BoardPage() {
                     bg:
                       activeCategory === cat.value ? "accent.solid" : "bg.hero",
                   }}
-                  minH="44px"
                 >
                   {cat.label}
                 </Button>
@@ -460,7 +503,17 @@ export function BoardPage() {
                       <Text fontSize="xs" fontWeight="700" color="fg.muted">
                         Select a Tag (Required):
                       </Text>
-                      <HStack gap={2} flexWrap="wrap">
+                      <HStack
+                        gap={2}
+                        overflowX="auto"
+                        whiteSpace="nowrap"
+                        w="100%"
+                        css={{
+                          "&::-webkit-scrollbar": { display: "none" },
+                          "-ms-overflow-style": "none",
+                          "scrollbar-width": "none",
+                        }}
+                      >
                         {["#Hype", "#Question", "#Memory", "#Ween2026"].map(
                           (tag) => {
                             const isSelected = selectedTag === tag;
@@ -477,7 +530,7 @@ export function BoardPage() {
                                 borderColor={
                                   isSelected ? "accent.solid" : "border.subtle"
                                 }
-                                h="32px"
+                                h={{ base: "40px", md: "32px" }}
                                 px={3}
                                 cursor="pointer"
                                 _hover={{
@@ -594,10 +647,10 @@ export function BoardPage() {
                 position="relative"
                 css={{
                   columnCount: { base: 1, sm: 2, md: 3 },
-                  columnGap: { base: "1rem", md: "1.25rem" },
+                  columnGap: "24px",
                   "& > div": {
                     breakInside: "avoid",
-                    marginBottom: { base: "1rem", md: "1.25rem" },
+                    marginBottom: "24px",
                   },
                 }}
               >
@@ -656,10 +709,10 @@ export function BoardPage() {
               <Box
                 css={{
                   columnCount: { base: 1, sm: 2, md: 3 },
-                  columnGap: { base: "0.75rem", md: "1.25rem" },
+                  columnGap: "24px",
                   "& > div": {
                     breakInside: "avoid",
-                    marginBottom: { base: "0.75rem", md: "1.25rem" },
+                    marginBottom: "24px",
                   },
                 }}
               >
@@ -854,7 +907,17 @@ export function BoardPage() {
           )}
 
           <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-            <Button variant="ghost" size="sm" borderRadius="full" w={8} h={8} p={0}>
+            <Button
+              type="button"
+              variant="ghost"
+              bg="transparent"
+              borderRadius="full"
+              w={{ base: "40px", md: "32px" }}
+              h={{ base: "40px", md: "32px" }}
+              minW={{ base: "40px", md: "32px" }}
+              p={0}
+              cursor="pointer"
+            >
               <Box className="material-symbols-outlined" fontSize="md">close</Box>
             </Button>
           </Dialog.CloseTrigger>
@@ -1025,10 +1088,15 @@ export function BoardPage() {
                                 {memoryImage.name}
                               </Text>
                               <Button
-                                size="xs"
+                                type="button"
                                 variant="ghost"
+                                bg="transparent"
                                 onClick={() => setMemoryImage(null)}
-                                p={1}
+                                w={{ base: "40px", md: "32px" }}
+                                h={{ base: "40px", md: "32px" }}
+                                minW={{ base: "40px", md: "32px" }}
+                                p={0}
+                                cursor="pointer"
                               >
                                 <Box className="material-symbols-outlined" fontSize="sm">close</Box>
                               </Button>
@@ -1501,11 +1569,12 @@ function CommentSection({
                   <Button
                     type="button"
                     onClick={() => handleDeleteComment(comment.id)}
-                    size="xs"
                     variant="ghost"
+                    bg="transparent"
                     color="var(--c-error)"
-                    minH="32px"
-                    minW="32px"
+                    w={{ base: "40px", md: "32px" }}
+                    h={{ base: "40px", md: "32px" }}
+                    minW={{ base: "40px", md: "32px" }}
                     p={0}
                     cursor="pointer"
                   >
@@ -1622,6 +1691,7 @@ const HypeCard = memo(function HypeCard({
       borderColor="border.subtle"
       borderRadius="2xl"
       p={{ base: 4, md: 5 }}
+      mb="24px"
       transition="all 0.3s var(--ease-out-quart)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.4)}s both`}
       _hover={{
@@ -1729,11 +1799,13 @@ const HypeCard = memo(function HypeCard({
           type="button"
           role="group"
           color={localLiked ? "accent.solid" : "fg.subtle"}
-          bg={localLiked ? "bg.hero" : "transparent"}
+          bg={{ base: "transparent", md: localLiked ? "bg.hero" : "transparent" }}
           border="1px solid"
           borderColor={localLiked ? "accent.solid" : "border.subtle"}
-          h="32px"
-          px={3}
+          h={{ base: "40px", md: "32px" }}
+          w={{ base: "40px", md: "auto" }}
+          minW={{ base: "40px", md: "auto" }}
+          px={{ base: 0, md: 3 }}
           borderRadius="full"
           onClick={(e) => {
             e.stopPropagation();
@@ -1750,7 +1822,7 @@ const HypeCard = memo(function HypeCard({
           >
             favorite
           </Box>
-          <Text fontSize="xs" fontWeight="600" ml={1}>
+          <Text fontSize="xs" fontWeight="600" ml={1} display={{ base: "none", md: "block" }}>
             {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>
@@ -1782,10 +1854,12 @@ const HypeCard = memo(function HypeCard({
       {currentUserRole === "moderator" || currentUserRole === "admin" ? (
         <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
-            w={8}
-            h={8}
+            bg="transparent"
+            w={{ base: "40px", md: "32px" }}
+            h={{ base: "40px", md: "32px" }}
+            minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
             onClick={(e) => {
@@ -1800,10 +1874,12 @@ const HypeCard = memo(function HypeCard({
             </Box>
           </Button>
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
-            w={8}
-            h={8}
+            bg="transparent"
+            w={{ base: "40px", md: "32px" }}
+            h={{ base: "40px", md: "32px" }}
+            minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
             color="red.500"
@@ -1905,6 +1981,7 @@ const MemoryCard = memo(function MemoryCard({
       borderRadius="xl"
       p={{ base: 4, md: 5 }}
       position="relative"
+      mb="24px"
       transform={{ base: "none", md: `rotate(${rotation}deg)` }}
       transition="all 0.3s var(--ease-out-quart)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.5)}s both`}
@@ -2015,11 +2092,13 @@ const MemoryCard = memo(function MemoryCard({
           type="button"
           role="group"
           color={localLiked ? "accent.solid" : "fg.subtle"}
-          bg={localLiked ? "bg.hero" : "transparent"}
+          bg={{ base: "transparent", md: localLiked ? "bg.hero" : "transparent" }}
           border="1px solid"
           borderColor={localLiked ? "accent.solid" : "border.subtle"}
-          h="32px"
-          px={3}
+          h={{ base: "40px", md: "32px" }}
+          w={{ base: "40px", md: "auto" }}
+          minW={{ base: "40px", md: "auto" }}
+          px={{ base: 0, md: 3 }}
           borderRadius="full"
           onClick={(e) => {
             e.stopPropagation();
@@ -2036,7 +2115,7 @@ const MemoryCard = memo(function MemoryCard({
           >
             favorite
           </Box>
-          <Text fontSize="xs" fontWeight="600" ml={1}>
+          <Text fontSize="xs" fontWeight="600" ml={1} display={{ base: "none", md: "block" }}>
             {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>
@@ -2068,10 +2147,12 @@ const MemoryCard = memo(function MemoryCard({
       {currentUserRole === "moderator" || currentUserRole === "admin" ? (
         <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
-            w={8}
-            h={8}
+            bg="transparent"
+            w={{ base: "40px", md: "32px" }}
+            h={{ base: "40px", md: "32px" }}
+            minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
             onClick={(e) => {
@@ -2086,10 +2167,12 @@ const MemoryCard = memo(function MemoryCard({
             </Box>
           </Button>
           <Button
-            size="sm"
+            type="button"
             variant="ghost"
-            w={8}
-            h={8}
+            bg="transparent"
+            w={{ base: "40px", md: "32px" }}
+            h={{ base: "40px", md: "32px" }}
+            minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
             color="red.500"

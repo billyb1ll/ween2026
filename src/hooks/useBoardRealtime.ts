@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { toaster } from '../components/ui/toaster'
 import type { User } from '../context/UserContext'
@@ -36,7 +37,6 @@ export interface UseBoardRealtimeReturn {
   submitting: boolean
   hypeActive: boolean
   memoryActive: boolean
-  onlineCount: number
   handleCreatePost: (content: string, tags: string[], isAnon: boolean, imageUrl?: string | null) => Promise<void>
   handleLikePost: (postId: number) => Promise<void>
   handlePinPost: (postId: number, currentStatus: boolean) => Promise<void>
@@ -89,7 +89,9 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
   const [submitting, setSubmitting] = useState(false)
   const [hypeActive, setHypeActive] = useState(true)
   const [memoryActive, setMemoryActive] = useState(true)
-  const [onlineCount, setOnlineCount] = useState(1)
+
+  // Keep a ref to the stream channel to send broadcasts from callbacks
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   // Track optimistic like origins so we don't double-apply realtime UPDATE
   const pendingLikes = useRef<Set<number>>(new Set())
@@ -144,92 +146,53 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
-    const channelName = `board-${activeTab}`
-
     const channel = supabase
-      .channel(channelName, {
-        config: { presence: { key: user?.student_id ?? 'anon' } },
+      .channel(`board:${activeTab}:stream`, {
+        config: { private: true },
       })
-      // ── INSERT: new post ──
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'posts', filter: `type=eq.${activeTab}` },
-        async (payload) => {
-          if (payload.new.is_hidden) return
+    channelRef.current = channel
 
-          // Fetch with author join (Realtime payload won't include joined relations)
-          const { data } = await supabase
-            .from('posts')
-            .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)')
-            .eq('id', payload.new.id)
-            .single()
-
-          if (data) {
-            const incoming = mapPost(data)
-            // Avoid duplicate if current user just posted (already optimistically added)
-            setPosts((prev) => {
-              if (prev.some((p) => p.id === incoming.id)) return prev
-              return [incoming, ...prev]
-            })
-          }
-        }
-      )
-      // ── UPDATE: likes or admin hide ──
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'posts', filter: `type=eq.${activeTab}` },
-        (payload) => {
-          const updated = payload.new
-
-          // Admin hid this post — evict from all clients instantly
-          if (updated.is_hidden) {
-            setPosts((prev) => prev.filter((p) => p.id !== updated.id))
-            return
-          }
-
-          // Like update — skip if we originated this change (optimistic already applied)
-          if (pendingLikes.current.has(updated.id)) {
-            pendingLikes.current.delete(updated.id)
-            return
-          }
-
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === updated.id
-                ? {
-                    ...p,
-                    content: updated.content ?? p.content,
-                    likes: updated.likes ?? p.likes,
-                    liked_by: Array.isArray(updated.liked_by) ? updated.liked_by : p.liked_by,
-                    tags: Array.isArray(updated.tags) ? updated.tags : p.tags,
-                    is_anonymous: updated.is_anonymous ?? p.is_anonymous,
-                    is_hidden: updated.is_hidden ?? p.is_hidden,
-                    image_url: updated.image_url ?? p.image_url,
-                    is_pinned: updated.is_pinned ?? p.is_pinned,
-                  }
-                : p
-            )
+    channel
+      // ── Broadcast: new post ──
+      .on('broadcast', { event: 'new_post' }, (payload) => {
+        if (!payload.payload?.post) return
+        const incoming = mapPost(payload.payload.post)
+        setPosts((prev) => {
+          if (prev.some((p) => p.id === incoming.id)) return prev
+          return [incoming, ...prev]
+        })
+      })
+      // ── Broadcast: like update ──
+      .on('broadcast', { event: 'post_liked' }, (payload) => {
+        const { postId, likes, liked_by } = payload.payload || {}
+        if (!postId) return
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  likes: likes ?? p.likes,
+                  liked_by: Array.isArray(liked_by) ? liked_by : p.liked_by,
+                }
+              : p
           )
-        }
-      )
-      // ── DELETE: hard delete ──
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'posts', filter: `type=eq.${activeTab}` },
-        (payload) => {
-          setPosts((prev) => prev.filter((p) => p.id !== payload.old.id))
-        }
-      )
-      // ── Presence: live viewer count ──
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState()
-        setOnlineCount(Object.keys(state).length)
+        )
       })
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        setOnlineCount((prev) => prev + newPresences.length)
+      // ── Broadcast: pin update ──
+      .on('broadcast', { event: 'post_pinned' }, (payload) => {
+        const { postId, is_pinned } = payload.payload || {}
+        if (!postId) return
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId ? { ...p, is_pinned } : p
+          )
+        )
       })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        setOnlineCount((prev) => Math.max(1, prev - leftPresences.length))
+      // ── Broadcast: delete update ──
+      .on('broadcast', { event: 'post_deleted' }, (payload) => {
+        const { postId } = payload.payload || {}
+        if (!postId) return
+        setPosts((prev) => prev.filter((p) => p.id !== postId))
       })
       // ── system_config ──
       .on(
@@ -243,17 +206,11 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           if (key === 'enable_memory_board') setMemoryActive(value ?? true)
         }
       )
-      .subscribe(async (status, err) => {
+      .subscribe((status, err) => {
         if (err) {
           console.error(`[Realtime Board Error - Tab ${activeTab}]:`, err)
         }
         console.log(`[Realtime Board Status - Tab ${activeTab}]:`, status)
-        if (status === 'SUBSCRIBED' && user) {
-          await channel.track({
-            user_id: user.student_id,
-            online_at: new Date().toISOString(),
-          })
-        }
       })
 
     // ── Global comment counter channel ─────────────────────────────────────
@@ -261,7 +218,9 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     // in the posts state array so face-card counters update without needing
     // the comment drawer to be open first.
     const commentChannel = supabase
-      .channel('global-comment-counts-' + activeTab)
+      .channel('global-comment-counts-' + activeTab, {
+        config: { private: true },
+      })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'post_comments' },
@@ -299,6 +258,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     return () => {
       supabase.removeChannel(channel)
       supabase.removeChannel(commentChannel)
+      channelRef.current = null
     }
   }, [activeTab, user])
 
@@ -332,11 +292,18 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         if (error) throw error
 
         if (data) {
+          const incoming = mapPost(data)
+          // Broadcast to other clients
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'new_post',
+            payload: { post: data },
+          }).catch((err) => console.error('[Realtime] Broadcast new_post error:', err))
+
           // Optimistic prepend — realtime INSERT will arrive shortly, dedup guard prevents double
           setPosts((prev) => {
-            const newPost = mapPost(data)
-            if (prev.some((p) => p.id === newPost.id)) return prev
-            return [newPost, ...prev]
+            if (prev.some((p) => p.id === incoming.id)) return prev
+            return [incoming, ...prev]
           })
 
           toaster.create({
@@ -390,6 +357,13 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
         )
       )
 
+      // 0ms Optimistic Synchronization: Shoot rapid broadcast payload immediately before updating relational tables statically
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'post_liked',
+        payload: { postId, likes: nextLikes, liked_by: nextLikedBy },
+      }).catch((err) => console.error('[Realtime] Broadcast post_liked error:', err))
+
       // Mark as self-originated so the realtime UPDATE won't double-apply
       pendingLikes.current.add(postId)
 
@@ -422,20 +396,42 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     async (postId: number, currentStatus: boolean) => {
       if (!user || user.role !== 'moderator') return
 
+      const nextStatus = !currentStatus
+
+      // Optimistic update
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, is_pinned: nextStatus } : p
+        )
+      )
+
+      // Broadcast pin state
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'post_pinned',
+        payload: { postId, is_pinned: nextStatus },
+      }).catch((err) => console.error('[Realtime] Broadcast pin error:', err))
+
       try {
         const { error } = await supabase
           .from('posts')
-          .update({ is_pinned: !currentStatus })
+          .update({ is_pinned: nextStatus })
           .eq('id', postId)
 
         if (error) throw error
 
         toaster.create({
-          title: !currentStatus ? 'Post pinned' : 'Post unpinned',
+          title: nextStatus ? 'Post pinned' : 'Post unpinned',
           type: 'success',
         })
       } catch (err) {
         console.error('[Board] Pin error:', err)
+        // Rollback pin state
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId ? { ...p, is_pinned: currentStatus } : p
+          )
+        )
         toaster.create({ title: 'Error pinning post', type: 'error' })
       }
     },
@@ -449,6 +445,13 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
 
       // Optimistic delete
       setPosts((prev) => prev.filter((p) => p.id !== postId))
+
+      // Broadcast delete state
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'post_deleted',
+        payload: { postId },
+      }).catch((err) => console.error('[Realtime] Broadcast delete error:', err))
 
       try {
         const { error } = await supabase.from('posts').delete().eq('id', postId)
@@ -472,7 +475,6 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
     submitting,
     hypeActive,
     memoryActive,
-    onlineCount,
     handleCreatePost,
     handleLikePost,
     handlePinPost,
