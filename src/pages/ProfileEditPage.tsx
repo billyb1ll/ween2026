@@ -81,6 +81,12 @@ const getInitials = (name: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+interface SuggestedAsset {
+  id: string;
+  people?: Array<{ id: string; personId?: string }>;
+  personId?: string;
+}
+
 export function ProfileEditPage() {
   const navigate = useNavigate();
   const { user, updateProfile } = useUser();
@@ -117,11 +123,133 @@ export function ProfileEditPage() {
   const [isOpenCrop, setIsOpenCrop] = useState(false);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
+  const serverUrl = import.meta.env.VITE_IMMICH_SERVER_URL;
+  const apiKey = import.meta.env.VITE_IMMICH_API_KEY;
+
+  const isComingSoon =
+    !serverUrl ||
+    serverUrl.includes("placeholder") ||
+    serverUrl.includes("todo") ||
+    !apiKey ||
+    apiKey.includes("placeholder");
+
+  const [suggestedAsset, setSuggestedAsset] = useState<SuggestedAsset | null>(null);
+
   useEffect(() => {
     if (!user) {
       navigate("/login");
     }
   }, [user, navigate]);
+
+  // AI Name-Tag smart search trigger
+  useEffect(() => {
+    if (!user?.nickname || isComingSoon) {
+      const timer = setTimeout(() => setSuggestedAsset(null), 0);
+      return () => clearTimeout(timer);
+    }
+
+    const fetchSuggestion = async () => {
+      try {
+        const res = await fetch(`${serverUrl}/api/search/smart`, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey || "",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ q: user.nickname }),
+        });
+        if (!res.ok) throw new Error("Smart search query failed");
+        const data = await res.json();
+        const assets = data.assets || (Array.isArray(data) ? data : []);
+        if (assets.length > 0) {
+          setSuggestedAsset(assets[0]);
+        } else {
+          setSuggestedAsset(null);
+        }
+      } catch (err) {
+        console.error("Smart search exception:", err);
+        setSuggestedAsset(null);
+      }
+    };
+
+    fetchSuggestion();
+  }, [user?.nickname, serverUrl, apiKey, isComingSoon]);
+
+  const handleClaimSuggestion = async () => {
+    if (!user || !suggestedAsset) return;
+    try {
+      const previewUrl = `${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=is_preview`;
+      
+      // Write A (Local Core Sync)
+      const success = await updateProfile({
+        nickname: nickname.trim(),
+        faculty: faculty.trim(),
+        major: major.trim(),
+        ig: ig.trim(),
+        avatarColor,
+        bio: bio.trim(),
+        profilePicUrl: previewUrl,
+        photoPool: user.photo_pool || [],
+        housePosition: housePosition.trim(),
+        immichAssetId: suggestedAsset.id,
+      });
+
+      if (success) {
+        setProfilePicUrl(previewUrl);
+
+        // Write B (Immich AI Feedback Loop)
+        const personId = suggestedAsset.people?.[0]?.id || suggestedAsset.people?.[0]?.personId || suggestedAsset.personId;
+        
+        if (personId) {
+          try {
+            const fullName = user.full_name || user.nickname || "Student";
+            const feedbackRes = await fetch(`${serverUrl}/api/people/${personId}`, {
+              method: "PUT",
+              headers: {
+                "x-api-key": apiKey || "",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: `${user.nickname} (${fullName})`,
+              }),
+            });
+
+            if (!feedbackRes.ok) {
+              throw new Error("Feedback loop failed");
+            }
+          } catch (immichErr) {
+            console.error("Immich metadata feedback write failed:", immichErr);
+            // Gracefully handle: ensure primary avatar claim remains intact, emit clean warning toast
+            toaster.create({
+              title: "Name Sync Warning",
+              description: "Avatar was updated, but face classification database sync failed.",
+              type: "warning",
+            });
+          }
+        }
+
+        setSuggestedAsset(null);
+        toaster.create({
+          title: "Claim Successful",
+          description: "Your profile picture has been updated with the suggested photo.",
+          type: "success",
+        });
+      } else {
+        throw new Error("Update failed");
+      }
+    } catch (err) {
+      console.error("Claim suggestion failed:", err);
+      toaster.create({
+        title: "Claim Failed",
+        description: "Failed to update profile picture with suggested photo.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleDismissSuggestion = () => {
+    setSuggestedAsset(null);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -278,6 +406,78 @@ export function ProfileEditPage() {
                 Set up your orientation identity. Let's make connections!
               </Text>
             </VStack>
+
+            {/* AI Suggestion Banner Panel */}
+            {suggestedAsset && (
+              <Flex
+                direction={{ base: "column", md: "row" }}
+                align="center"
+                justify="space-between"
+                gap={4}
+                p={4}
+                bg="var(--c-ivory)"
+                border="2px dashed var(--c-chocolate)"
+                borderRadius="md"
+                boxShadow="var(--shadow-card)"
+                w="100%"
+                animation="scale-in 0.3s var(--ease-out-quart)"
+              >
+                <HStack gap={3} align="center" w={{ base: "100%", md: "auto" }}>
+                  <Image
+                    src={`${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=thumbnail`}
+                    alt="Suggested avatar asset"
+                    w="48px"
+                    h="48px"
+                    borderRadius="full"
+                    objectFit="cover"
+                    draggable={false}
+                  />
+                  <VStack align="start" gap={0}>
+                    <Text fontSize="xs" fontWeight="700" color="accent.solid">
+                      Is this you?
+                    </Text>
+                    <Text fontSize="2xs" color="fg.muted">
+                      We found a matching photo containing your name tag.
+                    </Text>
+                  </VStack>
+                </HStack>
+                <Flex gap={2} w={{ base: "100%", md: "auto" }} justify="flex-end">
+                  <Button
+                    type="button"
+                    h="44px"
+                    px={4}
+                    bg="accent.solid"
+                    color="white"
+                    borderRadius="xl"
+                    fontSize="xs"
+                    fontWeight="700"
+                    cursor="pointer"
+                    _hover={{ bg: "chocolate.600" }}
+                    onClick={handleClaimSuggestion}
+                    flex={{ base: 1, md: "initial" }}
+                  >
+                    ใช่ ฉันเอง
+                  </Button>
+                  <Button
+                    type="button"
+                    h="44px"
+                    px={4}
+                    variant="outline"
+                    borderColor="border.subtle"
+                    color="fg.muted"
+                    borderRadius="xl"
+                    fontSize="xs"
+                    fontWeight="600"
+                    cursor="pointer"
+                    _hover={{ bg: "bg.hero" }}
+                    onClick={handleDismissSuggestion}
+                    flex={{ base: 1, md: "initial" }}
+                  >
+                    ไม่ใช่ฉัน
+                  </Button>
+                </Flex>
+              </Flex>
+            )}
 
             {/* Required setup warning for staff/moderator */}
             {(user?.role === "staff" || user?.role === "moderator") &&

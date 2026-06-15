@@ -78,6 +78,7 @@ function AppContent() {
             <Route path="/board" element={<RequireCompleteProfile><BoardPage /></RequireCompleteProfile>} />
             <Route path="/gallery" element={<RequireCompleteProfile><GalleryPage /></RequireCompleteProfile>} />
 
+
             {/* Administrative Dashboard Route */}
             <Route
               path="/admin"

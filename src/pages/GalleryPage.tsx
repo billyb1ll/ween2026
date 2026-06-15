@@ -2,542 +2,463 @@ import {
   Box,
   Flex,
   Heading,
-  HStack,
   SimpleGrid,
   Text,
   VStack,
   Image,
   Button,
-  Input,
   Spinner,
+  Dialog,
+  HStack,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 
-interface DBPhoto {
-  id: number;
-  src: string;
-  caption: string;
-  likes: number;
-  student_id: string | null;
-  author_name: string | null;
-  created_at: string;
+interface ImmichAsset {
+  id: string;
+  createdAt: string;
+  thumbhash?: string;
+}
+
+interface ImmichPerson {
+  id: string;
+  name: string;
 }
 
 export function GalleryPage() {
-  const { user } = useUser();
-  const [photos, setPhotos] = useState<DBPhoto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const { user, updateProfile } = useUser();
+  const proxyUrl = "/api/immich";
 
-  // Upload Form State
-  const [showUploadForm, setShowUploadForm] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
-  const [caption, setCaption] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [viewMode, setViewMode] = useState<'photos' | 'unclaimed'>('photos');
+  const [activeDay, setActiveDay] = useState<'day1' | 'day2' | 'day3'>('day1');
+  
+  // Data States
+  const [photos, setPhotos] = useState<ImmichAsset[]>([]);
+  const [people, setPeople] = useState<ImmichPerson[]>([]);
+  const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
+  const [personAssets, setPersonAssets] = useState<ImmichAsset[]>([]);
+  
+  // Loading States
+  const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const [loadingPeople, setLoadingPeople] = useState(true);
+  const [loadingPersonAssets, setLoadingPersonAssets] = useState(false);
+  const [claiming, setClaiming] = useState(false);
+  
+  // Selection States
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<ImmichAsset | null>(null);
 
-  // Preset testing images to help developers upload quickly
-  const samplePresets = [
-    "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=600&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&h=400&fit=crop",
-  ];
+  // 1. Fetch people list securely via proxy
+  useEffect(() => {
+    const fetchPeople = async () => {
+      try {
+        const res = await fetch(`${proxyUrl}/people`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.people || []);
+        
+        // Split into claimed (identified) and unclaimed (anonymous)
+        setUnclaimedPeople(list.filter((p: ImmichPerson) => !p.name || p.name.trim() === ""));
+        setPeople(list.filter((p: ImmichPerson) => p.name && p.name.trim() !== ""));
+      } catch (err) {
+        console.error("Error fetching people:", err);
+      } finally {
+        setLoadingPeople(false);
+      }
+    };
+    fetchPeople();
+  }, []);
 
-  const fetchPhotos = async (active = true) => {
+  // 2. Fetch global album photos based on active tab
+  useEffect(() => {
+    if (viewMode === 'unclaimed') return; // Don't fetch global photos if viewing unclaimed
+    if (selectedPersonId) return; // Don't fetch global if viewing a specific person
+
+    const fetchPhotos = async () => {
+      setLoadingPhotos(true);
+      setPhotos([]);
+      try {
+        // Resolve album ID dynamically from the mapped name
+        const albumsRes = await fetch(`${proxyUrl}/albums?name=${activeDay}`);
+        const albumsData = await albumsRes.json();
+        const album = Array.isArray(albumsData) && albumsData.length > 0 ? albumsData[0] : null;
+
+        if (album && album.id) {
+          const assetsRes = await fetch(`${proxyUrl}/albums/${album.id}`);
+          const data = await assetsRes.json();
+          const list = data.assets || (Array.isArray(data) ? data : []);
+          setPhotos(list as ImmichAsset[]);
+        }
+      } catch (err) {
+        console.error("Error fetching gallery photos:", err);
+      } finally {
+        setLoadingPhotos(false);
+      }
+    };
+    
+    fetchPhotos();
+  }, [activeDay, viewMode, selectedPersonId]);
+
+  // 3. Fetch specific person's assets
+  const handleSelectPerson = async (personId: string) => {
+    if (selectedPersonId === personId) {
+      // Toggle off
+      setSelectedPersonId(null);
+      setPersonAssets([]);
+      return;
+    }
+    
+    setSelectedPersonId(personId);
+    setLoadingPersonAssets(true);
+    setPersonAssets([]);
+
     try {
-      const { data, error } = await supabase
-        .from("gallery_photos")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const res = await fetch(`${proxyUrl}/search/metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personIds: [personId] }),
+      });
 
-      if (error) throw error;
-
-      if (active && data) {
-        setPhotos(data as DBPhoto[]);
-      }
+      if (!res.ok) throw new Error("Search query failed");
+      const data = await res.json();
+      const list = data.assets?.items || (Array.isArray(data) ? data : []);
+      setPersonAssets(list as ImmichAsset[]);
     } catch (err) {
-      console.error("Error fetching gallery photos:", err);
-      if (active) {
-        toaster.create({
-          title: "Error loading gallery",
-          description: "Failed to fetch photos from Supabase.",
-          type: "error",
-        });
-      }
+      console.error("Search assets error:", err);
+      toaster.create({
+        title: "Query Error",
+        description: "Failed to retrieve photos for selected face.",
+        type: "error",
+      });
     } finally {
-      if (active) {
-        setLoading(false);
-      }
+      setLoadingPersonAssets(false);
     }
   };
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      await fetchPhotos(active);
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, []);
+  // 4. Handle self-serve claim (when in unclaimed mode)
+  const handleExecuteClaim = async () => {
+    if (!user || !selectedPersonId) return;
+    setClaiming(true);
 
-  // Handle image submission upload
-  const handleUploadPhoto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      toaster.create({
-        title: "Sign In Required",
-        description: "Please sign in to upload photos.",
-        type: "warning",
-      });
-      return;
-    }
-
-    const trimmedUrl = imageUrl.trim();
-    const trimmedCaption = caption.trim();
-
-    if (!trimmedUrl || !trimmedCaption) {
-      toaster.create({
-        title: "All fields are required",
-        type: "error",
-      });
-      return;
-    }
-
-    setUploading(true);
     try {
-      const { data, error } = await supabase
-        .from("gallery_photos")
-        .insert({
-          src: trimmedUrl,
-          caption: trimmedCaption,
-          student_id: user.student_id,
-          author_name: user.nickname || "Student",
-          likes: 0,
-        })
-        .select()
-        .single();
+      let avatarUpdated = false;
 
-      if (error) throw error;
+      // Write A: Supabase Core Update
+      if (personAssets.length > 0) {
+        const previewUrl = `${proxyUrl}/assets/${personAssets[0].id}/thumbnail?size=is_preview`;
+        const success = await updateProfile({
+          nickname: user.nickname || "Student",
+          faculty: user.faculty || "",
+          major: user.major || undefined,
+          ig: user.ig || undefined,
+          avatarColor: user.avatar_color,
+          bio: user.bio || undefined,
+          profilePicUrl: previewUrl,
+          photoPool: user.photo_pool || [],
+          housePosition: user.house_position || undefined,
+          immichAssetId: personAssets[0].id,
+        });
 
-      if (data) {
-        setPhotos((prev) => [data as DBPhoto, ...prev]);
-        setImageUrl("");
-        setCaption("");
-        setShowUploadForm(false);
+        if (success) {
+          avatarUpdated = true;
+        }
+      }
+
+      // Write B: Immich Server Naming Loop
+      const formattedName = user.full_name && user.full_name.trim() !== "" 
+        ? `${user.nickname} (${user.full_name.trim()})` 
+        : user.nickname;
+
+      const feedbackRes = await fetch(`${proxyUrl}/people/${selectedPersonId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formattedName }),
+      });
+
+      if (!feedbackRes.ok) throw new Error("Naming feedback loop failed");
+
+      if (personAssets.length === 0) {
         toaster.create({
-          title: "Photo Uploaded!",
-          description: "Your image was saved successfully.",
+          title: "Face Bound",
+          description: "Claimed face, but no valid profile asset found to update avatar.",
+          type: "warning",
+        });
+      } else {
+        toaster.create({
+          title: "Claim Successful",
+          description: avatarUpdated ? "Successfully claimed face and updated profile picture." : "Successfully claimed face.",
           type: "success",
         });
       }
+
+      // Filter out claimed person from local state smoothly
+      setUnclaimedPeople((prev) => prev.filter((p) => p.id !== selectedPersonId));
+      setSelectedPersonId(null);
+      setPersonAssets([]);
     } catch (err) {
-      console.error("Photo upload failed:", err);
+      console.error("Execute claim error:", err);
       toaster.create({
-        title: "Upload failed",
+        title: "Claim Failed",
+        description: "Failed to commit face claim. Please try again.",
         type: "error",
       });
     } finally {
-      setUploading(false);
+      setClaiming(false);
     }
   };
 
-  // Handle photo liking
-  const handleLikePhoto = async (photoId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const match = photos.find((p) => p.id === photoId);
-      if (!match) return;
+  // Keyboard dismiss
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedAsset(null);
+    };
+    if (selectedAsset) window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedAsset]);
 
-      const nextLikes = match.likes + 1;
-      const { error } = await supabase
-        .from("gallery_photos")
-        .update({ likes: nextLikes })
-        .eq("id", photoId);
-
-      if (error) throw error;
-
-      setPhotos((prev) =>
-        prev.map((p) => (p.id === photoId ? { ...p, likes: nextLikes } : p)),
-      );
-    } catch (err) {
-      console.error("Liking photo failed:", err);
-    }
-  };
+  const activeAssets = selectedPersonId ? personAssets : photos;
+  const loadingActiveAssets = selectedPersonId ? loadingPersonAssets : loadingPhotos;
 
   return (
-    <Box
-      position="relative"
-      zIndex={10}
-      maxW="var(--container-max)"
-      mx="auto"
-      px={{ base: 4, md: 16 }}
-      pt={{ base: 2, md: 28 }}
-      pb={{ base: 4, md: 20 }}
-      minH="100vh"
-    >
+    <Box position="relative" zIndex={10} maxW="var(--container-max)" mx="auto" px={{ base: 4, md: 16 }} pt={{ base: 2, md: 28 }} pb={{ base: 4, md: 20 }} minH="100vh">
       {/* Page Header */}
-      <VStack
-        gap={2}
-        mb={{ base: 6, md: 12 }}
-        animation="fade-in-up 0.6s var(--ease-out-expo) both"
-      >
-        <Heading
-          as="h1"
-          fontFamily="heading"
-          fontSize={{ base: "2rem", md: "3.5rem" }}
-          fontWeight={700}
-          lineHeight={1.1}
-          letterSpacing="-0.02em"
-          color="accent.solid"
-          textAlign="center"
-        >
-          Baan 7 Gallery
+      <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
+        <Heading as="h1" fontFamily="heading" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="accent.solid" textAlign="center">
+          {viewMode === 'photos' ? 'Baan 7 Gallery' : 'Unclaimed Faces'}
         </Heading>
-        <Text
-          color="fg.muted"
-          fontSize={{ base: "sm", md: "lg" }}
-          textAlign="center"
-          maxW="lg"
-        >
-          Relive the moments. View and upload photos from our activities.
+        <Text color="fg.muted" fontSize={{ base: "sm", md: "lg" }} textAlign="center" maxW="lg">
+          {viewMode === 'photos' 
+            ? 'Relive the moments. View photos from our orientation activities.'
+            : 'Select your face from the anonymous list below to link it to your orientation profile.'}
         </Text>
-        <HStack gap={4} mt={4}>
-          <Button
-            type="button"
-            display="inline-flex"
-            alignItems="center"
-            gap={2}
-            bg="accent.solid"
-            color="white"
-            px={6}
-            py={2.5}
-            borderRadius="full"
-            fontSize="sm"
-            fontWeight="600"
-            cursor="pointer"
-            transition="all 0.3s var(--ease-out-quart)"
-            boxShadow="0 4px 14px rgba(124, 86, 63, 0.2)"
-            _hover={{
-              transform: "translateY(-1px)",
-              boxShadow: "0 6px 20px rgba(124, 86, 63, 0.3)",
-            }}
-            onClick={() => {
-              if (!user) {
-                toaster.create({
-                  title: "Sign In Required",
-                  description:
-                    "Please sign in or register to upload photos to the gallery.",
-                  type: "warning",
-                });
-                return;
-              }
-              setShowUploadForm(!showUploadForm);
-            }}
-            minH="44px"
-          >
-            <Box className="material-symbols-outlined" fontSize="lg">
-              add_photo_alternate
-            </Box>
-            {showUploadForm ? "Cancel Upload" : "Upload Photo"}
-          </Button>
-        </HStack>
       </VStack>
 
-      {/* Upload Form Box */}
-      {showUploadForm && user && (
-        <Box
-          bg="var(--c-white)"
-          p={6}
-          border="1px solid"
-          borderColor="border.subtle"
-          borderRadius="2xl"
-          boxShadow="var(--shadow-lagoon)"
-          maxW="md"
-          mx="auto"
-          mb={8}
-          animation="scale-in 0.3s var(--ease-out-quart)"
+      {/* Sub-Onboarding Toggle (Premium Dashed Ribbon) */}
+      <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
+        <Flex
+          w="100%"
+          bg="var(--c-ivory)"
+          border="2px dashed"
+          borderColor="var(--c-chocolate)"
+          borderRadius="xl"
+          p={{ base: 4, md: 5 }}
+          align="center"
+          justify="center"
+          cursor="pointer"
+          onClick={() => {
+            setViewMode(viewMode === 'photos' ? 'unclaimed' : 'photos');
+            setSelectedPersonId(null);
+          }}
+          transition="all 0.3s var(--ease-out-quart)"
+          _hover={{
+            bg: "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-ivory) 96%)",
+            transform: "translateY(-2px)",
+            boxShadow: "var(--shadow-card-hover)"
+          }}
         >
-          <VStack gap={4} as="form" onSubmit={handleUploadPhoto}>
-            <Heading
-              size="xs"
-              color="var(--c-chocolate)"
-              fontFamily="'Playfair Display', serif"
-              fontSize="lg"
-              fontWeight="700"
-            >
-              Share a New Memory
-            </Heading>
-            <VStack align="stretch" gap={1} w="100%">
-              <Text
-                fontSize="xs"
-                fontWeight="700"
-                color="var(--c-muted)"
-                textTransform="uppercase"
-              >
-                Image URL
-              </Text>
-              <Input
-                placeholder="Paste an Unsplash or static image URL..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+          <Box as="span" className="material-symbols-outlined" fontSize="24px" color="accent.solid" mr={3}>
+            {viewMode === 'photos' ? 'person_search' : 'photo_library'}
+          </Box>
+          <Text color="accent.solid" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center">
+            {viewMode === 'photos' 
+              ? 'ไม่พบรูปตัวเองในคลังใช่ไหม? ลองตามหาใบหน้าของคุณผ่านระบบ AI ที่นี่'
+              : 'กลับไปยังแกลลอรีรูปภาพหลัก'}
+          </Text>
+        </Flex>
+      </Box>
+
+      {/* Unified Console View Engine */}
+      {viewMode === 'photos' ? (
+        <>
+          {/* Daily Control Bar Tabs */}
+          <Flex justify="center" mb={6} gap={2}>
+            {['day1', 'day2', 'day3'].map((dayKey) => (
+              <Button
+                key={dayKey}
+                onClick={() => {
+                  setActiveDay(dayKey as 'day1' | 'day2' | 'day3');
+                  setSelectedPersonId(null);
+                }}
                 h="44px"
-                borderRadius="xl"
-                border="1.5px solid var(--c-outline)"
-                bg="var(--c-ivory)"
-                required
-              />
-              <HStack gap={2} mt={1}>
-                <Text fontSize="2xs" color="fg.subtle">
-                  Presets:
-                </Text>
-                {samplePresets.map((preset, i) => (
-                  <Button
-                    key={preset}
-                    type="button"
-                    size="2xs"
-                    variant="outline"
-                    borderRadius="full"
-                    onClick={() => setImageUrl(preset)}
-                    fontSize="3xs"
-                    h="20px"
-                  >
-                    Image {i + 1}
-                  </Button>
+                px={6}
+                borderRadius="full"
+                fontWeight="600"
+                fontSize="sm"
+                variant={activeDay === dayKey && !selectedPersonId ? 'solid' : 'outline'}
+                bg={activeDay === dayKey && !selectedPersonId ? 'var(--c-chocolate)' : 'transparent'}
+                color={activeDay === dayKey && !selectedPersonId ? 'white' : 'var(--c-chocolate)'}
+                borderColor="var(--c-chocolate)"
+                _hover={{ bg: activeDay === dayKey && !selectedPersonId ? 'var(--c-chocolate)' : 'rgba(124, 86, 63, 0.05)' }}
+                cursor="pointer"
+                transition="all 0.3s var(--ease-out-quart)"
+              >
+                Day {dayKey.replace('day', '')}
+              </Button>
+            ))}
+          </Flex>
+
+          {/* Face Recognition Row (Identified People) */}
+          {!loadingPeople && people.length > 0 && (
+            <Box mb={10}>
+              <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={3} textTransform="uppercase" letterSpacing="0.05em">
+                Detected Faces
+              </Text>
+              <Flex
+                overflowX="auto"
+                py={4}
+                px={2}
+                gap={4}
+                w="100%"
+                bg="var(--c-white)"
+                borderRadius="2xl"
+                border="1px solid"
+                borderColor="border.subtle"
+                boxShadow="var(--shadow-card)"
+                css={{ "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}
+              >
+                {people.map((person) => (
+                  <VStack key={person.id} onClick={() => handleSelectPerson(person.id)} cursor="pointer" align="center" gap={1.5} minW="60px">
+                    <Box
+                      borderRadius="full"
+                      border={selectedPersonId === person.id ? "2.5px solid var(--c-chocolate)" : "2.5px solid transparent"}
+                      p="2px"
+                      transition="all 0.3s var(--ease-out-quart)"
+                      transform={selectedPersonId === person.id ? "scale(1.08)" : "none"}
+                    >
+                      <Box w="44px" h="44px" minW="44px" minH="44px" borderRadius="full" overflow="hidden" border="2px solid var(--c-chocolate)" bg="var(--c-ivory)">
+                        <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt={person.name} w="100%" h="100%" objectFit="cover" draggable={false} />
+                      </Box>
+                    </Box>
+                    <Text fontSize="2xs" fontWeight="600" color={selectedPersonId === person.id ? "accent.solid" : "fg.muted"} textAlign="center" maxW="60px" truncate>
+                      {person.name || "Unknown"}
+                    </Text>
+                  </VStack>
                 ))}
-              </HStack>
-            </VStack>
-            <VStack align="stretch" gap={1} w="100%">
-              <Text
-                fontSize="xs"
-                fontWeight="700"
-                color="var(--c-muted)"
-                textTransform="uppercase"
-              >
-                Caption
-              </Text>
-              <Input
-                placeholder="e.g. Baan 7 Orientation squad! 📸"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                h="44px"
-                borderRadius="xl"
-                border="1.5px solid var(--c-outline)"
-                bg="var(--c-ivory)"
-                required
-              />
-            </VStack>
-            <Button
-              type="submit"
-              bg="var(--c-lagoon)"
-              color="white"
-              h="44px"
-              w="100%"
-              borderRadius="xl"
-              cursor="pointer"
-              _hover={{ bg: "#3c5156" }}
-              loading={uploading}
-            >
-              Post Image
-            </Button>
-          </VStack>
+              </Flex>
+            </Box>
+          )}
+
+          {/* Main Photo Layout Grid */}
+          <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={4} textTransform="uppercase" letterSpacing="0.05em">
+            {selectedPersonId ? "Discovered Photo Stream" : `Day ${activeDay.replace('day', '')} Gallery`}
+          </Text>
+
+          {loadingActiveAssets ? (
+            <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={{ base: 3, md: 4 }}>
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <Box key={n} borderRadius="xl" overflow="hidden" bg="color-mix(in srgb, var(--c-chocolate) 5%, var(--c-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />
+              ))}
+            </SimpleGrid>
+          ) : activeAssets.length === 0 ? (
+            <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl">
+              <Text color="fg.subtle">No photos found in this view.</Text>
+            </Flex>
+          ) : (
+            <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={{ base: 3, md: 4 }}>
+              {activeAssets.map((asset, i) => (
+                <Box
+                  key={asset.id}
+                  position="relative"
+                  borderRadius="xl"
+                  overflow="hidden"
+                  cursor="pointer"
+                  onClick={() => setSelectedAsset(asset)}
+                  transition="transform 0.5s var(--ease-out-quart)"
+                  _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}
+                  animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}
+                >
+                  <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
+                    <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt="Asset" w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                  </Box>
+                </Box>
+              ))}
+            </SimpleGrid>
+          )}
+        </>
+      ) : (
+        /* Unclaimed Anonymous Grid View */
+        <Box mb={8}>
+          {loadingPeople ? (
+            <Flex justify="center" py={6}><Spinner size="lg" color="var(--c-lagoon)" /></Flex>
+          ) : unclaimedPeople.length === 0 ? (
+            <Flex justify="center" py={6} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl">
+              <Text color="fg.subtle">No unclaimed faces found in the database.</Text>
+            </Flex>
+          ) : (
+            <SimpleGrid columns={{ base: 3, sm: 4, md: 6 }} gap={4}>
+              {unclaimedPeople.map((person) => (
+                <VStack key={person.id} onClick={() => handleSelectPerson(person.id)} cursor="pointer" align="center" gap={2}>
+                  <Box w="44px" h="44px" minW="44px" minH="44px" borderRadius="full" border={selectedPersonId === person.id ? "2px solid var(--c-chocolate)" : "2px dashed var(--c-chocolate)"} p="2px" transition="all 0.3s var(--ease-out-quart)" transform={selectedPersonId === person.id ? "scale(1.1)" : "none"}>
+                    <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
+                      <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt="Face target" w="100%" h="100%" objectFit="cover" draggable={false} />
+                    </Box>
+                  </Box>
+                </VStack>
+              ))}
+            </SimpleGrid>
+          )}
+
+          {/* Sticky Claim Header when person selected */}
+          {selectedPersonId && viewMode === 'unclaimed' && (
+            <Box animation="scale-in 0.4s var(--ease-out-quart)" mt={8}>
+              <Flex position="sticky" top="80px" zIndex={20} bg="var(--c-ivory)" border="2px solid var(--c-chocolate)" borderRadius="xl" p={4} align="center" justify="space-between" boxShadow="var(--shadow-card)" mb={6}>
+                <VStack align="start" gap={0}>
+                  <Text fontSize="sm" fontWeight="700" color="accent.solid">Reviewing Face Photos</Text>
+                  <Text fontSize="xs" color="fg.muted">Ensure this is you before confirming.</Text>
+                </VStack>
+                <Button h="44px" px={6} bg="accent.solid" color="white" borderRadius="xl" fontWeight="700" fontSize="sm" loading={claiming} onClick={handleExecuteClaim} cursor="pointer" _hover={{ bg: "chocolate.600" }}>
+                  ยืนยันว่านี่คือฉัน (Claim This Face)
+                </Button>
+              </Flex>
+
+              {loadingPersonAssets ? (
+                <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={{ base: 3, md: 4 }}>
+                  {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--c-chocolate) 5%, var(--c-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
+                </SimpleGrid>
+              ) : personAssets.length === 0 ? (
+                <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl"><Text color="fg.subtle">No photos matched this face classification.</Text></Flex>
+              ) : (
+                <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={{ base: 3, md: 4 }}>
+                  {personAssets.map((asset, i) => (
+                    <Box key={asset.id} position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => setSelectedAsset(asset)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }} animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}>
+                      <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
+                        <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt="Asset" w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                      </Box>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              )}
+            </Box>
+          )}
         </Box>
       )}
 
-      {/* Grid Display */}
-      {loading ? (
-        <Flex justify="center" py={12}>
-          <Spinner size="lg" color="var(--c-lagoon)" />
-        </Flex>
-      ) : photos.length === 0 ? (
-        <Flex
-          justify="center"
-          py={12}
-          bg="bg.surface"
-          border="1px dashed"
-          borderColor="border.subtle"
-          borderRadius="2xl"
-        >
-          <Text color="fg.subtle">
-            No photos uploaded yet. Be the first to share a memory!
-          </Text>
-        </Flex>
-      ) : (
-        <SimpleGrid
-          columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
-          gap={{ base: 3, md: 4 }}
-        >
-          {photos.map((img, i) => (
-            <GalleryCard
-              key={img.id}
-              img={img}
-              index={i}
-              isHovered={hoveredId === img.id}
-              onHoverStart={() => setHoveredId(img.id)}
-              onHoverEnd={() => setHoveredId(null)}
-              onLike={handleLikePhoto}
-            />
-          ))}
-        </SimpleGrid>
+      {/* Modal Preview */}
+      {selectedAsset && (
+        <Dialog.Root open={!!selectedAsset} onOpenChange={(e) => { if (!e.open) setSelectedAsset(null); }} placement={{ base: "bottom", md: "center" }}>
+          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+          <Dialog.Positioner zIndex={2000} px={4}>
+            <Dialog.Content bg="var(--c-ivory)" border={{ base: "none", md: "2px solid var(--c-chocolate)" }} color="var(--c-ink)" borderRadius={{ base: "t-3xl", md: "2xl" }} width={{ base: "100%", md: "640px" }} maxH={{ base: "90vh", sm: "80vh" }} p={6} boxShadow="var(--shadow-card)" display="flex" flexDirection="column" position="relative" overflowY="auto">
+              <VStack align="stretch" gap={4}>
+                <Box borderRadius="lg" overflow="hidden" maxH="55vh">
+                  <Image src={`${proxyUrl}/assets/${selectedAsset.id}/thumbnail?size=is_preview`} alt="Preview asset" w="100%" h="auto" maxH="55vh" objectFit="contain" mx="auto" />
+                </Box>
+                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                  <Dialog.CloseTrigger asChild>
+                    <Button variant="outline" h="44px" borderRadius="xl" cursor="pointer" onClick={() => setSelectedAsset(null)}>Close</Button>
+                  </Dialog.CloseTrigger>
+                </Dialog.Footer>
+              </VStack>
+              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+                <Button variant="ghost" w="44px" h="44px" minW="44px" borderRadius="full" display="flex" alignItems="center" justifyContent="center" cursor="pointer" color="var(--c-muted)" p={0} onClick={() => setSelectedAsset(null)}>
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">close</Box>
+                </Button>
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
       )}
-    </Box>
-  );
-}
-
-interface GalleryCardProps {
-  img: DBPhoto;
-  index: number;
-  isHovered: boolean;
-  onHoverStart: () => void;
-  onHoverEnd: () => void;
-  onLike: (id: number, e: React.MouseEvent) => void;
-}
-
-function GalleryCard({
-  img,
-  index,
-  isHovered,
-  onHoverStart,
-  onHoverEnd,
-  onLike,
-}: GalleryCardProps) {
-  return (
-    <Box
-      className="gallery-card"
-      position="relative"
-      borderRadius="xl"
-      overflow="hidden"
-      cursor="pointer"
-      role="group"
-      tabIndex={0}
-      aria-label={`${img.caption} by ${img.author_name || "Student"}`}
-      animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + index * 0.04, 0.35)}s both`}
-      onMouseEnter={onHoverStart}
-      onMouseLeave={onHoverEnd}
-      onFocus={onHoverStart}
-      onBlur={onHoverEnd}
-    >
-      {/* Image container */}
-      <Box
-        h={{
-          base: "220px",
-          sm: "240px",
-          md: index % 3 === 0 ? "320px" : "260px",
-        }}
-      >
-        <Image
-          src={img.src}
-          alt={img.caption}
-          className="gallery-img"
-          w="100%"
-          h="100%"
-          objectFit="cover"
-          loading="lazy"
-          decoding="async"
-          transition="transform 0.5s var(--ease-out-quart)"
-        />
-      </Box>
-
-      {/* Desktop overlay — appears on hover/focus */}
-      <Box
-        className="gallery-card-overlay"
-        display={{ base: "none", sm: "flex" }}
-        position="absolute"
-        inset={0}
-        bg="linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)"
-        opacity={isHovered ? 1 : 0}
-        transition="opacity 0.3s"
-        flexDirection="column"
-        justifyContent="flex-end"
-        p={4}
-      >
-        <Text color="white" fontSize="sm" fontWeight="600" lineHeight={1.3}>
-          {img.caption}
-        </Text>
-        <Flex justify="space-between" align="center" mt={1}>
-          <Text color="rgba(255,255,255,0.7)" fontSize="xs">
-            {img.author_name || "Student"}
-          </Text>
-          <Button
-            type="button"
-            aria-label="Like photo"
-            onClick={(e) => onLike(img.id, e)}
-            variant="ghost"
-            p={0}
-            minH="32px"
-            h="32px"
-            minW="40px"
-            w="40px"
-            display="flex"
-            alignItems="center"
-            gap={1}
-            color="white"
-            _hover={{ bg: "rgba(255, 255, 255, 0.15)" }}
-            cursor="pointer"
-          >
-            <Box
-              className="material-symbols-outlined"
-              fontSize="sm"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              favorite
-            </Box>
-            <Text fontSize="xs" fontWeight="600">
-              {img.likes}
-            </Text>
-          </Button>
-        </Flex>
-      </Box>
-
-      {/* Mobile caption — always visible below image */}
-      <Box display={{ base: "block", sm: "none" }} p={3} bg="bg.surface">
-        <Flex justify="space-between" align="center">
-          <Box>
-            <Text
-              fontSize="sm"
-              fontWeight="600"
-              color="fg.default"
-              lineHeight={1.3}
-            >
-              {img.caption}
-            </Text>
-            <Text fontSize="xs" color="fg.subtle" mt={0.5}>
-              {img.author_name || "Student"}
-            </Text>
-          </Box>
-          <Button
-            type="button"
-            aria-label="Like photo"
-            onClick={(e) => onLike(img.id, e)}
-            variant="ghost"
-            p={0}
-            minH="32px"
-            h="32px"
-            minW="40px"
-            w="40px"
-            display="flex"
-            alignItems="center"
-            gap={1}
-            color="fg.subtle"
-            _hover={{ bg: "rgba(0,0,0,0.05)" }}
-            cursor="pointer"
-          >
-            <Box
-              className="material-symbols-outlined"
-              fontSize="sm"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              favorite
-            </Box>
-            <Text fontSize="xs" fontWeight="600">
-              {img.likes}
-            </Text>
-          </Button>
-        </Flex>
-      </Box>
     </Box>
   );
 }

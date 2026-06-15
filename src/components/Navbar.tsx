@@ -16,8 +16,6 @@ import {
   useRef,
   useCallback,
 } from "react";
-import { getImmichConfig } from "../utils/immich";
-import { toaster } from "./ui/toaster";
 import { useUser } from "../context/UserContext";
 import type { User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -37,25 +35,6 @@ const getInitials = (name: string) => {
 };
 
 function NavItem({ to, children, icon }: NavItemProps) {
-  const isGallery = to === "/gallery";
-  const immich = getImmichConfig();
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (isGallery) {
-      if (!immich.isConfigured || !immich.url) {
-        e.preventDefault();
-        toaster.create({
-          title: "Gallery Warming Up",
-          description:
-            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off.",
-          type: "info",
-          closable: true,
-          duration: 5000,
-        });
-      }
-    }
-  };
-
   const navContent = (isActive: boolean) => (
     <Flex
       align="center"
@@ -89,16 +68,8 @@ function NavItem({ to, children, icon }: NavItemProps) {
     </Flex>
   );
 
-  if (isGallery && immich.isConfigured && immich.url) {
-    return (
-      <a href={immich.url} target="_blank" rel="noopener noreferrer">
-        {navContent(false)}
-      </a>
-    );
-  }
-
   return (
-    <NavLink to={to} onClick={handleClick}>
+    <NavLink to={to}>
       {({ isActive }) => navContent(isActive)}
     </NavLink>
   );
@@ -472,6 +443,7 @@ export function Navbar() {
               <NavItem to="/vibe-check">Vibe Check</NavItem>
               <NavItem to="/board">Board</NavItem>
               <NavItem to="/gallery">Gallery</NavItem>
+
               {user &&
                 (user.role === "moderator" || user.role === "media_admin") && (
                   <NavItem to="/admin">Admin</NavItem>
@@ -723,6 +695,7 @@ export function Navbar() {
           <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />
           <MobileDockItem to="/board" icon="campaign" label="Board" />
           <MobileDockItem to="/gallery" icon="photo_library" label="Gallery" />
+
           {user &&
             (user.role === "moderator" || user.role === "media_admin") && (
               <MobileDockItem
@@ -749,25 +722,7 @@ function MobileDockItem({
   icon: string;
   label: string;
 }) {
-  const isGallery = to === "/gallery";
-  const immich = getImmichConfig();
   const shouldReduceMotion = useReducedMotion() ?? false;
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (isGallery) {
-      if (!immich.isConfigured || !immich.url) {
-        e.preventDefault();
-        toaster.create({
-          title: "Gallery Warming Up",
-          description:
-            "Baan 7 Photo Gallery is currently warming up! Check back soon once the event kicks off.",
-          type: "info",
-          closable: true,
-          duration: 5000,
-        });
-      }
-    }
-  };
 
   const dockContent = (isActive: boolean) => (
     <Flex
@@ -836,16 +791,8 @@ function MobileDockItem({
     </Flex>
   );
 
-  if (isGallery && immich.isConfigured && immich.url) {
-    return (
-      <a href={immich.url} target="_blank" rel="noopener noreferrer">
-        {dockContent(false)}
-      </a>
-    );
-  }
-
   return (
-    <NavLink to={to} onClick={handleClick}>
+    <NavLink to={to}>
       {({ isActive }) => dockContent(isActive)}
     </NavLink>
   );

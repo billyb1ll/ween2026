@@ -18,6 +18,8 @@ export interface User {
   profile_pic_url: string | null;
   photo_pool: string[];
   house_position: string | null;
+  immich_asset_id: string | null;
+  full_name?: string | null;
   created_at: string;
 }
 
@@ -39,6 +41,7 @@ interface UserContextType {
     profilePicUrl?: string;
     photoPool?: string[];
     housePosition?: string;
+    immichAssetId?: string | null;
   }) => Promise<boolean>;
   logout: () => void;
 }
@@ -218,6 +221,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     profilePicUrl?: string;
     photoPool?: string[];
     housePosition?: string;
+    immichAssetId?: string | null;
   }): Promise<boolean> => {
     if (!user) return false;
 
@@ -231,6 +235,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         profile_pic_url: profile.profilePicUrl || null,
         photo_pool: profile.photoPool || [],
         house_position: profile.housePosition || null,
+        immich_asset_id: profile.immichAssetId || null,
       };
 
       if (profile.avatarColor) {

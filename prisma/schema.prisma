@@ -16,6 +16,7 @@ model User {
   major       String
   bio         String
   avatarColor String   @default("#7c563f")
+  immichAssetId String? @map("immich_asset_id")
   posts       Post[]
   createdAt   DateTime @default(now())
 }
