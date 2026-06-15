@@ -125,6 +125,7 @@ export function BoardPage() {
   const [isInspectorLoading, setIsInspectorLoading] = useState(false);
   const [memoryImage, setMemoryImage] = useState<File | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   const {
@@ -136,9 +137,14 @@ export function BoardPage() {
     onlineCount,
     handleCreatePost,
     handleLikePost,
+    handlePinPost,
+    handleDeletePost,
   } = useBoardRealtime(activeTab, user);
 
-  const isMemoryAccessible = memoryActive || (user && user.role !== "student");
+  const isStaff = user?.role === 'staff' || user?.role === 'moderator' || user?.role === 'media_admin';
+  const effectiveHypeActive = hypeActive || isStaff;
+  const effectiveMemoryActive = memoryActive || isStaff;
+  const isMemoryAccessible = effectiveMemoryActive || (user && user.role !== "student");
 
   const handleInspectUser = async (userId: string) => {
     setIsInspectorOpen(true);
@@ -244,8 +250,8 @@ export function BoardPage() {
           color="accent.solid"
           textAlign="center"
         >
-          {(!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")
-            ? "Boards Closed"
+          {(!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")
+            ? "Offline"
             : `The ${activeTab === "hype" ? "Hype" : "Memory"} Board`}
         </Heading>
         <Text
@@ -254,20 +260,22 @@ export function BoardPage() {
           textAlign="center"
           maxW="lg"
         >
-          {(!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")
+          {(!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")
             ? "Orientation boards are currently closed by staff. Check back soon!"
             : "Share the excitement, cheer on your peers, and build the Baan 7 community spirit!"}
         </Text>
 
         {/* Live Presence Badge */}
-        {(hypeActive || isMemoryAccessible) && (
-          <LivePresenceBadge count={onlineCount} />
+        {(effectiveHypeActive || isMemoryAccessible) && (
+          <Box display="flex" gap={2} ml="auto">
+            <LivePresenceBadge count={onlineCount} />
+          </Box>
         )}
       </VStack>
 
       {/* Tab Toggle */}
-      {hypeActive && isMemoryAccessible && (
-        <Flex justify="center" mb={{ base: 4, md: 8 }}>
+      {effectiveHypeActive && isMemoryAccessible && (
+        <Flex justify="center" mb={6} position="relative" zIndex={2}>
           <HStack
             role="tablist"
             aria-label="Board selection"
@@ -295,7 +303,7 @@ export function BoardPage() {
       )}
 
       {/* Global Board Kill-Switch Ribbon */}
-      {((!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")) ? (
+      {((!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")) ? (
         <Flex justify="center" align="center" minH="200px" bg="bg.surface" borderRadius="xl" border="1px solid" borderColor="border.subtle" p={6}>
           <Text fontSize="md" fontWeight="600" color="fg.subtle" textAlign="center">
             บอร์ดสนทนาปิดปรับปรุงชั่วคราวตามลำดับกิจกรรมโปรดรอสัญญาณจากพี่สตาฟ
@@ -373,6 +381,7 @@ export function BoardPage() {
           <VStack align="stretch" gap={{ base: 4, md: 6 }}>
             {/* Composer */}
             <Box
+              display={{ base: "none", md: "block" }}
               bg="bg.surface"
               border="1px solid"
               borderColor="border.subtle"
@@ -583,9 +592,14 @@ export function BoardPage() {
             ) : activeTab === "memory" ? (
               <Box
                 position="relative"
-                display="grid"
-                gridTemplateColumns={{ base: "1fr", sm: "repeat(2, 1fr)" }}
-                gap={{ base: 4, md: 5 }}
+                css={{
+                  columnCount: { base: 1, sm: 2, md: 3 },
+                  columnGap: { base: "1rem", md: "1.25rem" },
+                  "& > div": {
+                    breakInside: "avoid",
+                    marginBottom: { base: "1rem", md: "1.25rem" },
+                  },
+                }}
               >
                 <AnimatePresence mode="popLayout">
                   {visiblePosts.map((post, i) =>
@@ -640,13 +654,14 @@ export function BoardPage() {
               </Box>
             ) : (
               <Box
-                display="grid"
-                gridTemplateColumns={{
-                  base: "1fr",
-                  sm: "repeat(2, 1fr)",
-                  md: "repeat(3, 1fr)",
+                css={{
+                  columnCount: { base: 1, sm: 2, md: 3 },
+                  columnGap: { base: "0.75rem", md: "1.25rem" },
+                  "& > div": {
+                    breakInside: "avoid",
+                    marginBottom: { base: "0.75rem", md: "1.25rem" },
+                  },
                 }}
-                gap={{ base: 3, md: 5 }}
               >
                 <AnimatePresence mode="popLayout">
                   {visiblePosts.map((post, i) =>
@@ -677,6 +692,8 @@ export function BoardPage() {
                           post={post}
                           index={i}
                           onLike={handleLikePost}
+                          onPin={handlePinPost}
+                          onDelete={handleDeletePost}
                           currentUserRole={user?.role}
                           onInspectUser={handleInspectUser}
                         />
@@ -691,6 +708,8 @@ export function BoardPage() {
                           post={post}
                           index={i}
                           onLike={handleLikePost}
+                          onPin={handlePinPost}
+                          onDelete={handleDeletePost}
                           currentUserRole={user?.role}
                           onInspectUser={handleInspectUser}
                         />
@@ -704,8 +723,8 @@ export function BoardPage() {
         </Box>
 
       {/* Load More */}
-      {(hypeActive || isMemoryAccessible) && (hasMore || isFetchingMore) && (
-        <Flex justify="center" mt={{ base: 6, md: 12 }} minH="60px">
+      {(effectiveHypeActive || isMemoryAccessible) && (hasMore || isFetchingMore) && (
+        <Flex justify="center" py={12} position="relative" zIndex={1} minH="60px">
           <AnimatePresence mode="wait">
             {isFetchingMore ? (
               <motion.div
@@ -843,6 +862,268 @@ export function BoardPage() {
       </Dialog.Positioner>
     </Dialog.Root>
 
+      {/* Mobile Composer FAB & Bottom Sheet */}
+      {(effectiveHypeActive || isMemoryAccessible) && (
+        <>
+          <Box
+            as="button"
+            display={{ base: "flex", md: "none" }}
+            position="fixed"
+            bottom="24px"
+            left="24px"
+            w="56px"
+            h="56px"
+            borderRadius="full"
+            bg="color-mix(in srgb, var(--c-chocolate) 100%, transparent)"
+            color="white"
+            alignItems="center"
+            justifyContent="center"
+            fontSize="3xl"
+            fontWeight="bold"
+            boxShadow="0 12px 40px rgba(73, 98, 104, 0.25)"
+            zIndex="popover"
+            onClick={() => setIsMobileComposerOpen(true)}
+            transition="all 0.2s"
+            _active={{ transform: "scale(0.95)" }}
+            aria-label="Open Composer"
+            aria-hidden={isMobileComposerOpen}
+          >
+            <Box className="material-symbols-outlined">add</Box>
+          </Box>
+
+          <AnimatePresence>
+            {isMobileComposerOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.4)",
+                    backdropFilter: "blur(4px)",
+                    zIndex: 1400,
+                  }}
+                  onClick={() => setIsMobileComposerOpen(false)}
+                />
+                
+                {/* Bottom Sheet Composer */}
+                <motion.div
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  style={{
+                    position: "fixed",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1401,
+                    backgroundColor: "var(--c-surface, #ffffff)",
+                    borderTopLeftRadius: "24px",
+                    borderTopRightRadius: "24px",
+                    padding: "24px",
+                    boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <Flex justify="space-between" align="center" mb={4}>
+                    <Heading size="md" fontFamily="heading" color="fg.default">
+                      {activeTab === "hype" ? "Share the hype" : "Pin something"}
+                    </Heading>
+                    <Box
+                      as="button"
+                      className="material-symbols-outlined"
+                      onClick={() => setIsMobileComposerOpen(false)}
+                      color="fg.subtle"
+                      _hover={{ color: "fg.default" }}
+                    >
+                      close
+                    </Box>
+                  </Flex>
+
+                  <Flex gap={{ base: 3, md: 4 }} align="start">
+                    {user ? (
+                      <Box
+                        w={{ base: 10, md: 12 }}
+                        h={{ base: 10, md: 12 }}
+                        borderRadius="full"
+                        bg={user.avatar_color}
+                        color="white"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        fontWeight="700"
+                        fontSize="sm"
+                        flexShrink={0}
+                      >
+                        {getInitials(user.nickname || user.student_id)}
+                      </Box>
+                    ) : (
+                      <Box
+                        w={{ base: 10, md: 12 }}
+                        h={{ base: 10, md: 12 }}
+                        borderRadius="full"
+                        bg="brand.muted"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        flexShrink={0}
+                      >
+                        <Box
+                          className="material-symbols-outlined"
+                          fontSize="xl"
+                          color="brand.fg"
+                        >
+                          person
+                        </Box>
+                      </Box>
+                    )}
+                    <Box flex={1}>
+                      <label htmlFor="mobile-board-composer" className="sr-only">
+                        {activeTab === "hype"
+                          ? "Share the hype"
+                          : "Pin something memorable"}
+                      </label>
+                      <Textarea
+                        id="mobile-board-composer"
+                        name="content"
+                        placeholder={
+                          activeTab === "hype"
+                            ? "Share the hype..."
+                            : "Pin something memorable..."
+                        }
+                        size="lg"
+                        minH={{ base: "100px", md: "120px" }}
+                        p={4}
+                        border="none"
+                        borderRadius="xl"
+                        bg="bg.muted"
+                        color="fg.default"
+                        _focus={{
+                          bg: "bg.surface",
+                          boxShadow: "0 0 0 2px var(--c-orange)",
+                          outline: "none",
+                        }}
+                        required
+                        disabled={submitting || isUploadingImage}
+                        fontFamily="body"
+                      />
+
+                      {activeTab === "memory" && (
+                        <Box mt={3}>
+                          {memoryImage ? (
+                            <Flex align="center" gap={3} bg="bg.muted" p={2} borderRadius="md" position="relative">
+                              <Box w="40px" h="40px" borderRadius="sm" overflow="hidden">
+                                <Image src={URL.createObjectURL(memoryImage)} alt="Preview" w="100%" h="100%" objectFit="cover" />
+                              </Box>
+                              <Text fontSize="xs" color="fg.subtle" lineClamp={1} flex={1}>
+                                {memoryImage.name}
+                              </Text>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => setMemoryImage(null)}
+                                p={1}
+                              >
+                                <Box className="material-symbols-outlined" fontSize="sm">close</Box>
+                              </Button>
+                            </Flex>
+                          ) : (
+                            <label htmlFor="mobile-image-upload" style={{ cursor: "pointer" }}>
+                              <Button
+                                as="span"
+                                variant="outline"
+                                size="sm"
+                                borderRadius="full"
+                                gap={2}
+                                borderColor="border.subtle"
+                                _hover={{ bg: "bg.muted" }}
+                              >
+                              <Box className="material-symbols-outlined" fontSize="sm">image</Box>
+                              Attach Image
+                              <input
+                                id="mobile-image-upload"
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    setMemoryImage(e.target.files[0]);
+                                  }
+                                }}
+                              />
+                              </Button>
+                            </label>
+                          )}
+                        </Box>
+                      )}
+
+                      <Flex justify="flex-end" mt={3} gap={3}>
+                        <Button
+                          type="button"
+                          onClick={async (e) => {
+                            const textarea = e.currentTarget.parentElement?.parentElement?.querySelector('textarea');
+                            if (textarea && textarea.value.trim()) {
+                              let imageUrl = null;
+                              if (memoryImage && activeTab === 'memory') {
+                                setIsUploadingImage(true);
+                                const fileExt = memoryImage.name.split('.').pop();
+                                const fileName = `${user?.student_id}-${Math.random()}.${fileExt}`;
+                                const filePath = `${fileName}`;
+
+                                const { error: uploadError } = await supabase.storage
+                                  .from('board_media')
+                                  .upload(filePath, memoryImage);
+
+                                if (!uploadError) {
+                                  const { data: publicUrlData } = supabase.storage
+                                    .from('board_media')
+                                    .getPublicUrl(filePath);
+                                  imageUrl = publicUrlData.publicUrl;
+                                } else {
+                                  console.error('Upload Error', uploadError);
+                                }
+                                setIsUploadingImage(false);
+                              }
+
+                              await handleCreatePost(textarea.value.trim(), [], false, imageUrl);
+                              textarea.value = '';
+                              setMemoryImage(null);
+                              setIsMobileComposerOpen(false);
+                            }
+                          }}
+                          disabled={submitting || isUploadingImage}
+                          bg="var(--c-chocolate)"
+                          color="white"
+                          borderRadius="full"
+                          px={6}
+                          _hover={{ bg: "var(--c-chocolate-dark)", transform: "translateY(-1px)" }}
+                          _active={{ bg: "var(--c-chocolate-dark)", transform: "scale(0.98)" }}
+                          _disabled={{ opacity: 0.6, cursor: "not-allowed" }}
+                        >
+                          {submitting || isUploadingImage ? (
+                            <Spinner size="sm" color="white" />
+                          ) : (
+                            <Text fontWeight="600" fontFamily="heading">
+                              Post
+                            </Text>
+                          )}
+                        </Button>
+                      </Flex>
+                    </Box>
+                  </Flex>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+
     </Box>
   );
 }
@@ -941,6 +1222,8 @@ interface HypeCardProps {
   post: DBPost;
   index: number;
   onLike: (id: number) => void;
+  onPin?: (postId: number, currentStatus: boolean) => Promise<void>;
+  onDelete?: (postId: number) => Promise<void>;
   currentUserRole?: string;
   onInspectUser?: (userId: string) => void;
 }
@@ -1288,12 +1571,30 @@ const HypeCard = memo(function HypeCard({
   onLike,
   currentUserRole,
   onInspectUser,
+  onPin,
+  onDelete,
 }: HypeCardProps) {
   const { user } = useUser();
-  const liked = !!(user && post.liked_by?.includes(user.student_id));
+  const serverLiked = !!(user && post.liked_by?.includes(user.student_id));
+  const [localLiked, setLocalLiked] = useState(serverLiked);
+  const [localLikesCount, setLocalLikesCount] = useState(post.likes);
   const [showComments, setShowComments] = useState(false);
+  const [prevServerLiked, setPrevServerLiked] = useState(serverLiked);
+  const [prevPostLikes, setPrevPostLikes] = useState(post.likes);
+
+  if (serverLiked !== prevServerLiked) {
+    setLocalLiked(serverLiked);
+    setPrevServerLiked(serverLiked);
+  }
+  if (post.likes !== prevPostLikes) {
+    setLocalLikesCount(post.likes);
+    setPrevPostLikes(post.likes);
+  }
 
   const handleLike = () => {
+    if (!user) return;
+    setLocalLiked(!localLiked);
+    setLocalLikesCount(prev => localLiked ? Math.max(0, prev - 1) : prev + 1);
     onLike(post.id);
   };
 
@@ -1424,31 +1725,31 @@ const HypeCard = memo(function HypeCard({
       <Flex gap={4} align="center">
         <Button
           type="button"
-          aria-label={liked ? "Unlike post" : "Like post"}
-          gap={1}
-          cursor="pointer"
-          onClick={handleLike}
-          transition="color 0.2s"
-          color={liked ? "var(--c-state-liked)" : "fg.subtle"}
-          bg="transparent"
-          border="none"
-          p={1}
-          minH="44px"
-          minW="44px"
-          display="flex"
-          alignItems="center"
+          role="group"
+          color={localLiked ? "accent.solid" : "fg.subtle"}
+          bg={localLiked ? "bg.hero" : "transparent"}
+          border="1px solid"
+          borderColor={localLiked ? "accent.solid" : "border.subtle"}
+          h="32px"
+          px={3}
+          borderRadius="full"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLike();
+          }}
+          disabled={!user}
+          _hover={{ bg: "bg.hero", color: "accent.solid", borderColor: "accent.solid" }}
         >
           <Box
-            className="material-symbols-outlined"
-            fontSize="lg"
-            fontVariationSettings={liked ? "'FILL' 1" : undefined}
+            className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+            fontSize="sm"
             transition="transform 0.2s"
-            _hover={{ transform: "scale(1.2)" }}
+            _groupHover={{ transform: "scale(1.1)" }}
           >
             favorite
           </Box>
-          <Text fontSize="xs" fontWeight="600">
-            {post.likes}
+          <Text fontSize="xs" fontWeight="600" ml={1}>
+            {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>
         <Button
@@ -1475,6 +1776,50 @@ const HypeCard = memo(function HypeCard({
         </Button>
       </Flex>
 
+      {/* Admin Controls */}
+      {currentUserRole === "moderator" || currentUserRole === "admin" ? (
+        <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
+          <Button
+            size="sm"
+            variant="ghost"
+            w={8}
+            h={8}
+            p={0}
+            borderRadius="full"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onPin) onPin(post.id, post.is_pinned ?? false);
+            }}
+            color={post.is_pinned ? "accent.solid" : "fg.subtle"}
+            _hover={{ bg: "bg.hero" }}
+          >
+            <Box className="material-symbols-outlined" fontSize="sm">
+              push_pin
+            </Box>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            w={8}
+            h={8}
+            p={0}
+            borderRadius="full"
+            color="red.500"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("Confirm delete?")) {
+                if (onDelete) onDelete(post.id);
+              }
+            }}
+            _hover={{ bg: "red.50" }}
+          >
+            <Box className="material-symbols-outlined" fontSize="sm">
+              delete
+            </Box>
+          </Button>
+        </HStack>
+      ) : null}
+
       {showComments && (
         <CommentSection
           post={post}
@@ -1491,6 +1836,8 @@ interface MemoryCardProps {
   post: DBPost;
   index: number;
   onLike: (id: number) => void;
+  onPin?: (postId: number, currentStatus: boolean) => Promise<void>;
+  onDelete?: (postId: number) => Promise<void>;
   currentUserRole?: string;
   onInspectUser?: (userId: string) => void;
 }
@@ -1501,12 +1848,30 @@ const MemoryCard = memo(function MemoryCard({
   onLike,
   currentUserRole,
   onInspectUser,
+  onPin,
+  onDelete,
 }: MemoryCardProps) {
   const { user } = useUser();
-  const liked = !!(user && post.liked_by?.includes(user.student_id));
+  const serverLiked = !!(user && post.liked_by?.includes(user.student_id));
+  const [localLiked, setLocalLiked] = useState(serverLiked);
+  const [localLikesCount, setLocalLikesCount] = useState(post.likes);
   const [showComments, setShowComments] = useState(false);
+  const [prevServerLiked, setPrevServerLiked] = useState(serverLiked);
+  const [prevPostLikes, setPrevPostLikes] = useState(post.likes);
+
+  if (serverLiked !== prevServerLiked) {
+    setLocalLiked(serverLiked);
+    setPrevServerLiked(serverLiked);
+  }
+  if (post.likes !== prevPostLikes) {
+    setLocalLikesCount(post.likes);
+    setPrevPostLikes(post.likes);
+  }
 
   const handleLike = () => {
+    if (!user) return;
+    setLocalLiked(!localLiked);
+    setLocalLikesCount(prev => localLiked ? Math.max(0, prev - 1) : prev + 1);
     onLike(post.id);
   };
 
@@ -1532,9 +1897,9 @@ const MemoryCard = memo(function MemoryCard({
 
   return (
     <Box
-      bg="bg.surface"
-      border="1px dashed"
-      borderColor="border.default"
+      bg={isStaff ? "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-white))" : "bg.surface"}
+      border={isStaff ? "1px solid color-mix(in srgb, var(--c-chocolate) 20%, transparent)" : "1px dashed"}
+      borderColor={isStaff ? undefined : "border.default"}
       borderRadius="xl"
       p={{ base: 4, md: 5 }}
       position="relative"
@@ -1644,28 +2009,31 @@ const MemoryCard = memo(function MemoryCard({
       <Flex gap={3} align="center">
         <Button
           type="button"
-          aria-label={liked ? "Unlike post" : "Like post"}
-          gap={1}
-          cursor="pointer"
-          onClick={handleLike}
-          color={liked ? "var(--c-state-liked)" : "fg.subtle"}
-          bg="transparent"
-          border="none"
-          p={1}
-          minH="44px"
-          minW="44px"
-          display="flex"
-          alignItems="center"
+          role="group"
+          color={localLiked ? "accent.solid" : "fg.subtle"}
+          bg={localLiked ? "bg.hero" : "transparent"}
+          border="1px solid"
+          borderColor={localLiked ? "accent.solid" : "border.subtle"}
+          h="32px"
+          px={3}
+          borderRadius="full"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleLike();
+          }}
+          disabled={!user}
+          _hover={{ bg: "bg.hero", color: "accent.solid", borderColor: "accent.solid" }}
         >
           <Box
-            className="material-symbols-outlined"
-            fontSize="md"
-            fontVariationSettings={liked ? "'FILL' 1" : undefined}
+            className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+            fontSize="sm"
+            transition="transform 0.2s"
+            _groupHover={{ transform: "scale(1.1)" }}
           >
             favorite
           </Box>
-          <Text fontSize="2xs" fontWeight="600">
-            {post.likes}
+          <Text fontSize="xs" fontWeight="600" ml={1}>
+            {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>
         <Button
@@ -1691,6 +2059,50 @@ const MemoryCard = memo(function MemoryCard({
           </Text>
         </Button>
       </Flex>
+
+      {/* Admin Controls */}
+      {currentUserRole === "moderator" || currentUserRole === "admin" ? (
+        <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
+          <Button
+            size="sm"
+            variant="ghost"
+            w={8}
+            h={8}
+            p={0}
+            borderRadius="full"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onPin) onPin(post.id, post.is_pinned ?? false);
+            }}
+            color={post.is_pinned ? "accent.solid" : "fg.subtle"}
+            _hover={{ bg: "bg.hero" }}
+          >
+            <Box className="material-symbols-outlined" fontSize="sm">
+              push_pin
+            </Box>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            w={8}
+            h={8}
+            p={0}
+            borderRadius="full"
+            color="red.500"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm("Confirm delete?")) {
+                if (onDelete) onDelete(post.id);
+              }
+            }}
+            _hover={{ bg: "red.50" }}
+          >
+            <Box className="material-symbols-outlined" fontSize="sm">
+              delete
+            </Box>
+          </Button>
+        </HStack>
+      ) : null}
 
       {showComments && (
         <CommentSection
