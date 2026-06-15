@@ -47,6 +47,7 @@ CREATE TABLE posts (
     is_hidden BOOLEAN DEFAULT false,
     student_id VARCHAR REFERENCES users(student_id) ON DELETE CASCADE,
     tags TEXT[] DEFAULT '{}'::text[],
+    image_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
