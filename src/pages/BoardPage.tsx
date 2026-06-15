@@ -165,6 +165,7 @@ export function BoardPage() {
             user_id: user.student_id,
             nickname: user.nickname,
             online_at: new Date().toISOString(),
+            session_token: localStorage.getItem('baan7_session_token'),
           });
         }
       });

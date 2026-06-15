@@ -297,7 +297,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
           channelRef.current?.send({
             type: 'broadcast',
             event: 'new_post',
-            payload: { post: data },
+            payload: { post: data, session_token: localStorage.getItem('baan7_session_token') },
           }).catch((err) => console.error('[Realtime] Broadcast new_post error:', err))
 
           // Optimistic prepend — realtime INSERT will arrive shortly, dedup guard prevents double
@@ -361,7 +361,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       channelRef.current?.send({
         type: 'broadcast',
         event: 'post_liked',
-        payload: { postId, likes: nextLikes, liked_by: nextLikedBy },
+        payload: { postId, likes: nextLikes, liked_by: nextLikedBy, session_token: localStorage.getItem('baan7_session_token') },
       }).catch((err) => console.error('[Realtime] Broadcast post_liked error:', err))
 
       // Mark as self-originated so the realtime UPDATE won't double-apply
@@ -409,7 +409,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       channelRef.current?.send({
         type: 'broadcast',
         event: 'post_pinned',
-        payload: { postId, is_pinned: nextStatus },
+        payload: { postId, is_pinned: nextStatus, session_token: localStorage.getItem('baan7_session_token') },
       }).catch((err) => console.error('[Realtime] Broadcast pin error:', err))
 
       try {
@@ -450,7 +450,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       channelRef.current?.send({
         type: 'broadcast',
         event: 'post_deleted',
-        payload: { postId },
+        payload: { postId, session_token: localStorage.getItem('baan7_session_token') },
       }).catch((err) => console.error('[Realtime] Broadcast delete error:', err))
 
       try {
