@@ -89,6 +89,10 @@ interface DBUser {
   created_at: string
   major?: string | null
   house_position?: string | null
+  profile_pic_url?: string | null
+  bio?: string | null
+  ig?: string | null
+  avatar_color?: string
 }
 
 interface CSVRecord {
@@ -201,7 +205,11 @@ export function AdminDashboardPage() {
 
   // User Inspector states
   const [inspectUser, setInspectUser] = useState<DBUser | null>(null)
-  const [inspectUserStats, setInspectUserStats] = useState<{ collectedCount: number; collectedFromCount: number } | null>(null)
+  const [inspectUserStats, setInspectUserStats] = useState<{ 
+    collectedCount: number; 
+    collectedFromCount: number;
+    vibeStatus?: { strike_count: number; locked_until: string | null; current_mission_id: number | null } | null;
+  } | null>(null)
   const [editNickname, setEditNickname] = useState('')
   const [editFaculty, setEditFaculty] = useState('')
   const [editMajor, setEditMajor] = useState('')
@@ -258,7 +266,7 @@ export function AdminDashboardPage() {
       if (user?.role === 'moderator') {
         const { data: usersData } = await supabase
           .from('users')
-          .select('student_id, nickname, faculty, role, created_at, major, house_position')
+          .select('student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color')
           .order('created_at', { ascending: false })
         if (usersData) setWhitelistedUsers(usersData as DBUser[])
 
@@ -329,7 +337,7 @@ export function AdminDashboardPage() {
         if (user.role === 'moderator') {
           const { data: usersData } = await supabase
             .from('users')
-            .select('student_id, nickname, faculty, role, created_at')
+            .select('student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color')
             .order('created_at', { ascending: false })
           if (!active) return
           if (usersData) setWhitelistedUsers(usersData as DBUser[])
@@ -613,9 +621,17 @@ export function AdminDashboardPage() {
         .select('*', { count: 'exact', head: true })
         .eq('staff_id', u.student_id)
 
+      // Fetch vibe check stats
+      const { data: vibeData } = await supabase
+        .from('user_vibe_status')
+        .select('strike_count, locked_until, current_mission_id')
+        .eq('student_id', u.student_id)
+        .maybeSingle()
+
       setInspectUserStats({
         collectedCount: collectedCount || 0,
         collectedFromCount: collectedFromCount || 0,
+        vibeStatus: vibeData || null,
       })
 
       // Fetch relevant audit logs
@@ -1776,17 +1792,90 @@ export function AdminDashboardPage() {
 
               <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" gap={4}>
                 <VStack align="stretch" gap={5}>
-                  <VStack align="stretch" gap={2} bg="var(--c-ivory)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle">
-                    <Text fontSize="xs"><strong>Student ID:</strong> {inspectUser.student_id}</Text>
+                  {/* Profile Header Block */}
+                  <Flex bg="var(--c-ivory)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle" gap={4} align="center">
+                    <Box
+                      w="64px"
+                      h="64px"
+                      borderRadius="full"
+                      bg={inspectUser.profile_pic_url ? 'transparent' : (inspectUser.avatar_color || 'var(--c-lagoon)')}
+                      overflow="hidden"
+                      flexShrink={0}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      {inspectUser.profile_pic_url ? (
+                        <img src={inspectUser.profile_pic_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Text color="white" fontWeight="800" fontSize="lg">
+                          {(inspectUser.nickname || 'NN').substring(0, 2).toUpperCase()}
+                        </Text>
+                      )}
+                    </Box>
+                    <VStack align="start" gap={0} flex={1}>
+                      <HStack gap={2}>
+                        <Heading as="h3" fontSize="sm" fontWeight="700" color="var(--c-chocolate)">
+                          {inspectUser.nickname || 'No Nickname'}
+                        </Heading>
+                        <Badge colorPalette={inspectUser.role === 'moderator' ? 'red' : inspectUser.role === 'staff' ? 'orange' : inspectUser.role === 'media_admin' ? 'blue' : 'gray'}>
+                          {inspectUser.role}
+                        </Badge>
+                      </HStack>
+                      <Text fontSize="xs" color="fg.muted">ID: {inspectUser.student_id}</Text>
+                      {inspectUser.ig && (
+                        <Text fontSize="2xs" color="var(--c-lagoon)" fontWeight="600" mt={0.5}>
+                          IG: {inspectUser.ig}
+                        </Text>
+                      )}
+                    </VStack>
+                  </Flex>
+
+                  {inspectUser.bio && (
+                    <Box px={2}>
+                      <Text fontSize="xs" fontStyle="italic" color="fg.subtle">"{inspectUser.bio}"</Text>
+                    </Box>
+                  )}
+
+                  {/* Vibe Stats Block */}
+                  <VStack align="stretch" gap={2} bg="color-mix(in srgb, var(--c-lagoon) 5%, transparent)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle">
+                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-lagoon)" textTransform="uppercase" mb={1}>
+                      Vibe Check Statistics
+                    </Heading>
                     {inspectUserStats ? (
-                      <>
-                        <Text fontSize="xs"><strong>Collected cards count:</strong> {inspectUserStats.collectedCount} cards</Text>
+                      <Flex flexWrap="wrap" gap={4}>
+                        <Box flex={1} minW="140px">
+                          <Text fontSize="2xs" color="fg.muted" fontWeight="600">Cards Collected</Text>
+                          <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedCount}</Text>
+                        </Box>
                         {inspectUser.role !== 'student' && (
-                          <Text fontSize="xs"><strong>Times collected by students:</strong> {inspectUserStats.collectedFromCount} times</Text>
+                          <Box flex={1} minW="140px">
+                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Collected By</Text>
+                            <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedFromCount} students</Text>
+                          </Box>
                         )}
-                      </>
+                        <Box flex={1} minW="140px">
+                          <Text fontSize="2xs" color="fg.muted" fontWeight="600">Mistakes/Strikes</Text>
+                          <HStack gap={1}>
+                            <Text fontSize="sm" fontWeight="800" color={(inspectUserStats.vibeStatus?.strike_count || 0) > 3 ? "red.600" : "var(--c-ink)"}>
+                              {inspectUserStats.vibeStatus?.strike_count || 0} / 5
+                            </Text>
+                            {(inspectUserStats.vibeStatus?.strike_count || 0) > 0 && (
+                              <Box as="span" className="material-symbols-outlined" fontSize="14px" color="red.500">warning</Box>
+                            )}
+                          </HStack>
+                        </Box>
+                        {inspectUserStats.vibeStatus?.locked_until && new Date(inspectUserStats.vibeStatus.locked_until).getTime() > Date.now() && (
+                          <Box w="100%" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
+                            <Text fontSize="xs" fontWeight="700" color="red.700" display="flex" alignItems="center" gap={1}>
+                              <Box as="span" className="material-symbols-outlined" fontSize="14px">lock_clock</Box>
+                              Locked until: {new Date(inspectUserStats.vibeStatus.locked_until).toLocaleTimeString()}
+                            </Text>
+                          </Box>
+                        )}
+                      </Flex>
                     ) : (
-                      <Spinner size="xs" />
+                      <Spinner size="xs" color="var(--c-lagoon)" />
                     )}
                   </VStack>
 

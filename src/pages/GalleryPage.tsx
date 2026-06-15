@@ -9,10 +9,8 @@ import {
   Button,
   Spinner,
   Dialog,
-  HStack,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { toaster } from "../components/ui/toaster";
 
@@ -246,6 +244,16 @@ export function GalleryPage() {
           align="center"
           justify="center"
           cursor="pointer"
+          role="button"
+          tabIndex={0}
+          aria-label="สลับมุมมองคลังภาพ"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setViewMode(viewMode === 'photos' ? 'unclaimed' : 'photos');
+              setSelectedPersonId(null);
+            }
+          }}
           onClick={() => {
             setViewMode(viewMode === 'photos' ? 'unclaimed' : 'photos');
             setSelectedPersonId(null);
@@ -289,7 +297,7 @@ export function GalleryPage() {
                 bg={activeDay === dayKey && !selectedPersonId ? 'var(--c-chocolate)' : 'transparent'}
                 color={activeDay === dayKey && !selectedPersonId ? 'white' : 'var(--c-chocolate)'}
                 borderColor="var(--c-chocolate)"
-                _hover={{ bg: activeDay === dayKey && !selectedPersonId ? 'var(--c-chocolate)' : 'rgba(124, 86, 63, 0.05)' }}
+                _hover={{ bg: activeDay === dayKey && !selectedPersonId ? 'var(--c-chocolate)' : 'color-mix(in srgb, var(--c-chocolate) 5%, transparent)' }}
                 cursor="pointer"
                 transition="all 0.3s var(--ease-out-quart)"
               >
@@ -318,7 +326,20 @@ export function GalleryPage() {
                 css={{ "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}
               >
                 {people.map((person) => (
-                  <VStack key={person.id} onClick={() => handleSelectPerson(person.id)} cursor="pointer" align="center" gap={1.5} minW="60px">
+                  <VStack 
+                    key={person.id} 
+                    onClick={() => handleSelectPerson(person.id)} 
+                    cursor="pointer" align="center" gap={1.5} minW="60px"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`กรองรูปภาพตามใบหน้าบุคคล: ${person.name || "Unknown"}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectPerson(person.id);
+                      }
+                    }}
+                  >
                     <Box
                       borderRadius="full"
                       border={selectedPersonId === person.id ? "2.5px solid var(--c-chocolate)" : "2.5px solid transparent"}
@@ -369,7 +390,7 @@ export function GalleryPage() {
                   animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}
                 >
                   <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                    <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt="Asset" w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                    <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`ภาพกิจกรรมรับน้องบ้าน 7 ประจำวันที่ ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
                   </Box>
                 </Box>
               ))}
@@ -388,7 +409,20 @@ export function GalleryPage() {
           ) : (
             <SimpleGrid columns={{ base: 3, sm: 4, md: 6 }} gap={4}>
               {unclaimedPeople.map((person) => (
-                <VStack key={person.id} onClick={() => handleSelectPerson(person.id)} cursor="pointer" align="center" gap={2}>
+                <VStack 
+                  key={person.id} 
+                  onClick={() => handleSelectPerson(person.id)} 
+                  cursor="pointer" align="center" gap={2}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="เลือกใบหน้านี้เพื่อยืนยันตัวตน"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectPerson(person.id);
+                    }
+                  }}
+                >
                   <Box w="44px" h="44px" minW="44px" minH="44px" borderRadius="full" border={selectedPersonId === person.id ? "2px solid var(--c-chocolate)" : "2px dashed var(--c-chocolate)"} p="2px" transition="all 0.3s var(--ease-out-quart)" transform={selectedPersonId === person.id ? "scale(1.1)" : "none"}>
                     <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
                       <Image src={`${proxyUrl}/people/${person.id}/thumbnail`} alt="Face target" w="100%" h="100%" objectFit="cover" draggable={false} />
@@ -423,7 +457,7 @@ export function GalleryPage() {
                   {personAssets.map((asset, i) => (
                     <Box key={asset.id} position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => setSelectedAsset(asset)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }} animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}>
                       <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                        <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt="Asset" w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                        <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`ภาพกิจกรรมรับน้องบ้าน 7 ประจำวันที่ ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
                       </Box>
                     </Box>
                   ))}

@@ -31,13 +31,13 @@ const features = [
       "Drop a message, share the hype, and see what everyone is talking about in real-time.",
     icon: "campaign",
     color: "var(--c-chocolate)",
-    textColor: "#ffffff",
+    textColor: "white",
     link: "/board",
     size: "wide" as const,
   },
   {
     title: "Gallery",
-    description: "Relive the moments and celebrate memories.",
+    description: "ระบบสตรีมรูปภาพกิจกรรมหน้างานแบบเรียลไทม์ และระบบตามล่าใบหน้าบุคคลด้วยเทคโนโลยีปัญญาประดิษฐ์ AI",
     icon: "photo_library",
     color: "var(--c-white)",
     textColor: "var(--c-ink)",
@@ -244,8 +244,7 @@ export function HomePage() {
             lineHeight={1.6}
             mb={{ base: 8, md: 12 }}
           >
-            Your journey starts here. Step into a community designed for
-            connection, discovery, and unforgettable moments.
+            ยินดีต้อนรับสู่บ้าน 7 ศูนย์กลางรวมกิจกรรมปฐมนิเทศ คลังรูปภาพดร็อปสด และเครือข่ายพี่น้องสตาฟคณะ ICT ตัวจริง
           </Text>
 
           <Flex flexWrap="wrap" gap={3} align="center">
@@ -272,7 +271,7 @@ export function HomePage() {
                 _active={{ transform: "scale(0.97)" }}
               >
                 <Text>Start Exploring</Text>
-                <Box className="material-symbols-outlined" fontSize="lg">
+                <Box className="material-symbols-outlined" aria-hidden="true" fontSize="lg">
                   arrow_downward
                 </Box>
               </HStack>
@@ -299,7 +298,7 @@ export function HomePage() {
                 }}
               >
                 <Text>Explore Features</Text>
-                <Box className="material-symbols-outlined" fontSize="lg">
+                <Box className="material-symbols-outlined" aria-hidden="true" fontSize="lg">
                   arrow_downward
                 </Box>
               </HStack>
@@ -323,6 +322,7 @@ export function HomePage() {
             fill="none"
             preserveAspectRatio="xMidYMid meet"
             className="svg-block"
+            aria-hidden="true"
           >
             <motion.path
               d="M 100 40 C 300 10, 500 70, 700 40 C 900 10, 1000 70, 1100 40"
@@ -469,7 +469,7 @@ function FeatureCardLarge({
             right={-10}
             w={{ base: "160px", md: "256px" }}
             h={{ base: "160px", md: "256px" }}
-            bg="rgba(255,255,255,0.3)"
+            bg="color-mix(in srgb, white 30%, transparent)"
             borderRadius="full"
             filter="blur(48px)"
             transition="background 0.4s"
@@ -486,7 +486,7 @@ function FeatureCardLarge({
             <Box
               w={{ base: 12, md: 16 }}
               h={{ base: 12, md: 16 }}
-              bg="rgba(255,255,255,0.8)"
+              bg="color-mix(in srgb, white 80%, transparent)"
               borderRadius="xl"
               display="flex"
               alignItems="center"
@@ -495,7 +495,7 @@ function FeatureCardLarge({
               mb={{ base: 2, md: 4 }}
             >
               <Box
-                className="material-symbols-outlined"
+                className="material-symbols-outlined" aria-hidden="true"
                 fontSize={{ base: "2xl", md: "3xl" }}
                 color={feature.textColor}
               >
@@ -560,7 +560,7 @@ function FeatureCardLarge({
               </HStack>
             )}
             <Box
-              className="material-symbols-outlined"
+              className="material-symbols-outlined" aria-hidden="true"
               fontSize={{ base: "3xl", md: "5xl" }}
               color={feature.textColor}
               opacity={0.2}
@@ -635,7 +635,7 @@ function FeatureCardWide({
           <Box
             position="absolute"
             inset={0}
-            bgImage="radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)"
+            bgImage="radial-gradient(circle, color-mix(in srgb, white 6%, transparent) 1px, transparent 1px)"
             bgSize="20px 20px"
             opacity={0.5}
           />
@@ -648,7 +648,7 @@ function FeatureCardWide({
             <Box
               w={{ base: 12, md: 14 }}
               h={{ base: 12, md: 14 }}
-              bg="rgba(255,255,255,0.2)"
+              bg="color-mix(in srgb, white 20%, transparent)"
               borderRadius="xl"
               display="flex"
               alignItems="center"
@@ -656,7 +656,7 @@ function FeatureCardWide({
               flexShrink={0}
             >
               <Box
-                className="material-symbols-outlined"
+                className="material-symbols-outlined" aria-hidden="true"
                 fontSize={{ base: "2xl", md: "3xl" }}
                 color={feature.textColor}
               >
@@ -761,7 +761,7 @@ function FeatureCardSmall({
         <Box
           w={{ base: 12, md: 14 }}
           h={{ base: 12, md: 14 }}
-          bg="rgba(73, 98, 104, 0.1)"
+          bg="color-mix(in srgb, var(--c-lagoon) 10%, transparent)"
           borderRadius="xl"
           display="flex"
           alignItems="center"
@@ -771,7 +771,7 @@ function FeatureCardSmall({
           _groupHover={{ transform: "scale(1.1)" }}
         >
           <Box
-            className="material-symbols-outlined"
+            className="material-symbols-outlined" aria-hidden="true"
             fontSize={{ base: "2xl", md: "3xl" }}
             color="brand.fg"
           >
@@ -863,7 +863,7 @@ function FeatureCardEvent({
             >
               {feature.title}
             </Text>
-            <Box className="material-symbols-outlined" color="fg.subtle">
+            <Box className="material-symbols-outlined" aria-hidden="true" color="fg.subtle">
               {feature.icon}
             </Box>
           </Flex>
