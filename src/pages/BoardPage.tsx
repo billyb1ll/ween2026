@@ -1634,6 +1634,8 @@ const HypeCard = memo(function HypeCard({
         gap={3} 
         mb={3}
         as={(!isAnon && onInspectUser) ? "button" : "div"}
+        role={(!isAnon && onInspectUser) ? "button" : undefined}
+        tabIndex={(!isAnon && onInspectUser) ? 0 : undefined}
         onClick={() => {
           if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
         }}
@@ -1929,6 +1931,8 @@ const MemoryCard = memo(function MemoryCard({
         gap={2} 
         mb={3}
         as={(!isAnon && onInspectUser) ? "button" : "div"}
+        role={(!isAnon && onInspectUser) ? "button" : undefined}
+        tabIndex={(!isAnon && onInspectUser) ? 0 : undefined}
         onClick={() => {
           if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
         }}

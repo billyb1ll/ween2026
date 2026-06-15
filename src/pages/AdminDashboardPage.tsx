@@ -43,36 +43,39 @@ function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectio
       overflow="hidden"
       w="100%"
     >
-      <Button
-        type="button"
-        onClick={onToggle}
-        variant="ghost"
-        w="100%"
-        justifyContent="space-between"
-        py={5}
-        px={6}
-        h="auto"
-        _hover={{ bg: 'color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))' }}
-        borderRadius="none"
-        borderBottom={isOpen ? '1px solid' : 'none'}
-        borderColor="border.subtle"
-        cursor="pointer"
-        display="flex"
-        alignItems="center"
-      >
-        <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" m={0}>
-          {title}
-        </Heading>
-        <Box
-          as="span"
-          className="material-symbols-outlined"
+      <Heading as="h2" m={0}>
+        <Button
+          type="button"
+          onClick={onToggle}
+          variant="ghost"
+          w="100%"
+          justifyContent="space-between"
+          py={5}
+          px={6}
+          h="auto"
+          _hover={{ bg: 'color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))' }}
+          borderRadius="none"
+          borderBottom={isOpen ? '1px solid' : 'none'}
+          borderColor="border.subtle"
+          cursor="pointer"
+          display="flex"
+          alignItems="center"
+          fontSize="lg"
+          fontWeight="700"
           color="var(--c-chocolate)"
-          transition="transform 0.2s ease"
-          transform={isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
         >
-          expand_more
-        </Box>
-      </Button>
+          <Box as="span">{title}</Box>
+          <Box
+            as="span"
+            className="material-symbols-outlined"
+            color="var(--c-chocolate)"
+            transition="transform 0.2s ease"
+            transform={isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
+          >
+            expand_more
+          </Box>
+        </Button>
+      </Heading>
       {isOpen && (
         <Box p={6} animation="scale-in 0.2s ease-out">
           {children}
