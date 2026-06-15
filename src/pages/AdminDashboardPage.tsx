@@ -1382,7 +1382,7 @@ export function AdminDashboardPage() {
                         </Table.Cell>
                         <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
                         <Table.Cell>{u.nickname || <Text as="span" color="fg.subtle" fontStyle="italic">Pending Onboarding</Text>}</Table.Cell>
-                        <Table.Cell>{getFacultyEnglish(u.faculty) || '-'}</Table.Cell>
+                        <Table.Cell>{u.faculty || '-'}</Table.Cell>
                         <Table.Cell>
                           <Tooltip label={getRoleDescription(u.role)}>
                             <Badge
@@ -1672,7 +1672,7 @@ export function AdminDashboardPage() {
                             <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
                               <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
                               <Table.Cell>{row.nickname || '-'}</Table.Cell>
-                              <Table.Cell>{getFacultyEnglish(row.faculty) || '-'}</Table.Cell>
+                              <Table.Cell>{row.faculty || '-'}</Table.Cell>
                               <Table.Cell>
                                 <Badge colorPalette="gray">{row.role}</Badge>
                               </Table.Cell>
