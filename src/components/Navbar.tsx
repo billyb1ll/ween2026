@@ -116,24 +116,44 @@ const UserDropdownContent = ({
       </Link>
     )}
     {user && (user.role === "moderator" || user.role === "media_admin") && (
-      <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
-        <Button
-          size="sm"
-          variant="ghost"
-          color="var(--c-chocolate)"
-          justifyContent="start"
-          px={2}
-          h="32px"
-          w="100%"
-          borderRadius="8px"
-          _hover={{
-            bg: "rgba(73, 98, 104, 0.05)",
-            color: "var(--c-chocolate)",
-          }}
-        >
-          Admin Dashboard
-        </Button>
-      </Link>
+      <>
+        <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            color="var(--c-chocolate)"
+            justifyContent="start"
+            px={2}
+            h="32px"
+            w="100%"
+            borderRadius="8px"
+            _hover={{
+              bg: "rgba(73, 98, 104, 0.05)",
+              color: "var(--c-chocolate)",
+            }}
+          >
+            Admin Dashboard
+          </Button>
+        </Link>
+        <Link to="/admin/kpi" onClick={onClose} style={{ width: "100%" }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            color="var(--c-chocolate)"
+            justifyContent="start"
+            px={2}
+            h="32px"
+            w="100%"
+            borderRadius="8px"
+            _hover={{
+              bg: "rgba(73, 98, 104, 0.05)",
+              color: "var(--c-chocolate)",
+            }}
+          >
+            Platform KPIs
+          </Button>
+        </Link>
+      </>
     )}
     {user && (user.role === "moderator" || user.role === "staff") && (
       <Link to="/staff" onClick={onClose} style={{ width: "100%" }}>

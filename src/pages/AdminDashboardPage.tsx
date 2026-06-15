@@ -15,6 +15,7 @@ import {
   Textarea,
   Dialog,
   NativeSelect,
+  Image,
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { supabase } from '../lib/supabase'
@@ -22,7 +23,7 @@ import { getImmichConfig } from '../utils/immich'
 import { toaster } from '../components/ui/toaster'
 import { Tooltip } from '../components/ui/tooltip'
 import Papa from 'papaparse'
-import { THAI_FACULTIES } from '../lib/constants'
+import { THAI_FACULTIES, STAFF_ROLES } from '../lib/constants'
 
 interface AccordionSectionProps {
   title: string
@@ -181,6 +182,7 @@ export function AdminDashboardPage() {
     collectedFromCount: number;
     vibeStatus?: { strike_count: number; locked_until: string | null; current_mission_id: number | null } | null;
     isLocked: boolean;
+    unlockedStaff?: { staff_id: string; nickname: string; profile_pic_url: string; avatar_color: string }[];
   } | null>(null)
   const [editNickname, setEditNickname] = useState('')
   const [editFaculty, setEditFaculty] = useState('')
@@ -583,10 +585,27 @@ export function AdminDashboardPage() {
       }
 
       // Fetch collection statistics
-      const { count: collectedCount } = await supabase
+      const { data: collectedData, count: collectedCount } = await supabase
         .from('collected_cards')
-        .select('*', { count: 'exact', head: true })
+        .select('*', { count: 'exact' })
         .eq('student_id', u.student_id)
+
+      let unlockedStaff: { staff_id: string; nickname: string; profile_pic_url: string; avatar_color: string }[] = []
+      if (collectedData && collectedData.length > 0) {
+        const staffIds = collectedData.map(d => d.staff_id)
+        const { data: staffData } = await supabase
+          .from('users')
+          .select('student_id, nickname, profile_pic_url, avatar_color')
+          .in('student_id', staffIds)
+        if (staffData) {
+          unlockedStaff = staffData.map(s => ({
+            staff_id: s.student_id,
+            nickname: s.nickname || 'Unknown Staff',
+            profile_pic_url: s.profile_pic_url || '',
+            avatar_color: s.avatar_color || 'var(--c-muted)',
+          }))
+        }
+      }
 
       const { count: collectedFromCount } = await supabase
         .from('collected_cards')
@@ -607,6 +626,7 @@ export function AdminDashboardPage() {
         collectedFromCount: collectedFromCount || 0,
         vibeStatus: vibeData || null,
         isLocked: isLockedVal,
+        unlockedStaff,
       })
 
       // Fetch relevant audit logs
@@ -1818,37 +1838,58 @@ export function AdminDashboardPage() {
                       Vibe Check Statistics
                     </Heading>
                     {inspectUserStats ? (
-                      <Flex flexWrap="wrap" gap={4}>
-                        <Box flex={1} minW="140px">
-                          <Text fontSize="2xs" color="fg.muted" fontWeight="600">Cards Collected</Text>
-                          <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedCount}</Text>
-                        </Box>
-                        {inspectUser.role !== 'student' && (
+                      <>
+                        <Flex flexWrap="wrap" gap={4}>
                           <Box flex={1} minW="140px">
-                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Collected By</Text>
-                            <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedFromCount} students</Text>
+                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Cards Collected</Text>
+                            <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedCount}</Text>
+                          </Box>
+                          {inspectUser.role !== 'student' && (
+                            <Box flex={1} minW="140px">
+                              <Text fontSize="2xs" color="fg.muted" fontWeight="600">Collected By</Text>
+                              <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedFromCount} students</Text>
+                            </Box>
+                          )}
+                          <Box flex={1} minW="140px">
+                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Mistakes/Strikes</Text>
+                            <HStack gap={1}>
+                              <Text fontSize="sm" fontWeight="800" color={(inspectUserStats.vibeStatus?.strike_count || 0) > 3 ? "red.600" : "var(--c-ink)"}>
+                                {inspectUserStats.vibeStatus?.strike_count || 0} / 5
+                              </Text>
+                              {(inspectUserStats.vibeStatus?.strike_count || 0) > 0 && (
+                                <Box as="span" className="material-symbols-outlined" fontSize="14px" color="red.500">warning</Box>
+                              )}
+                            </HStack>
+                          </Box>
+                          {inspectUserStats.vibeStatus?.locked_until && inspectUserStats.isLocked && (
+                            <Box w="100%" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
+                              <Text fontSize="xs" fontWeight="700" color="red.700" display="flex" alignItems="center" gap={1}>
+                                <Box as="span" className="material-symbols-outlined" fontSize="14px">lock_clock</Box>
+                                Locked until: {new Date(inspectUserStats.vibeStatus.locked_until).toLocaleTimeString()}
+                              </Text>
+                            </Box>
+                          )}
+                        </Flex>
+                        {inspectUserStats.unlockedStaff && inspectUserStats.unlockedStaff.length > 0 && (
+                          <Box mt={2} pt={2} borderTop="1px solid" borderColor="border.subtle">
+                            <Text fontSize="2xs" color="fg.muted" fontWeight="600" mb={2}>Unlocked Staff Vibes</Text>
+                            <Flex flexWrap="wrap" gap={2}>
+                              {inspectUserStats.unlockedStaff.map(staff => (
+                                <Flex key={staff.staff_id} align="center" gap={2} bg="var(--c-white)" p={1} pr={3} borderRadius="full" border="1px solid" borderColor="border.subtle" boxShadow="sm">
+                                  {staff.profile_pic_url ? (
+                                    <Image src={staff.profile_pic_url} alt={staff.nickname} w="24px" h="24px" borderRadius="full" objectFit="cover" />
+                                  ) : (
+                                    <Flex w="24px" h="24px" borderRadius="full" bg={staff.avatar_color} color="white" align="center" justify="center" fontSize="10px" fontWeight="700">
+                                      {staff.nickname.substring(0, 2).toUpperCase()}
+                                    </Flex>
+                                  )}
+                                  <Text fontSize="xs" fontWeight="600" color="var(--c-ink)">{staff.nickname}</Text>
+                                </Flex>
+                              ))}
+                            </Flex>
                           </Box>
                         )}
-                        <Box flex={1} minW="140px">
-                          <Text fontSize="2xs" color="fg.muted" fontWeight="600">Mistakes/Strikes</Text>
-                          <HStack gap={1}>
-                            <Text fontSize="sm" fontWeight="800" color={(inspectUserStats.vibeStatus?.strike_count || 0) > 3 ? "red.600" : "var(--c-ink)"}>
-                              {inspectUserStats.vibeStatus?.strike_count || 0} / 5
-                            </Text>
-                            {(inspectUserStats.vibeStatus?.strike_count || 0) > 0 && (
-                              <Box as="span" className="material-symbols-outlined" fontSize="14px" color="red.500">warning</Box>
-                            )}
-                          </HStack>
-                        </Box>
-                        {inspectUserStats.vibeStatus?.locked_until && inspectUserStats.isLocked && (
-                          <Box w="100%" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
-                            <Text fontSize="xs" fontWeight="700" color="red.700" display="flex" alignItems="center" gap={1}>
-                              <Box as="span" className="material-symbols-outlined" fontSize="14px">lock_clock</Box>
-                              Locked until: {new Date(inspectUserStats.vibeStatus.locked_until).toLocaleTimeString()}
-                            </Text>
-                          </Box>
-                        )}
-                      </Flex>
+                      </>
                     ) : (
                       <Spinner size="xs" color="var(--c-lagoon)" />
                     )}
@@ -1914,19 +1955,24 @@ export function AdminDashboardPage() {
                         h="38px"
                       />
                     </Box>
-                    <Box>
-                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                        <label htmlFor="inspect-house-position">House Position (Staff Assignment)</label>
+                    {editRole !== 'student' && (
+                      <Box>
+                        <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                          <label htmlFor="inspect-house-position">House Position (Staff Assignment)</label>
+                        </Box>
+                        <select
+                          id="inspect-house-position"
+                          value={editHousePosition}
+                          onChange={(e) => setEditHousePosition(e.target.value)}
+                          className="admin-select-sm custom-select"
+                        >
+                          <option value="">None / Unknown</option>
+                          {STAFF_ROLES.map((role) => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
                       </Box>
-                      <Input
-                        id="inspect-house-position"
-                        value={editHousePosition}
-                        onChange={(e) => setEditHousePosition(e.target.value)}
-                        bg="var(--c-ivory)"
-                        placeholder="e.g. Recreation, Media"
-                        h="38px"
-                      />
-                    </Box>
+                    )}
                     <Box>
                       <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
                         <label htmlFor="inspect-role">System Role</label>

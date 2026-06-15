@@ -11,9 +11,11 @@ import {
   Badge,
   Input,
   Image,
+  Dialog,
+  Skeleton,
 } from "@chakra-ui/react";
 import { useState, useEffect, memo } from "react";
-import { useUser } from "../context/UserContext";
+import { useUser, type User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   useBoardRealtime,
@@ -118,6 +120,11 @@ export function BoardPage() {
   const [visibleCount, setVisibleCount] = useState(6);
   const [prevVisibleCount, setPrevVisibleCount] = useState(6);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [inspectedUser, setInspectedUser] = useState<User | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isInspectorLoading, setIsInspectorLoading] = useState(false);
+  const [memoryImage, setMemoryImage] = useState<File | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   const {
@@ -133,12 +140,59 @@ export function BoardPage() {
 
   const isMemoryAccessible = memoryActive || (user && user.role !== "student");
 
+  const handleInspectUser = async (userId: string) => {
+    setIsInspectorOpen(true);
+    setIsInspectorLoading(true);
+    setInspectedUser(null);
+    try {
+      const { data, error } = await supabase.from('users').select('*').eq('student_id', userId).single();
+      if (!error && data) {
+        setInspectedUser(data as User);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsInspectorLoading(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setMemoryImage(e.target.files[0]);
+    }
+  };
+
   const handleSubmitPost = async () => {
     if (!newPostText.trim() || !selectedTag) return;
-    await handleCreatePost(newPostText.trim(), [selectedTag], isAnonymous);
+    let imageUrl = null;
+
+    if (memoryImage && activeTab === 'memory') {
+      setIsUploadingImage(true);
+      const fileExt = memoryImage.name.split('.').pop();
+      const fileName = `${user?.student_id}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('board_media')
+        .upload(filePath, memoryImage);
+
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage
+          .from('board_media')
+          .getPublicUrl(filePath);
+        imageUrl = publicUrlData.publicUrl;
+      } else {
+         console.error('Upload Error', uploadError);
+         toaster.create({ title: 'Image upload failed', type: 'error' });
+      }
+      setIsUploadingImage(false);
+    }
+
+    await handleCreatePost(newPostText.trim(), [selectedTag], isAnonymous, imageUrl);
     setNewPostText("");
     setIsAnonymous(false);
     setSelectedTag(null);
+    setMemoryImage(null);
   };
 
   const handleSwitchTab = (tab: BoardTab) => {
@@ -190,7 +244,7 @@ export function BoardPage() {
           color="accent.solid"
           textAlign="center"
         >
-          {!hypeActive && !isMemoryAccessible
+          {(!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")
             ? "Boards Closed"
             : `The ${activeTab === "hype" ? "Hype" : "Memory"} Board`}
         </Heading>
@@ -200,7 +254,7 @@ export function BoardPage() {
           textAlign="center"
           maxW="lg"
         >
-          {!hypeActive && !isMemoryAccessible
+          {(!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")
             ? "Orientation boards are currently closed by staff. Check back soon!"
             : "Share the excitement, cheer on your peers, and build the Baan 7 community spirit!"}
         </Text>
@@ -240,9 +294,17 @@ export function BoardPage() {
         </Flex>
       )}
 
-      {/* Category Filters */}
-      {(hypeActive || isMemoryAccessible) && (
-        <Box
+      {/* Global Board Kill-Switch Ribbon */}
+      {((!hypeActive && activeTab === "hype") || (!memoryActive && activeTab === "memory")) ? (
+        <Flex justify="center" align="center" minH="200px" bg="bg.surface" borderRadius="xl" border="1px solid" borderColor="border.subtle" p={6}>
+          <Text fontSize="md" fontWeight="600" color="fg.subtle" textAlign="center">
+            บอร์ดสนทนาปิดปรับปรุงชั่วคราวตามลำดับกิจกรรมโปรดรอสัญญาณจากพี่สตาฟ
+          </Text>
+        </Flex>
+      ) : (
+        <>
+          {/* Category Filters */}
+          <Box
           bg="bg.hero"
           border="1px solid"
           borderColor="border.subtle"
@@ -304,10 +366,8 @@ export function BoardPage() {
             </HStack>
           </Flex>
         </Box>
-      )}
 
       {/* Main Column */}
-      {(hypeActive || isMemoryAccessible) && (
         <Box maxW="4xl" mx="auto" w="100%">
           {/* Posts Column */}
           <VStack align="stretch" gap={{ base: 4, md: 6 }}>
@@ -446,6 +506,23 @@ export function BoardPage() {
                           </label>
                         </HStack>
                       )}
+                      {user && activeTab === "memory" && (
+                        <HStack gap={2}>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id="memory-image-upload"
+                            onChange={handleImageChange}
+                            style={{ display: "none" }}
+                          />
+                          <label htmlFor="memory-image-upload" style={{ cursor: "pointer", fontSize: "0.875rem", color: "var(--c-chocolate)", fontWeight: 600 }}>
+                            <Box as="span" className="material-symbols-outlined" fontSize="md" verticalAlign="middle" mr={1}>
+                              image
+                            </Box>
+                            {memoryImage ? memoryImage.name : "Attach Image (Max 1)"}
+                          </label>
+                        </HStack>
+                      )}
                     </HStack>
                     <HStack gap={4} align="center">
                       {user && (
@@ -464,7 +541,7 @@ export function BoardPage() {
                         fontWeight="600"
                         cursor="pointer"
                         onClick={handleSubmitPost}
-                        loading={submitting}
+                        loading={submitting || isUploadingImage}
                         disabled={!user || !newPostText.trim() || !selectedTag}
                         _hover={{
                           boxShadow:
@@ -540,6 +617,7 @@ export function BoardPage() {
                           index={i}
                           onLike={handleLikePost}
                           currentUserRole={user?.role}
+                          onInspectUser={handleInspectUser}
                         />
                       </motion.div>
                     ) : (
@@ -553,6 +631,7 @@ export function BoardPage() {
                           index={i}
                           onLike={handleLikePost}
                           currentUserRole={user?.role}
+                          onInspectUser={handleInspectUser}
                         />
                       </motion.div>
                     ),
@@ -599,6 +678,7 @@ export function BoardPage() {
                           index={i}
                           onLike={handleLikePost}
                           currentUserRole={user?.role}
+                          onInspectUser={handleInspectUser}
                         />
                       </motion.div>
                     ) : (
@@ -612,6 +692,7 @@ export function BoardPage() {
                           index={i}
                           onLike={handleLikePost}
                           currentUserRole={user?.role}
+                          onInspectUser={handleInspectUser}
                         />
                       </motion.div>
                     ),
@@ -621,7 +702,6 @@ export function BoardPage() {
             )}
           </VStack>
         </Box>
-      )}
 
       {/* Load More */}
       {(hypeActive || isMemoryAccessible) && (hasMore || isFetchingMore) && (
@@ -678,6 +758,91 @@ export function BoardPage() {
           </AnimatePresence>
         </Flex>
       )}
+      </>
+      )}
+
+    {/* Profile Inspector Dialog Layer */}
+    <Dialog.Root open={isInspectorOpen} onOpenChange={(e) => setIsInspectorOpen(e.open)} placement={{ base: "bottom", md: "center" }}>
+      <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+      <Dialog.Positioner zIndex={2200} px={4}>
+        <Dialog.Content
+          width={{ base: "100%", md: "520px" }}
+          bg="var(--c-white)"
+          borderRadius="24px"
+          boxShadow="xl"
+          p={6}
+        >
+          {isInspectorLoading ? (
+            <VStack gap={4} align="center" py={6}>
+              <Skeleton boxSize="100px" borderRadius="full" />
+              <Skeleton height="24px" width="150px" />
+              <Skeleton height="16px" width="100px" />
+            </VStack>
+          ) : inspectedUser ? (
+            <VStack gap={4} align="center" pt={4} pb={2}>
+              <Box
+                w="100px"
+                h="100px"
+                borderRadius="full"
+                overflow="hidden"
+                bg={inspectedUser.profile_pic_url ? "transparent" : inspectedUser.avatar_color || "var(--c-muted-brown)"}
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                mb={2}
+                boxShadow="md"
+              >
+                {inspectedUser.profile_pic_url ? (
+                  <Image
+                    src={inspectedUser.profile_pic_url}
+                    alt="Avatar"
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                  />
+                ) : (
+                  <Text fontSize="2xl" fontWeight="700" color="white">
+                    {getInitials(inspectedUser.nickname || inspectedUser.student_id)}
+                  </Text>
+                )}
+              </Box>
+              <VStack gap={1} align="center">
+                <Text fontSize="2xl" fontWeight="700" color="var(--c-chocolate)" fontFamily="heading">
+                  {inspectedUser.nickname ? inspectedUser.nickname.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '') : "Guest"}
+                </Text>
+                {inspectedUser.full_name && (
+                  <Text fontSize="md" color="fg.muted" fontWeight="500">
+                    {inspectedUser.full_name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
+                  </Text>
+                )}
+              </VStack>
+
+              <Flex gap={2} mt={3} flexWrap="wrap" justify="center">
+                {inspectedUser.house_position && (
+                  <Badge colorPalette="orange" size="md" borderRadius="full" px={3}>
+                    {inspectedUser.house_position.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
+                  </Badge>
+                )}
+                {inspectedUser.faculty && (
+                  <Badge colorPalette="gray" size="md" borderRadius="full" px={3}>
+                    {inspectedUser.faculty.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
+                  </Badge>
+                )}
+              </Flex>
+            </VStack>
+          ) : (
+            <Text textAlign="center" py={4} color="fg.subtle">User not found</Text>
+          )}
+
+          <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+            <Button variant="ghost" size="sm" borderRadius="full" w={8} h={8} p={0}>
+              <Box className="material-symbols-outlined" fontSize="md">close</Box>
+            </Button>
+          </Dialog.CloseTrigger>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Dialog.Root>
+
     </Box>
   );
 }
@@ -777,6 +942,7 @@ interface HypeCardProps {
   index: number;
   onLike: (id: number) => void;
   currentUserRole?: string;
+  onInspectUser?: (userId: string) => void;
 }
 
 interface Comment {
@@ -1121,6 +1287,7 @@ const HypeCard = memo(function HypeCard({
   index,
   onLike,
   currentUserRole,
+  onInspectUser,
 }: HypeCardProps) {
   const { user } = useUser();
   const liked = !!(user && post.liked_by?.includes(user.student_id));
@@ -1140,7 +1307,7 @@ const HypeCard = memo(function HypeCard({
       : `${prefix}${post.author.nickname || "Guest Whitelist"}`;
   const displayAuthorInitials =
     isAnon && currentUserRole !== "moderator"
-      ? "?"
+      ? <Box as="span" className="material-symbols-outlined" fontSize="inherit" display="flex" alignItems="center" justifyContent="center">person</Box>
       : getInitials(displayAuthorName);
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
@@ -1161,13 +1328,24 @@ const HypeCard = memo(function HypeCard({
         boxShadow: "var(--shadow-card-hover)",
       }}
     >
-      <Flex align="center" gap={3} mb={3}>
+      <Flex 
+        align="center" 
+        gap={3} 
+        mb={3}
+        as={(!isAnon && onInspectUser) ? "button" : "div"}
+        onClick={() => {
+          if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
+        }}
+        cursor={(!isAnon && onInspectUser) ? "pointer" : "default"}
+        textAlign="left"
+        _focusVisible={(!isAnon && onInspectUser) ? { outline: "2px solid var(--c-orange)", outlineOffset: "2px", borderRadius: "md" } : undefined}
+      >
         <Box
           w={{ base: 8, md: 10 }}
           h={{ base: 8, md: 10 }}
           borderRadius="full"
           bg={
-            !isAnon && post.author.profile_pic_url
+            (!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url
               ? "transparent"
               : displayAvatarColor
           }
@@ -1179,7 +1357,7 @@ const HypeCard = memo(function HypeCard({
           color="white"
           overflow="hidden"
         >
-          {!isAnon && post.author.profile_pic_url ? (
+          {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
               alt={post.author.nickname || "Avatar"}
@@ -1314,6 +1492,7 @@ interface MemoryCardProps {
   index: number;
   onLike: (id: number) => void;
   currentUserRole?: string;
+  onInspectUser?: (userId: string) => void;
 }
 
 const MemoryCard = memo(function MemoryCard({
@@ -1321,6 +1500,7 @@ const MemoryCard = memo(function MemoryCard({
   index,
   onLike,
   currentUserRole,
+  onInspectUser,
 }: MemoryCardProps) {
   const { user } = useUser();
   const liked = !!(user && post.liked_by?.includes(user.student_id));
@@ -1343,7 +1523,7 @@ const MemoryCard = memo(function MemoryCard({
       : `${prefix}${post.author.nickname || "Guest Whitelist"}`;
   const displayAuthorInitials =
     isAnon && currentUserRole !== "moderator"
-      ? "?"
+      ? <Box as="span" className="material-symbols-outlined" fontSize="inherit" display="flex" alignItems="center" justifyContent="center">person</Box>
       : getInitials(displayAuthorName);
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
@@ -1379,13 +1559,24 @@ const MemoryCard = memo(function MemoryCard({
         boxShadow="0 2px 4px color-mix(in srgb, var(--c-ink) 20%, transparent)"
         zIndex={2}
       />
-      <Flex align="center" gap={2} mb={3}>
+      <Flex 
+        align="center" 
+        gap={2} 
+        mb={3}
+        as={(!isAnon && onInspectUser) ? "button" : "div"}
+        onClick={() => {
+          if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
+        }}
+        cursor={(!isAnon && onInspectUser) ? "pointer" : "default"}
+        textAlign="left"
+        _focusVisible={(!isAnon && onInspectUser) ? { outline: "2px solid var(--c-orange)", outlineOffset: "2px", borderRadius: "md" } : undefined}
+      >
         <Box
           w={8}
           h={8}
           borderRadius="full"
           bg={
-            !isAnon && post.author.profile_pic_url
+            (!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url
               ? "transparent"
               : displayAvatarColor
           }
@@ -1397,7 +1588,7 @@ const MemoryCard = memo(function MemoryCard({
           color="white"
           overflow="hidden"
         >
-          {!isAnon && post.author.profile_pic_url ? (
+          {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
               alt={post.author.nickname || "Avatar"}
@@ -1445,6 +1636,11 @@ const MemoryCard = memo(function MemoryCard({
       >
         {post.content}
       </Text>
+      {post.image_url && (
+        <Box mb={3} borderRadius="lg" overflow="hidden" boxShadow="sm" maxH="240px">
+          <Image src={post.image_url} alt="Memory Attachment" w="100%" h="100%" objectFit="cover" />
+        </Box>
+      )}
       <Flex gap={3} align="center">
         <Button
           type="button"

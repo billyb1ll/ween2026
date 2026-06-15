@@ -15,6 +15,7 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage').then((module) => ({
 const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((module) => ({ default: module.ProfileEditPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
+const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
 const StaffDashboardPage = lazy(() => import('./pages/StaffDashboardPage').then((module) => ({ default: module.StaffDashboardPage })))
 
 // Route Interceptor for Complete Profiles
@@ -86,6 +87,16 @@ function AppContent() {
                 <RequireAdmin>
                   <RequireCompleteProfile>
                     <AdminDashboardPage />
+                  </RequireCompleteProfile>
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/kpi"
+              element={
+                <RequireAdmin>
+                  <RequireCompleteProfile>
+                    <AdminKpiPage />
                   </RequireCompleteProfile>
                 </RequireAdmin>
               }

@@ -19,6 +19,7 @@ export interface DBPost {
   student_id: string
   type: BoardTab
   liked_by: string[]
+  image_url: string | null
   author: {
     student_id: string
     nickname: string | null
@@ -35,7 +36,7 @@ export interface UseBoardRealtimeReturn {
   hypeActive: boolean
   memoryActive: boolean
   onlineCount: number
-  handleCreatePost: (content: string, tags: string[], isAnon: boolean) => Promise<void>
+  handleCreatePost: (content: string, tags: string[], isAnon: boolean, imageUrl?: string | null) => Promise<void>
   handleLikePost: (postId: number) => Promise<void>
 }
 
@@ -65,6 +66,7 @@ function mapPost(p: any): DBPost {
     student_id: p.student_id,
     type: p.type as BoardTab,
     liked_by: Array.isArray(p.liked_by) ? p.liked_by : [],
+    image_url: p.image_url ?? null,
     author: {
       student_id: p.author?.student_id ?? '',
       nickname: p.author?.nickname ?? 'Guest Whitelist',
@@ -218,6 +220,16 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         setOnlineCount((prev) => Math.max(1, prev - leftPresences.length))
       })
+      // ── UPDATE: system_config ──
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'system_config' },
+        (payload) => {
+          const { key, value } = payload.new
+          if (key === 'enable_hype_board') setHypeActive(value)
+          if (key === 'enable_memory_board') setMemoryActive(value)
+        }
+      )
       .subscribe(async (status, err) => {
         if (err) {
           console.error(`[Realtime Board Error - Tab ${activeTab}]:`, err)
@@ -278,7 +290,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
 
   // ── Create post ───────────────────────────────────────────────────────────
   const handleCreatePost = useCallback(
-    async (content: string, tags: string[], isAnon: boolean) => {
+    async (content: string, tags: string[], isAnon: boolean, imageUrl?: string | null) => {
       if (!user) {
         toaster.create({
           title: 'Sign In Required',
@@ -298,6 +310,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
             tags,
             type: activeTab,
             is_anonymous: isAnon,
+            image_url: imageUrl || null,
           })
           .select('*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)')
           .single()
