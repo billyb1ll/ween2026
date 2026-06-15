@@ -394,7 +394,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
   // ── Admin: Pin post ───────────────────────────────────────────────────────
   const handlePinPost = useCallback(
     async (postId: number, currentStatus: boolean) => {
-      if (!user || user.role !== 'moderator') return
+      if (!user || user.role === 'student') return
 
       const nextStatus = !currentStatus
 
@@ -413,10 +413,12 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       }).catch((err) => console.error('[Realtime] Broadcast pin error:', err))
 
       try {
-        const { error } = await supabase
-          .from('posts')
-          .update({ is_pinned: nextStatus })
-          .eq('id', postId)
+        const { error } = await supabase.rpc('pin_post_secure', {
+          p_post_id: postId,
+          p_student_id: user.student_id,
+          p_pin_hash: user.pin_hash || '',
+          p_is_pinned: nextStatus,
+        })
 
         if (error) throw error
 
@@ -441,7 +443,7 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
   // ── Admin: Delete post ────────────────────────────────────────────────────
   const handleDeletePost = useCallback(
     async (postId: number) => {
-      if (!user || user.role !== 'moderator') return
+      if (!user || user.role === 'student') return
 
       // Optimistic delete
       setPosts((prev) => prev.filter((p) => p.id !== postId))
@@ -454,7 +456,11 @@ export function useBoardRealtime(activeTab: BoardTab, user: User | null): UseBoa
       }).catch((err) => console.error('[Realtime] Broadcast delete error:', err))
 
       try {
-        const { error } = await supabase.from('posts').delete().eq('id', postId)
+        const { error } = await supabase.rpc('delete_post_secure', {
+          p_post_id: postId,
+          p_student_id: user.student_id,
+          p_pin_hash: user.pin_hash || '',
+        })
         if (error) throw error
 
         toaster.create({

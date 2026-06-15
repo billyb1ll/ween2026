@@ -1852,7 +1852,7 @@ const HypeCard = memo(function HypeCard({
       </Flex>
 
       {/* Admin Controls */}
-      {currentUserRole === "moderator" || currentUserRole === "admin" ? (
+      {currentUserRole && currentUserRole !== "student" ? (
         <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
           <Button
             type="button"
@@ -2145,7 +2145,7 @@ const MemoryCard = memo(function MemoryCard({
       </Flex>
 
       {/* Admin Controls */}
-      {currentUserRole === "moderator" || currentUserRole === "admin" ? (
+      {currentUserRole && currentUserRole !== "student" ? (
         <HStack position="absolute" top={3} right={3} gap={1} zIndex={3}>
           <Button
             type="button"
