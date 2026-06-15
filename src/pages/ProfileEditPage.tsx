@@ -17,6 +17,7 @@ import {
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
+import { THAI_FACULTIES, STAFF_ROLES } from "../lib/constants";
 
 const PRESET_COLORS = [
   "#496268", // Lagoon
@@ -25,53 +26,6 @@ const PRESET_COLORS = [
   "#9d806c", // Light Cocoa
   "#5b6c6b", // Sage Slate
   "#a38c75", // Warm Ochre
-];
-
-const THAI_FACULTIES = [
-  "แพทยศาสตร์ศิริราชพยาบาล (SI)",
-  "วิทยาศาสตร์ (SC)",
-  "แพทยศาสตร์โรงพยาบาลรามาฯ (RA)",
-  "ทันตแพทยศาสตร์ (DT)",
-  "เทคนิคการแพทย์ (MT)",
-  "สาธารณสุขศาสตร์ (PH)",
-  "พยาบาลศาสตร์ (NS)",
-  "กายภาพบำบัด (PT)",
-  "โรงเรียนพยาบาลรามาธิบดี (NR)",
-  "วิศวกรรมศาสตร์ (EG)",
-  "สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)",
-  "วิทยาเขตกาญจนบุรี (KA)",
-  "สัตวแพทยศาสตร์ (VS)",
-  "หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)",
-  "สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)",
-  "โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)",
-  "โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)",
-  "ศิลปศาสตร์ (LA)",
-  "วิทยาลัยศาสนศึกษา (CRS)",
-  "วิทยาลัยนานาชาติ (IC)",
-  "เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)",
-  "โรงเรียนกายอุปกรณ์สิรินธร (PO)",
-  "วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)",
-  "คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)",
-  "วิทยาลับดุริยางคศิลป์ (MS)",
-  "วิทยาลัยราชสุดา (RS)",
-  "เภสัชศาสตร์ (PY)",
-  "เวชศาสตร์เขตร้อน (TM)",
-];
-
-const STAFF_ROLES = [
-  "ประธาน",
-  "เลขา",
-  "เหรัญญิก",
-  "ประสานงาน",
-  "Timer",
-  "Creative & Art",
-  "โสต",
-  "สวัสดิการและพัสดุ",
-  "พยาบาล",
-  "สถานที่",
-  "สันทนาการ",
-  "พี่กลุ่ม",
-  "ทะเบียน",
 ];
 
 const getInitials = (name: string) => {
@@ -456,7 +410,7 @@ export function ProfileEditPage() {
                     onClick={handleClaimSuggestion}
                     flex={{ base: 1, md: "initial" }}
                   >
-                    ใช่ ฉันเอง
+                    Yes, it's me
                   </Button>
                   <Button
                     type="button"
@@ -473,7 +427,7 @@ export function ProfileEditPage() {
                     onClick={handleDismissSuggestion}
                     flex={{ base: 1, md: "initial" }}
                   >
-                    ไม่ใช่ฉัน
+                    Not me
                   </Button>
                 </Flex>
               </Flex>
@@ -556,7 +510,7 @@ export function ProfileEditPage() {
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-nickname">
-                    Nickname (ชื่อเล่น){" "}
+                    Nickname{" "}
                     <Box as="span" color="var(--c-error)">
                       *
                     </Box>
@@ -564,7 +518,7 @@ export function ProfileEditPage() {
                 </Box>
                 <Input
                   id="edit-nickname"
-                  placeholder="e.g. บิล"
+                  placeholder="e.g. Bill"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   borderRadius="xl"
@@ -587,7 +541,7 @@ export function ProfileEditPage() {
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-faculty">
-                    Faculty (คณะ){" "}
+                    Faculty{" "}
                     <Box as="span" color="var(--c-error)">
                       *
                     </Box>
@@ -596,8 +550,8 @@ export function ProfileEditPage() {
                 <NativeSelect.Root width="100%">
                   <NativeSelect.Field
                     id="edit-faculty"
-                    aria-label="Faculty (คณะ)"
-                    title="Faculty (คณะ)"
+                    aria-label="Faculty"
+                    title="Faculty"
                     value={faculty}
                     onChange={(e) => setFaculty(e.currentTarget.value)}
                     borderRadius="xl"
@@ -632,7 +586,7 @@ export function ProfileEditPage() {
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-major">
-                    Major (สาขา){" "}
+                    Major{" "}
                     <Text
                       as="span"
                       color="fg.subtle"
@@ -645,7 +599,7 @@ export function ProfileEditPage() {
                 </Box>
                 <Input
                   id="edit-major"
-                  placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                  placeholder="e.g. Computer Science"
                   value={major}
                   onChange={(e) => setMajor(e.target.value)}
                   borderRadius="xl"
@@ -671,7 +625,7 @@ export function ProfileEditPage() {
                     letterSpacing="0.05em"
                   >
                     <label htmlFor="edit-house-position">
-                      House Position (ตำแหน่ง staff){" "}
+                      House Position (Staff Position){" "}
                       <Text as="span" color="red.500" fontSize="xs">
                         * Required
                       </Text>
@@ -680,8 +634,8 @@ export function ProfileEditPage() {
                   <NativeSelect.Root width="100%">
                     <NativeSelect.Field
                       id="edit-house-position"
-                      aria-label="House Position (ตำแหน่ง staff)"
-                      title="House Position (ตำแหน่ง staff)"
+                      aria-label="House Position"
+                      title="House Position"
                       value={selectedSelectRole}
                       onChange={(e) => {
                         const val = e.currentTarget.value;
@@ -706,7 +660,7 @@ export function ProfileEditPage() {
                           {role}
                         </option>
                       ))}
-                      <option value="Other">Other / อื่นๆ...</option>
+                      <option value="Other">Other...</option>
                     </NativeSelect.Field>
                     <NativeSelect.Indicator />
                   </NativeSelect.Root>
@@ -715,7 +669,7 @@ export function ProfileEditPage() {
                     <Input
                       id="custom-house-position"
                       aria-label="Custom house position"
-                      placeholder="Enter custom position (e.g. ตากล้องพิเศษ)"
+                      placeholder="Enter custom position (e.g. Photographer)"
                       value={customPositionText}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -786,7 +740,7 @@ export function ProfileEditPage() {
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-bio">
-                    Bio (คำโปรย){" "}
+                    Bio{" "}
                     <Text
                       as="span"
                       color="fg.subtle"
@@ -799,7 +753,7 @@ export function ProfileEditPage() {
                 </Box>
                 <Textarea
                   id="edit-bio"
-                  placeholder="e.g. สนใจเรื่องสิ่งแวดล้อม ชอบฟังเพลงอินดี้"
+                  placeholder="e.g. Passionate about coding, music lover"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   borderRadius="xl"
@@ -938,7 +892,7 @@ export function ProfileEditPage() {
                 onClick={() => navigate("/")}
                 _hover={{ bg: "bg.hero" }}
               >
-                Cancel (ยกเลิก)
+                Cancel
               </Button>
               <Button
                 type="submit"

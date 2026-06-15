@@ -99,7 +99,7 @@ function LivePresenceBadge({ count }: { count: number }) {
           )}
         </Box>
         <Text fontSize="xs" fontWeight="700" color="accent.solid">
-          {count} คนกำลังแจมบอร์ดอยู่ตอนนี้
+          {count} people jamming on the board right now
         </Text>
       </Flex>
     </motion.div>

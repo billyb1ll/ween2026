@@ -246,7 +246,7 @@ export function GalleryPage() {
           cursor="pointer"
           role="button"
           tabIndex={0}
-          aria-label="สลับมุมมองคลังภาพ"
+          aria-label="Toggle gallery view"
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
@@ -270,8 +270,8 @@ export function GalleryPage() {
           </Box>
           <Text color="accent.solid" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center">
             {viewMode === 'photos' 
-              ? 'ไม่พบรูปตัวเองในคลังใช่ไหม? ลองตามหาใบหน้าของคุณผ่านระบบ AI ที่นี่'
-              : 'กลับไปยังแกลลอรีรูปภาพหลัก'}
+              ? 'Cannot find your photos? Try searching for your face using our AI face finder.'
+              : 'Back to main photo gallery'}
           </Text>
         </Flex>
       </Box>
@@ -332,7 +332,7 @@ export function GalleryPage() {
                     cursor="pointer" align="center" gap={1.5} minW="60px"
                     role="button"
                     tabIndex={0}
-                    aria-label={`กรองรูปภาพตามใบหน้าบุคคล: ${person.name || "Unknown"}`}
+                    aria-label={`Filter photos by face: ${person.name || "Unknown"}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -390,7 +390,7 @@ export function GalleryPage() {
                   animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}
                 >
                   <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                    <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`ภาพกิจกรรมรับน้องบ้าน 7 ประจำวันที่ ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                    <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`Baan 7 orientation activity image for Day ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
                   </Box>
                 </Box>
               ))}
@@ -415,7 +415,7 @@ export function GalleryPage() {
                   cursor="pointer" align="center" gap={2}
                   role="button"
                   tabIndex={0}
-                  aria-label="เลือกใบหน้านี้เพื่อยืนยันตัวตน"
+                  aria-label="Select this face to claim identity"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
@@ -442,7 +442,7 @@ export function GalleryPage() {
                   <Text fontSize="xs" color="fg.muted">Ensure this is you before confirming.</Text>
                 </VStack>
                 <Button h="44px" px={6} bg="accent.solid" color="white" borderRadius="xl" fontWeight="700" fontSize="sm" loading={claiming} onClick={handleExecuteClaim} cursor="pointer" _hover={{ bg: "chocolate.600" }}>
-                  ยืนยันว่านี่คือฉัน (Claim This Face)
+                  Claim This Face
                 </Button>
               </Flex>
 
@@ -457,7 +457,7 @@ export function GalleryPage() {
                   {personAssets.map((asset, i) => (
                     <Box key={asset.id} position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => setSelectedAsset(asset)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }} animation={`scale-in 0.5s var(--ease-out-expo) ${Math.min(0.05 + i * 0.04, 0.35)}s both`}>
                       <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                        <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`ภาพกิจกรรมรับน้องบ้าน 7 ประจำวันที่ ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
+                        <Image src={`${proxyUrl}/assets/${asset.id}/thumbnail?size=thumbnail`} alt={`Baan 7 orientation activity image for Day ${activeDay === 'day1' ? '1' : activeDay === 'day2' ? '2' : '3'}`} w="100%" h="100%" objectFit="cover" loading="lazy" draggable={false} />
                       </Box>
                     </Box>
                   ))}

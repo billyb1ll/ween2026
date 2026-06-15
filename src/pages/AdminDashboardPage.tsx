@@ -22,6 +22,7 @@ import { getImmichConfig } from '../utils/immich'
 import { toaster } from '../components/ui/toaster'
 import { Tooltip } from '../components/ui/tooltip'
 import Papa from 'papaparse'
+import { THAI_FACULTIES } from '../lib/constants'
 
 interface AccordionSectionProps {
   title: string
@@ -120,36 +121,6 @@ interface VibeMission {
   required_count: number
 }
 
-const THAI_FACULTIES = [
-  "แพทยศาสตร์ศิริราชพยาบาล (SI)",
-  "วิทยาศาสตร์ (SC)",
-  "แพทยศาสตร์โรงพยาบาลรามาฯ (RA)",
-  "ทันตแพทยศาสตร์ (DT)",
-  "เทคนิคการแพทย์ (MT)",
-  "สาธารณสุขศาสตร์ (PH)",
-  "พยาบาลศาสตร์ (NS)",
-  "กายภาพบำบัด (PT)",
-  "โรงเรียนพยาบาลรามาธิบดี (NR)",
-  "วิศวกรรมศาสตร์ (EG)",
-  "สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)",
-  "วิทยาเขตกาญจนบุรี (KA)",
-  "สัตวแพทยศาสตร์ (VS)",
-  "หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)",
-  "สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)",
-  "โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)",
-  "โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)",
-  "ศิลปศาสตร์ (LA)",
-  "วิทยาลัยศาสนศึกษา (CRS)",
-  "วิทยาลัยนานาชาติ (IC)",
-  "เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)",
-  "โรงเรียนกายอุปกรณ์สิรินธร (PO)",
-  "วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)",
-  "คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)",
-  "วิทยาลับดุริยางคศิลป์ (MS)",
-  "วิทยาลัยราชสุดา (RS)",
-  "เภสัชศาสตร์ (PY)",
-  "เวชศาสตร์เขตร้อน (TM)",
-];
 
 export function AdminDashboardPage() {
   const { user } = useUser()
@@ -209,6 +180,7 @@ export function AdminDashboardPage() {
     collectedCount: number; 
     collectedFromCount: number;
     vibeStatus?: { strike_count: number; locked_until: string | null; current_mission_id: number | null } | null;
+    isLocked: boolean;
   } | null>(null)
   const [editNickname, setEditNickname] = useState('')
   const [editFaculty, setEditFaculty] = useState('')
@@ -628,10 +600,13 @@ export function AdminDashboardPage() {
         .eq('student_id', u.student_id)
         .maybeSingle()
 
+      const isLockedVal = vibeData?.locked_until ? new Date(vibeData.locked_until).getTime() > Date.now() : false
+
       setInspectUserStats({
         collectedCount: collectedCount || 0,
         collectedFromCount: collectedFromCount || 0,
         vibeStatus: vibeData || null,
+        isLocked: isLockedVal,
       })
 
       // Fetch relevant audit logs
@@ -1045,7 +1020,7 @@ export function AdminDashboardPage() {
             color={activeTab === 'media' ? 'white' : 'var(--c-muted)'}
             cursor="pointer"
           >
-            Media Controls (โสต)
+            Media Controls (AV)
           </Button>
         )}
       </HStack>
@@ -1055,7 +1030,7 @@ export function AdminDashboardPage() {
         <VStack align="stretch" gap={6}>
           {/* Section A: Emergency Broadcast Control */}
           <AccordionSection
-            title="Emergency Broadcast Control (ประกาศด่วนหน้างาน)"
+            title="Emergency Broadcast Control (Emergency Announcement)"
             isOpen={expandedSections.sectionA}
             onToggle={() => toggleSection('sectionA')}
           >
@@ -1108,7 +1083,7 @@ export function AdminDashboardPage() {
 
           {/* Section B: Daily Vibe Mission Sequence Configurator */}
           <AccordionSection
-            title="Daily Vibe Mission Sequence Configurator (ตั้งค่าคิวภารกิจประจำวัน)"
+            title="Daily Vibe Mission Sequence Configurator (Daily Mission Queue)"
             isOpen={expandedSections.sectionB}
             onToggle={() => toggleSection('sectionB')}
           >
@@ -1173,9 +1148,9 @@ export function AdminDashboardPage() {
                         {k} ({staffCounts[k]} staff)
                       </option>
                     ))}
-                    <option value="โสต">โสต</option>
-                    <option value="สันทนาการ">สันทนาการ</option>
-                    <option value="พี่กลุ่ม">พี่กลุ่ม</option>
+                    <option value="โสต">Media & Audio</option>
+                    <option value="สันทนาการ">Recreation</option>
+                    <option value="พี่กลุ่ม">Group Leader</option>
                     <option value="staff">General Staff</option>
                     <option value="media_admin">Media Admin</option>
                   </select>
@@ -1249,7 +1224,7 @@ export function AdminDashboardPage() {
 
           {/* Section C: Student Whitelist Matrix Table */}
           <AccordionSection
-            title="Student Whitelist Matrix Table (ระบบจัดการและกรองรายชื่อแยก Tabs)"
+            title="Student Whitelist Matrix Table (Tab-based Record Filtering)"
             isOpen={expandedSections.sectionC}
             onToggle={() => toggleSection('sectionC')}
           >
@@ -1308,9 +1283,9 @@ export function AdminDashboardPage() {
                       aria-label="Role Assignment"
                       title="Role Assignment"
                     >
-                      <option value="student">Student (น้องบ้าน)</option>
-                      <option value="staff">Staff (สตาฟบ้าน)</option>
-                      <option value="media_admin">Media Admin (โสต)</option>
+                      <option value="student">Student (Freshman)</option>
+                      <option value="staff">Staff (Orientation Staff)</option>
+                      <option value="media_admin">Media Admin (AV Control)</option>
                       <option value="moderator">Moderator</option>
                     </select>
                   </Tooltip>
@@ -1407,7 +1382,7 @@ export function AdminDashboardPage() {
                         </Table.Cell>
                         <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
                         <Table.Cell>{u.nickname || <Text as="span" color="fg.subtle" fontStyle="italic">Pending Onboarding</Text>}</Table.Cell>
-                        <Table.Cell>{u.faculty || '-'}</Table.Cell>
+                        <Table.Cell>{getFacultyEnglish(u.faculty) || '-'}</Table.Cell>
                         <Table.Cell>
                           <Tooltip label={getRoleDescription(u.role)}>
                             <Badge
@@ -1464,7 +1439,7 @@ export function AdminDashboardPage() {
 
           {/* Section D: Historical Administrative Audit Logs Timeline */}
           <AccordionSection
-            title="Historical Administrative Audit Logs Timeline (บันทึกประวัติระบบ)"
+            title="Historical Administrative Audit Logs Timeline (System Audit Logs)"
             isOpen={expandedSections.sectionD}
             onToggle={() => toggleSection('sectionD')}
           >
@@ -1511,7 +1486,7 @@ export function AdminDashboardPage() {
 
           {/* Section E: Portal Master Switches */}
           <AccordionSection
-            title="Portal Master Switches (สวิตช์ควบคุมระบบ)"
+            title="Portal Master Switches (System Control)"
             isOpen={expandedSections.sectionE}
             onToggle={() => toggleSection('sectionE')}
           >
@@ -1558,7 +1533,7 @@ export function AdminDashboardPage() {
 
           {/* Section F: Orientation Milestones Timer Setup */}
           <AccordionSection
-            title="Orientation Milestones Timer Setup (ตั้งค่าเวลานับถอยหลัง)"
+            title="Orientation Milestones Timer Setup (Countdown Timer)"
             isOpen={expandedSections.sectionF}
             onToggle={() => toggleSection('sectionF')}
           >
@@ -1611,7 +1586,7 @@ export function AdminDashboardPage() {
         <VStack align="stretch" gap={6}>
           <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
             <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              Immich Photo Server Connectivity (โสต)
+              Immich Photo Server Connectivity (AV)
             </Heading>
             <VStack gap={4} align="stretch" mb={6}>
               <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
@@ -1697,7 +1672,7 @@ export function AdminDashboardPage() {
                             <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
                               <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
                               <Table.Cell>{row.nickname || '-'}</Table.Cell>
-                              <Table.Cell>{row.faculty || '-'}</Table.Cell>
+                              <Table.Cell>{getFacultyEnglish(row.faculty) || '-'}</Table.Cell>
                               <Table.Cell>
                                 <Badge colorPalette="gray">{row.role}</Badge>
                               </Table.Cell>
@@ -1865,7 +1840,7 @@ export function AdminDashboardPage() {
                             )}
                           </HStack>
                         </Box>
-                        {inspectUserStats.vibeStatus?.locked_until && new Date(inspectUserStats.vibeStatus.locked_until).getTime() > Date.now() && (
+                        {inspectUserStats.vibeStatus?.locked_until && inspectUserStats.isLocked && (
                           <Box w="100%" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
                             <Text fontSize="xs" fontWeight="700" color="red.700" display="flex" alignItems="center" gap={1}>
                               <Box as="span" className="material-symbols-outlined" fontSize="14px">lock_clock</Box>
@@ -1929,7 +1904,7 @@ export function AdminDashboardPage() {
                     </Box>
                     <Box>
                       <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                        <label htmlFor="inspect-major">Major (สาขาวิชา)</label>
+                        <label htmlFor="inspect-major">Major (Field of Study)</label>
                       </Box>
                       <Input
                         id="inspect-major"
@@ -1941,14 +1916,14 @@ export function AdminDashboardPage() {
                     </Box>
                     <Box>
                       <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                        <label htmlFor="inspect-house-position">House Position (ตำแหน่ง staff)</label>
+                        <label htmlFor="inspect-house-position">House Position (Staff Assignment)</label>
                       </Box>
                       <Input
                         id="inspect-house-position"
                         value={editHousePosition}
                         onChange={(e) => setEditHousePosition(e.target.value)}
                         bg="var(--c-ivory)"
-                        placeholder="e.g. สันทนาการ, โสต"
+                        placeholder="e.g. Recreation, Media"
                         h="38px"
                       />
                     </Box>

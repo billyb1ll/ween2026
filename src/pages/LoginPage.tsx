@@ -327,7 +327,7 @@ export function LoginPage() {
                         letterSpacing="0.05em"
                       >
                         <label htmlFor="student-id-input">
-                          Student ID / รหัสนิสิต
+                          Student ID
                         </label>
                       </Box>
                       <Input

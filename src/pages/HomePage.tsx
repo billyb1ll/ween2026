@@ -37,7 +37,7 @@ const features = [
   },
   {
     title: "Gallery",
-    description: "ระบบสตรีมรูปภาพกิจกรรมหน้างานแบบเรียลไทม์ และระบบตามล่าใบหน้าบุคคลด้วยเทคโนโลยีปัญญาประดิษฐ์ AI",
+    description: "Real-time event photo streaming and AI-powered face claiming system.",
     icon: "photo_library",
     color: "var(--c-white)",
     textColor: "var(--c-ink)",
@@ -244,7 +244,7 @@ export function HomePage() {
             lineHeight={1.6}
             mb={{ base: 8, md: 12 }}
           >
-            ยินดีต้อนรับสู่บ้าน 7 ศูนย์กลางรวมกิจกรรมปฐมนิเทศ คลังรูปภาพดร็อปสด และเครือข่ายพี่น้องสตาฟคณะ ICT ตัวจริง
+            Welcome to Baan 7—the ultimate hub for orientation activities, real-time photo drops, and connecting with the ICT staff community.
           </Text>
 
           <Flex flexWrap="wrap" gap={3} align="center">

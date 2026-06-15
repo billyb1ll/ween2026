@@ -68,11 +68,7 @@ function NavItem({ to, children, icon }: NavItemProps) {
     </Flex>
   );
 
-  return (
-    <NavLink to={to}>
-      {({ isActive }) => navContent(isActive)}
-    </NavLink>
-  );
+  return <NavLink to={to}>{({ isActive }) => navContent(isActive)}</NavLink>;
 }
 
 interface UserDropdownContentProps {
@@ -791,9 +787,5 @@ function MobileDockItem({
     </Flex>
   );
 
-  return (
-    <NavLink to={to}>
-      {({ isActive }) => dockContent(isActive)}
-    </NavLink>
-  );
+  return <NavLink to={to}>{({ isActive }) => dockContent(isActive)}</NavLink>;
 }

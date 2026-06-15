@@ -29,6 +29,7 @@ import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 
+
 interface StaffProfile {
   id: string; // student_id
   name: string;
@@ -373,7 +374,7 @@ export function VibeCheckPage() {
   const groupedStaffData = useMemo(() => {
     const grouped: { [key: string]: DBStaff[] } = {};
     filteredStaff.forEach((s) => {
-      const pos = s.house_position || "ทั่วไป";
+      const pos = s.house_position || "General";
       if (!grouped[pos]) {
         grouped[pos] = [];
       }
@@ -1287,7 +1288,7 @@ export function VibeCheckPage() {
                       textTransform="uppercase"
                       letterSpacing="0.05em"
                     >
-                      Bio / คำโปรย
+                      Bio
                     </Text>
                     <Text fontSize="xs" color="fg.default" lineHeight="1.6">
                       {selectedStaffDetail.bio || "No bio entered."}

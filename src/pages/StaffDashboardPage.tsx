@@ -413,7 +413,7 @@ export function StaffDashboardPage() {
             color="var(--c-chocolate)"
             mb={4}
           >
-            My VibeCheck Profile (สตาฟสไลด์การ์ด)
+            My VibeCheck Profile (Staff Card)
           </Heading>
 
           <VStack
@@ -429,10 +429,10 @@ export function StaffDashboardPage() {
                 color="var(--c-muted)"
                 textTransform="uppercase"
               >
-                Bio / Intro Phrase (คำโปรยสตาฟ)
+                Bio / Intro Phrase (Staff Intro)
               </Text>
               <Input
-                placeholder="e.g. พี่เปิ้ล สตาฟสันทนาการบ้าน 7 ยินดีที่ได้รู้จักทุกคนค้าบ 🧡"
+                placeholder="e.g. Apple, Recreation Staff of Baan 7, nice to meet you all! 🧡"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 h="44px"

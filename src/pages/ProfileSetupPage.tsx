@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react'
 import { useUser } from '../context/UserContext'
 import { toaster } from '../components/ui/toaster'
+import { THAI_FACULTIES, STAFF_ROLES } from '../lib/constants'
 
 const PRESET_COLORS = [
   '#496268', // Lagoon
@@ -21,53 +22,6 @@ const PRESET_COLORS = [
   '#9d806c', // Light Cocoa
   '#5b6c6b', // Sage Slate
   '#a38c75', // Warm Ochre
-]
-
-const THAI_FACULTIES = [
-  'แพทยศาสตร์ศิริราชพยาบาล (SI)',
-  'วิทยาศาสตร์ (SC)',
-  'แพทยศาสตร์โรงพยาบาลรามาฯ (RA)',
-  'ทันตแพทยศาสตร์ (DT)',
-  'เทคนิคการแพทย์ (MT)',
-  'สาธารณสุขศาสตร์ (PH)',
-  'พยาบาลศาสตร์ (NS)',
-  'กายภาพบำบัด (PT)',
-  'โรงเรียนพยาบาลรามาธิบดี (NR)',
-  'วิศวกรรมศาสตร์ (EG)',
-  'สิ่งแวดล้อมและทรัพยากรศาสตร์ (EN)',
-  'วิทยาเขตกาญจนบุรี (KA)',
-  'สัตวแพทยศาสตร์ (VS)',
-  'หลักสูตรแพทยศาสตร์บัณฑิต โครงการผลิตแพทย์เพื่อชาวชนบท (PI)',
-  'สาขาวิชากิจกรรมบำบัด คณะกายภาพบำบัด (OT)',
-  'โครงการจัดตั้งวิทยาเขตนครสวรรค์ (NA)',
-  'โครงการจัดตั้งวิทยาเขตอำนาจเจริญ (AM)',
-  'ศิลปศาสตร์ (LA)',
-  'วิทยาลัยศาสนศึกษา (CRS)',
-  'วิทยาลัยนานาชาติ (IC)',
-  'เทคโนโลยีสารสนเทศและการสื่อสาร (ICT)',
-  'โรงเรียนกายอุปกรณ์สิรินธร (PO)',
-  'วิทยาลัยวิทยาศาสตร์และเทคโนโลยี (SS)',
-  'คณะสังคมศาสตร์และมนุษย์ศาสตร์ (SH)',
-  'วิทยาลับดุริยางคศิลป์ (MS)',
-  'วิทยาลัยราชสุดา (RS)',
-  'เภสัชศาสตร์ (PY)',
-  'เวชศาสตร์เขตร้อน (TM)'
-]
-
-const STAFF_ROLES = [
-  'ประธาน',
-  'เลขา',
-  'เหรัญญิก',
-  'ประสานงาน',
-  'Timer',
-  'Creative & Art',
-  'โสต',
-  'สวัสดิการและพัสดุ',
-  'พยาบาล',
-  'สถานที่',
-  'สันทนาการ',
-  'พี่กลุ่ม',
-  'ทะเบียน'
 ]
 
 export function ProfileSetupPage() {
@@ -172,7 +126,7 @@ export function ProfileSetupPage() {
                   textTransform="uppercase"
                   letterSpacing="0.05em"
                 >
-                  <label htmlFor="setup-nickname">Nickname (ชื่อเล่น) <Box as="span" color="var(--c-error)">*</Box></label>
+                  <label htmlFor="setup-nickname">Nickname <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
                 <Input
                   id="setup-nickname"
@@ -202,13 +156,13 @@ export function ProfileSetupPage() {
                   textTransform="uppercase"
                   letterSpacing="0.05em"
                 >
-                  <label htmlFor="setup-faculty">Faculty (คณะ) <Box as="span" color="var(--c-error)">*</Box></label>
+                  <label htmlFor="setup-faculty">Faculty <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
                 <NativeSelect.Root width="100%">
                   <NativeSelect.Field
                     id="setup-faculty"
-                    aria-label="Faculty (คณะ)"
-                    title="Faculty (คณะ)"
+                    aria-label="Faculty"
+                    title="Faculty"
                     value={faculty}
                     onChange={(e) => setFaculty(e.currentTarget.value)}
                     borderRadius="xl"
@@ -245,7 +199,7 @@ export function ProfileSetupPage() {
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="setup-major">
-                    {isStaff ? 'Staff Position (ตำแหน่ง)' : 'Major (สาขา)'}{' '}
+                    {isStaff ? 'Staff Position' : 'Major'}{' '}
                     <Text as="span" color="var(--c-outline)" fontSize="2xs" fontWeight="normal">
                       (Optional)
                     </Text>
@@ -255,8 +209,8 @@ export function ProfileSetupPage() {
                   <NativeSelect.Root width="100%">
                     <NativeSelect.Field
                       id="setup-major"
-                      aria-label="Staff Position (ตำแหน่ง)"
-                      title="Staff Position (ตำแหน่ง)"
+                      aria-label="Staff Position"
+                      title="Staff Position"
                       value={major}
                       onChange={(e) => setMajor(e.currentTarget.value)}
                       borderRadius="xl"
@@ -281,7 +235,7 @@ export function ProfileSetupPage() {
                 ) : (
                   <Input
                     id="setup-major"
-                    placeholder="e.g. วิทยาการคอมพิวเตอร์"
+                    placeholder="e.g. Computer Science"
                     value={major}
                     onChange={(e) => setMajor(e.target.value)}
                     borderRadius="xl"
