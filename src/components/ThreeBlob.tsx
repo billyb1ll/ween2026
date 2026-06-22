@@ -1,7 +1,7 @@
-import { Canvas, useFrame } from '@react-three/fiber'
-import { useRef, useEffect, useState, useCallback } from 'react'
-import * as THREE from 'three'
-import { Box } from '@chakra-ui/react'
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef, useEffect, useState, useCallback } from "react";
+import * as THREE from "three";
+import { Box } from "@chakra-ui/react";
 
 // Custom shaders for morphing fluid blob
 const vertexShader = `
@@ -111,7 +111,7 @@ void main() {
   
   gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
 }
-`
+`;
 
 const fragmentShader = `
 uniform vec3 uColor1; // Deep Chocolate Fondant: #4A2B17
@@ -139,101 +139,133 @@ void main() {
   
   gl_FragColor = vec4(finalColor, 0.92);
 }
-`
+`;
 
 const initialUniforms = {
   uTime: { value: 0 },
   uScroll: { value: 0 },
-  uColor1: { value: new THREE.Color('#4A2B17') },
-  uColor2: { value: new THREE.Color('#C5E0E6') },
+  uColor1: { value: new THREE.Color("#4A2B17") },
+  uColor2: { value: new THREE.Color("#C5E0E6") },
   u_pointer: { value: new THREE.Vector2(0, 0) },
   u_mouseIntensity: { value: 0.0 },
-}
+};
 
 interface BlobMeshProps {
-  scrollY: number
+  scrollY: number;
 }
 
 function BlobMesh({ scrollY }: BlobMeshProps) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  const materialRef = useRef<THREE.ShaderMaterial>(null)
-  const scrollRef = useRef(0)
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const scrollRef = useRef(0);
 
   // Refs for tracking pointer coordinates smoothly
-  const pointerXRef = useRef(0)
-  const pointerYRef = useRef(0)
-  const pointerInsideRef = useRef(false)
-  const lastMoveTimeRef = useRef(0)
-  const currentIntensityRef = useRef(0)
+  const pointerXRef = useRef(0);
+  const pointerYRef = useRef(0);
+  const pointerInsideRef = useRef(false);
+  const lastMoveTimeRef = useRef(0);
+  const currentIntensityRef = useRef(0);
 
   useEffect(() => {
     const handlePointerMove = () => {
-      pointerInsideRef.current = true
-      lastMoveTimeRef.current = performance.now()
-    }
+      pointerInsideRef.current = true;
+      lastMoveTimeRef.current = performance.now();
+    };
 
     const handlePointerLeave = () => {
-      pointerInsideRef.current = false
-    }
+      pointerInsideRef.current = false;
+    };
 
     const handlePointerEnter = () => {
-      pointerInsideRef.current = true
-      lastMoveTimeRef.current = performance.now()
-    }
+      pointerInsideRef.current = true;
+      lastMoveTimeRef.current = performance.now();
+    };
 
-    window.addEventListener('pointermove', handlePointerMove, { passive: true })
-    document.addEventListener('mouseleave', handlePointerLeave, { passive: true })
-    document.addEventListener('mouseenter', handlePointerEnter, { passive: true })
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: true,
+    });
+    document.addEventListener("mouseleave", handlePointerLeave, {
+      passive: true,
+    });
+    document.addEventListener("mouseenter", handlePointerEnter, {
+      passive: true,
+    });
 
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      document.removeEventListener('mouseleave', handlePointerLeave)
-      document.removeEventListener('mouseenter', handlePointerEnter)
-    }
-  }, [])
+      window.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("mouseleave", handlePointerLeave);
+      document.removeEventListener("mouseenter", handlePointerEnter);
+    };
+  }, []);
 
   useFrame((state) => {
-    const totalHeight = document.documentElement.scrollHeight - window.innerHeight || 1
-    const targetScroll = scrollY / totalHeight
-    
+    const totalHeight =
+      document.documentElement.scrollHeight - window.innerHeight || 1;
+    const targetScroll = scrollY / totalHeight;
+
     // Smooth scroll interpolation (lerp)
-    scrollRef.current = THREE.MathUtils.lerp(scrollRef.current, targetScroll, 0.06)
+    scrollRef.current = THREE.MathUtils.lerp(
+      scrollRef.current,
+      targetScroll,
+      0.06,
+    );
 
     // Smooth pointer coordinate tracking (lerp factor 0.03 for luxurious, fluid feel)
-    pointerXRef.current = THREE.MathUtils.lerp(pointerXRef.current, state.pointer.x, 0.03)
-    pointerYRef.current = THREE.MathUtils.lerp(pointerYRef.current, state.pointer.y, 0.03)
+    pointerXRef.current = THREE.MathUtils.lerp(
+      pointerXRef.current,
+      state.pointer.x,
+      0.03,
+    );
+    pointerYRef.current = THREE.MathUtils.lerp(
+      pointerYRef.current,
+      state.pointer.y,
+      0.03,
+    );
 
     // Dynamic mouse intensity tracking (lerp factor 0.05)
     // Awakening on movement, decaying when stationary (> 1.0s) or off-canvas
-    const now = performance.now()
-    const timeSinceLastMove = now - lastMoveTimeRef.current
-    const targetIntensity = (pointerInsideRef.current && timeSinceLastMove < 1000) ? 1.0 : 0.0
-    currentIntensityRef.current = THREE.MathUtils.lerp(currentIntensityRef.current, targetIntensity, 0.05)
+    const now = performance.now();
+    const timeSinceLastMove = now - lastMoveTimeRef.current;
+    const targetIntensity =
+      pointerInsideRef.current && timeSinceLastMove < 1000 ? 1.0 : 0.0;
+    currentIntensityRef.current = THREE.MathUtils.lerp(
+      currentIntensityRef.current,
+      targetIntensity,
+      0.05,
+    );
 
     // Update time, scroll, pointer and mouseIntensity uniforms directly on the instantiated material object
     if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime()
-      materialRef.current.uniforms.uScroll.value = scrollRef.current
-      materialRef.current.uniforms.u_pointer.value.set(pointerXRef.current, pointerYRef.current)
-      materialRef.current.uniforms.u_mouseIntensity.value = currentIntensityRef.current
+      materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+      materialRef.current.uniforms.uScroll.value = scrollRef.current;
+      materialRef.current.uniforms.u_pointer.value.set(
+        pointerXRef.current,
+        pointerYRef.current,
+      );
+      materialRef.current.uniforms.u_mouseIntensity.value =
+        currentIntensityRef.current;
     }
 
     // Dynamic rotation, scale, and translation shifts
     if (meshRef.current) {
       // Y-axis: base rotation + scroll-driven rotation + pointer X offset (clamped to max 0.25 rad)
-      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.15 + scrollRef.current * Math.PI * 1.5 + pointerXRef.current * 0.25
-      
+      meshRef.current.rotation.y =
+        state.clock.getElapsedTime() * 0.15 +
+        scrollRef.current * Math.PI * 1.5 +
+        pointerXRef.current * 0.25;
+
       // X-axis: base rotation - pointer Y offset (clamped to max 0.25 rad)
-      meshRef.current.rotation.x = state.clock.getElapsedTime() * 0.08 - pointerYRef.current * 0.25
-      
+      meshRef.current.rotation.x =
+        state.clock.getElapsedTime() * 0.08 - pointerYRef.current * 0.25;
+
       // Scaling down gracefully as user scrolls
-      const scale = 1.85 - scrollRef.current * 0.5
-      meshRef.current.scale.setScalar(scale)
-      
+      const scale = 1.85 - scrollRef.current * 0.5;
+      meshRef.current.scale.setScalar(scale);
+
       // Vertical position shifts to follow typography flow
-      meshRef.current.position.y = -scrollRef.current * 2.8
+      meshRef.current.position.y = -scrollRef.current * 2.8;
     }
-  })
+  });
 
   return (
     <mesh ref={meshRef} position={[0.5, 0.2, 0]}>
@@ -246,39 +278,33 @@ function BlobMesh({ scrollY }: BlobMeshProps) {
         transparent
       />
     </mesh>
-  )
+  );
 }
 
 export function ThreeBlob() {
-  const [scrollY, setScrollY] = useState(0)
+  const [scrollY, setScrollY] = useState(0);
 
   const handleScroll = useCallback(() => {
-    setScrollY(window.scrollY)
-  }, [])
+    setScrollY(window.scrollY);
+  }, []);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   return (
-    <Box
-      position="absolute"
-      inset={0}
-      pointerEvents="none"
-      zIndex={1}
-      h="100%"
-    >
+    <Box position="absolute" inset={0} pointerEvents="none" zIndex={1} h="100%">
       <Canvas
         camera={{ position: [0, 0, 3.5], fov: 45 }}
         gl={{ antialias: true, alpha: true }}
         dpr={[1, 1.5]} // Performance optimization: cap pixel ratio
         style={{
-          position: 'sticky',
+          position: "sticky",
           top: 0,
-          width: '100%',
-          height: '100vh',
-          pointerEvents: 'none',
+          width: "100%",
+          height: "100vh",
+          pointerEvents: "none",
         }}
       >
         <ambientLight intensity={0.5} />
@@ -286,5 +312,5 @@ export function ThreeBlob() {
         <BlobMesh scrollY={scrollY} />
       </Canvas>
     </Box>
-  )
+  );
 }

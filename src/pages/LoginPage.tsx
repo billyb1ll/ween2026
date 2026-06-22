@@ -50,6 +50,63 @@ export function LoginPage() {
     }
   }, [user, navigate, showCheckmark]);
 
+  const keyboardHandlersRef = useRef<{
+    handleKeypadPress: (val: string) => void;
+    handleBackspace: () => void;
+    handleRegisterPinSubmit: (e: React.FormEvent) => Promise<void>;
+    pin: string;
+    confirmPin: string;
+    authStage: "id" | "register_pin" | "enter_pin";
+    submitting: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    keyboardHandlersRef.current = {
+      handleKeypadPress,
+      handleBackspace,
+      handleRegisterPinSubmit,
+      pin,
+      confirmPin,
+      authStage,
+      submitting,
+    };
+  });
+
+  useEffect(() => {
+    if (authStage === "id") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!keyboardHandlersRef.current) return;
+      const {
+        handleKeypadPress: press,
+        handleBackspace: back,
+        handleRegisterPinSubmit: submit,
+        pin: p,
+        confirmPin: cp,
+        authStage: stage,
+        submitting: subs,
+      } = keyboardHandlersRef.current;
+
+      if (subs) return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        press(e.key);
+      } else if (e.key === "Backspace") {
+        back();
+      } else if (e.key === "Enter") {
+        if (stage === "register_pin" && p.length === 6 && cp.length === 6) {
+          submit({ preventDefault: () => {} } as React.FormEvent);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [authStage]);
+
+
   // Handle Stage 1: ID Verification
   const handleVerifyId = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +141,7 @@ export function LoginPage() {
   };
 
   // Handle Stage 2: Register PIN
-  const handleRegisterPinSubmit = async (e: React.FormEvent) => {
+  async function handleRegisterPinSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (pin.length !== 6 || confirmPin.length !== 6) {
       toaster.create({
@@ -120,10 +177,11 @@ export function LoginPage() {
         type: "error",
       });
     }
-  };
+  }
 
   // Keypad Actions for PIN entry
-  const handleKeypadPress = (val: string) => {
+  function handleKeypadPress(val: string) {
+    if (submitting) return;
     if (authStage === "enter_pin") {
       if (pin.length < 6) {
         const newPin = pin + val;
@@ -139,9 +197,10 @@ export function LoginPage() {
         setConfirmPin(confirmPin + val);
       }
     }
-  };
+  }
 
-  const handleBackspace = () => {
+  function handleBackspace() {
+    if (submitting) return;
     if (authStage === "enter_pin") {
       setPin(pin.slice(0, -1));
     } else if (authStage === "register_pin") {
@@ -151,9 +210,10 @@ export function LoginPage() {
         setPin(pin.slice(0, -1));
       }
     }
-  };
+  }
 
   const handleClear = () => {
+    if (submitting) return;
     setPin("");
     setConfirmPin("");
   };
@@ -373,6 +433,7 @@ export function LoginPage() {
                       _active={{ transform: "translateY(0)" }}
                       transition="all 0.2s var(--ease-out-quart)"
                       loading={submitting}
+                      disabled={submitting}
                       w="100%"
                     >
                       Verify ID
@@ -450,6 +511,7 @@ export function LoginPage() {
                         onKeyPress={handleKeypadPress}
                         onBackspace={handleBackspace}
                         onClear={handleClear}
+                        disabled={submitting}
                       />
                     </Box>
 
@@ -466,7 +528,7 @@ export function LoginPage() {
                         transform: "translateY(-2px)",
                       }}
                       loading={submitting}
-                      disabled={pin.length !== 6 || confirmPin.length !== 6}
+                      disabled={pin.length !== 6 || confirmPin.length !== 6 || submitting}
                       w="100%"
                     >
                       Configure PIN
@@ -520,6 +582,7 @@ export function LoginPage() {
                     onKeyPress={handleKeypadPress}
                     onBackspace={handleBackspace}
                     onClear={handleClear}
+                    disabled={submitting}
                   />
 
                   <Button
@@ -550,26 +613,27 @@ interface KeypadProps {
   onKeyPress: (val: string) => void;
   onBackspace: () => void;
   onClear: () => void;
+  disabled?: boolean;
 }
 
-function NumericKeypad({ onKeyPress, onBackspace, onClear }: KeypadProps) {
+function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadProps) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
   return (
     <VStack gap={3} w="100%" maxW="320px" mx="auto" py={3}>
       <Flex gap={3} justify="center" w="100%">
         {keys.slice(0, 3).map((k) => (
-          <KeypadButton key={k} value={k} onClick={onKeyPress} />
+          <KeypadButton key={k} value={k} onClick={onKeyPress} disabled={disabled} />
         ))}
       </Flex>
       <Flex gap={3} justify="center" w="100%">
         {keys.slice(3, 6).map((k) => (
-          <KeypadButton key={k} value={k} onClick={onKeyPress} />
+          <KeypadButton key={k} value={k} onClick={onKeyPress} disabled={disabled} />
         ))}
       </Flex>
       <Flex gap={3} justify="center" w="100%">
         {keys.slice(6, 9).map((k) => (
-          <KeypadButton key={k} value={k} onClick={onKeyPress} />
+          <KeypadButton key={k} value={k} onClick={onKeyPress} disabled={disabled} />
         ))}
       </Flex>
       <Flex gap={3} justify="center" w="100%">
@@ -586,10 +650,11 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear }: KeypadProps) {
           onClick={onClear}
           _hover={{ bg: "rgba(0,0,0,0.04)" }}
           cursor="pointer"
+          disabled={disabled}
         >
           Clear
         </Button>
-        <KeypadButton value="0" onClick={onKeyPress} />
+        <KeypadButton value="0" onClick={onKeyPress} disabled={disabled} />
         <Button
           type="button"
           flex={1}
@@ -605,6 +670,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear }: KeypadProps) {
           justifyContent="center"
           cursor="pointer"
           aria-label="Backspace"
+          disabled={disabled}
         >
           <span className="material-symbols-outlined">backspace</span>
         </Button>
@@ -616,9 +682,11 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear }: KeypadProps) {
 function KeypadButton({
   value,
   onClick,
+  disabled,
 }: {
   value: string;
   onClick: (val: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -641,6 +709,7 @@ function KeypadButton({
       }}
       onClick={() => onClick(value)}
       cursor="pointer"
+      disabled={disabled}
     >
       {value}
     </Button>

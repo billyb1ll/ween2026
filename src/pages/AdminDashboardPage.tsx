@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Flex,
@@ -16,23 +16,29 @@ import {
   Dialog,
   NativeSelect,
   Image,
-} from '@chakra-ui/react'
-import { useUser } from '../context/UserContext'
-import { supabase } from '../lib/supabase'
-import { getImmichConfig } from '../utils/immich'
-import { toaster } from '../components/ui/toaster'
-import { Tooltip } from '../components/ui/tooltip'
-import Papa from 'papaparse'
-import { THAI_FACULTIES, STAFF_ROLES } from '../lib/constants'
+} from "@chakra-ui/react";
+import { useUser } from "../context/UserContext";
+import { supabase } from "../lib/supabase";
+import { getImmichConfig } from "../utils/immich";
+import { Link } from "react-router-dom";
+import { toaster } from "../components/ui/toaster";
+import { Tooltip } from "../components/ui/tooltip";
+import Papa from "papaparse";
+import { THAI_FACULTIES, STAFF_ROLES } from "../lib/constants";
 
 interface AccordionSectionProps {
-  title: string
-  isOpen: boolean
-  onToggle: () => void
-  children: React.ReactNode
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
 }
 
-function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectionProps) {
+function AccordionSection({
+  title,
+  isOpen,
+  onToggle,
+  children,
+}: AccordionSectionProps) {
   return (
     <Box
       bg="var(--c-white)"
@@ -53,9 +59,11 @@ function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectio
           py={5}
           px={6}
           h="auto"
-          _hover={{ bg: 'color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))' }}
+          _hover={{
+            bg: "color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))",
+          }}
           borderRadius="none"
-          borderBottom={isOpen ? '1px solid' : 'none'}
+          borderBottom={isOpen ? "1px solid" : "none"}
           borderColor="border.subtle"
           cursor="pointer"
           display="flex"
@@ -70,7 +78,7 @@ function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectio
             className="material-symbols-outlined"
             color="var(--c-chocolate)"
             transition="transform 0.2s ease"
-            transform={isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
+            transform={isOpen ? "rotate(180deg)" : "rotate(0deg)"}
           >
             expand_more
           </Box>
@@ -82,275 +90,341 @@ function AccordionSection({ title, isOpen, onToggle, children }: AccordionSectio
         </Box>
       )}
     </Box>
-  )
+  );
 }
 
-
 interface DBUser {
-  student_id: string
-  nickname: string | null
-  faculty: string | null
-  role: string
-  created_at: string
-  major?: string | null
-  house_position?: string | null
-  profile_pic_url?: string | null
-  bio?: string | null
-  ig?: string | null
-  avatar_color?: string
+  student_id: string;
+  nickname: string | null;
+  faculty: string | null;
+  role: string;
+  created_at: string;
+  major?: string | null;
+  house_position?: string | null;
+  profile_pic_url?: string | null;
+  bio?: string | null;
+  ig?: string | null;
+  avatar_color?: string;
 }
 
 interface CSVRecord {
-  student_id: string
-  role: string
-  nickname: string | null
-  faculty: string | null
-  major: string | null
+  student_id: string;
+  role: string;
+  nickname: string | null;
+  faculty: string | null;
+  major: string | null;
 }
 
 interface AuditLog {
-  id: number
-  moderator_id: string
-  action_type: string
-  target_id: string | null
-  details: string
-  created_at: string
-  users?: { nickname: string | null } | null
+  id: number;
+  moderator_id: string;
+  action_type: string;
+  target_id: string | null;
+  details: string;
+  created_at: string;
+  users?: { nickname: string | null } | null;
 }
 
 interface VibeMission {
-  id: number
-  sequence_order: number
-  target_role: string
-  required_count: number
+  id: number;
+  sequence_order: number;
+  target_role: string;
+  required_count: number;
 }
 
+type HypeBoardMode = "active" | "slow_3s" | "read_only";
 
 export function AdminDashboardPage() {
-  const { user } = useUser()
+  const { user } = useUser();
 
   // Initialize tab directly from user role to avoid cascading useEffect renders
-  const [activeTab, setActiveTab] = useState<'moderator' | 'media'>(() => {
-    if (user?.role === 'moderator') return 'moderator'
-    return 'media'
-  })
+  const [activeTab, setActiveTab] = useState<"moderator" | "media">(() => {
+    if (user?.role === "moderator") return "moderator";
+    return "media";
+  });
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true);
 
   // Whitelist/Users States
-  const [whitelistedUsers, setWhitelistedUsers] = useState<DBUser[]>([])
-  const [newStudentId, setNewStudentId] = useState('')
-  const [newRole, setNewRole] = useState('student')
-  const [enableHypeBoard, setEnableHypeBoard] = useState(true)
-  const [enableMemoryBoard, setEnableMemoryBoard] = useState(true)
-  const [eventTitle, setEventTitle] = useState('First Meet')
-  const [eventTime, setEventTime] = useState('')
-  const [updatingEvent, setUpdatingEvent] = useState(false)
+  const [whitelistedUsers, setWhitelistedUsers] = useState<DBUser[]>([]);
+  const [lastUpdatedStudentId, setLastUpdatedStudentId] = useState<string | null>(null);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [newStudentId, setNewStudentId] = useState("");
+  const [newRole, setNewRole] = useState("student");
+  const [enableMemoryBoard, setEnableMemoryBoard] = useState(true);
+  const [eventTitle, setEventTitle] = useState("First Meet");
+  const [eventTime, setEventTime] = useState("");
+  const [updatingEvent, setUpdatingEvent] = useState(false);
+
+  // Command Center States
+  const [hypeBoardMode, setHypeBoardMode] = useState<HypeBoardMode>("active");
+  const [globalMuteActive, setGlobalMuteActive] = useState(false);
+  const [tickerText, setTickerText] = useState("");
+  const [tickerActive, setTickerActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Multi-Select States
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
-  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Accordion Sections State
   const [expandedSections, setExpandedSections] = useState({
     sectionA: false, // Emergency Broadcast
     sectionB: false, // Daily Vibe Mission Sequence Configurator
-    sectionC: true,  // Student Whitelist Matrix Table
+    sectionC: true, // Student Whitelist Matrix Table
     sectionD: false, // Historical Administrative Audit Logs Timeline
     sectionE: false, // Portal Master Switches
     sectionF: false, // Orientation Milestones Timer Setup
-  })
+  });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
-    }))
-  }
+    }));
+  };
 
   // Game Engine & Config states
-  const [missions, setMissions] = useState<VibeMission[]>([])
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
-  const [staffCounts, setStaffCounts] = useState<Record<string, number>>({})
-  const [emergencyText, setEmergencyText] = useState('')
-  const [emergencyActive, setEmergencyActive] = useState(false)
-  const [maxStrikes, setMaxStrikes] = useState(5)
-  const [baseCooldown, setBaseCooldown] = useState(1)
-  const [maxCooldown, setMaxCooldown] = useState(30)
+  const [missions, setMissions] = useState<VibeMission[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [staffCounts, setStaffCounts] = useState<Record<string, number>>({});
+  const [emergencyText, setEmergencyText] = useState("");
+  const [emergencyActive, setEmergencyActive] = useState(false);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [isSavingTicker, setIsSavingTicker] = useState(false);
+  const [maxStrikes, setMaxStrikes] = useState(5);
+  const [baseCooldown, setBaseCooldown] = useState(1);
+  const [maxCooldown, setMaxCooldown] = useState(30);
 
   // User Inspector states
-  const [inspectUser, setInspectUser] = useState<DBUser | null>(null)
-  const [inspectUserStats, setInspectUserStats] = useState<{ 
-    collectedCount: number; 
+  const [inspectUser, setInspectUser] = useState<DBUser | null>(null);
+  const [inspectUserStats, setInspectUserStats] = useState<{
+    collectedCount: number;
     collectedFromCount: number;
-    vibeStatus?: { strike_count: number; locked_until: string | null; current_mission_id: number | null } | null;
+    vibeStatus?: {
+      strike_count: number;
+      locked_until: string | null;
+      current_mission_id: number | null;
+    } | null;
     isLocked: boolean;
-    unlockedStaff?: { staff_id: string; nickname: string; profile_pic_url: string; avatar_color: string }[];
-  } | null>(null)
-  const [editNickname, setEditNickname] = useState('')
-  const [editFaculty, setEditFaculty] = useState('')
-  const [editMajor, setEditMajor] = useState('')
-  const [editRole, setEditRole] = useState('')
-  const [inspectUserLogs, setInspectUserLogs] = useState<AuditLog[]>([])
-  const [editHousePosition, setEditHousePosition] = useState('')
-  const [userToDelete, setUserToDelete] = useState<string | null>(null)
-  const [whitelistRoleTab, setWhitelistRoleTab] = useState<'student' | 'staff'>('student')
+    unlockedStaff?: {
+      staff_id: string;
+      nickname: string;
+      profile_pic_url: string;
+      avatar_color: string;
+    }[];
+  } | null>(null);
+  const [editNickname, setEditNickname] = useState("");
+  const [editFaculty, setEditFaculty] = useState("");
+  const [editMajor, setEditMajor] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [inspectUserLogs, setInspectUserLogs] = useState<AuditLog[]>([]);
+  const [editHousePosition, setEditHousePosition] = useState("");
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [whitelistRoleTab, setWhitelistRoleTab] = useState<"student" | "staff">(
+    "student",
+  );
 
   const filteredWhitelistedUsers = whitelistedUsers.filter((u) => {
-    if (whitelistRoleTab === 'student') {
-      return u.role === 'student'
-    } else {
-      return u.role !== 'student'
+    // Role tab filter
+    const matchesTab =
+      whitelistRoleTab === "student"
+        ? u.role === "student"
+        : u.role !== "student";
+    if (!matchesTab) return false;
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return (
+        u.student_id.toLowerCase().includes(q) ||
+        (u.nickname || "").toLowerCase().includes(q) ||
+        (u.faculty || "").toLowerCase().includes(q)
+      );
     }
-  })
+    return true;
+  });
 
   // Mission configurator form
-  const [newMissionTarget, setNewMissionTarget] = useState('')
-  const [newMissionCount, setNewMissionCount] = useState(1)
+  const [newMissionTarget, setNewMissionTarget] = useState("");
+  const [newMissionCount, setNewMissionCount] = useState(1);
 
   // CSV States
-  const [csvRecords, setCsvRecords] = useState<CSVRecord[]>([])
-  const [showCsvModal, setShowCsvModal] = useState(false)
-  const [upserting, setUpserting] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [csvRecords, setCsvRecords] = useState<CSVRecord[]>([]);
+  const [showCsvModal, setShowCsvModal] = useState(false);
+  const [upserting, setUpserting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Media Admin States
-  const immichConfig = getImmichConfig()
+  const immichConfig = getImmichConfig();
   const [immichStatus, setImmichStatus] = useState({
-    ping: 'Checking...',
+    ping: "Checking...",
     activeSyncs: 142,
-    diskUsed: '24.8 GB',
+    diskUsed: "24.8 GB",
     totalImages: 1452,
-  })
+  });
 
   // Helper trigger to log audit activities
-  const logAuditAction = async (actionType: string, targetId: string, details: string) => {
+  const logAuditAction = async (
+    actionType: string,
+    targetId: string,
+    details: string,
+  ) => {
     try {
-      await supabase.from('audit_logs').insert({
+      await supabase.from("audit_logs").insert({
         moderator_id: user?.student_id,
         action_type: actionType,
         target_id: targetId,
         details: details,
-      })
+      });
     } catch (err) {
-      console.error('Failed to log audit activity:', err)
+      console.error("Failed to log audit activity:", err);
     }
-  }
+  };
 
   // Refreshes dashboard data
   const triggerRefresh = async () => {
     try {
-      if (user?.role === 'moderator') {
+      if (user?.role === "moderator") {
         const { data: usersData } = await supabase
-          .from('users')
-          .select('student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color')
-          .order('created_at', { ascending: false })
-        if (usersData) setWhitelistedUsers(usersData as DBUser[])
+          .from("users")
+          .select(
+            "student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color",
+          )
+          .order("created_at", { ascending: false });
+        if (usersData) setWhitelistedUsers(usersData as DBUser[]);
 
         const { data: missionData } = await supabase
-          .from('vibe_missions')
-          .select('*')
-          .order('sequence_order', { ascending: true })
-        if (missionData) setMissions(missionData as VibeMission[])
+          .from("vibe_missions")
+          .select("*")
+          .order("sequence_order", { ascending: true });
+        if (missionData) setMissions(missionData as VibeMission[]);
 
         const { data: logData } = await supabase
-          .from('audit_logs')
-          .select('*, users(nickname)')
-          .order('created_at', { ascending: false })
-          .limit(50)
-        if (logData) setAuditLogs(logData as unknown as AuditLog[])
+          .from("audit_logs")
+          .select("*, users(nickname)")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (logData) setAuditLogs(logData as unknown as AuditLog[]);
 
         const { data: staffData } = await supabase
-          .from('users')
-          .select('role, major')
-          .neq('role', 'student')
+          .from("users")
+          .select("role, major")
+          .neq("role", "student");
         if (staffData) {
-          const counts: Record<string, number> = {}
+          const counts: Record<string, number> = {};
           staffData.forEach((s) => {
-            const grp = s.major || s.role
+            const grp = s.major || s.role;
             if (grp) {
-              counts[grp] = (counts[grp] || 0) + 1
+              counts[grp] = (counts[grp] || 0) + 1;
             }
-          })
-          setStaffCounts(counts)
+          });
+          setStaffCounts(counts);
         }
       }
     } catch (err) {
-      console.error('Error refreshing admin dashboard data:', err)
+      console.error("Error refreshing admin dashboard data:", err);
     }
-  }
+  };
 
   useEffect(() => {
-    let active = true
+    let active = true;
     const fetchAdminData = async () => {
-      if (!user) return
-      await Promise.resolve()
-      setLoading(true)
+      if (!user) return;
+      await Promise.resolve();
+      setLoading(true);
       try {
         // 1. Fetch system configs
-        const { data: configData } = await supabase.from('system_config').select('*')
-        if (!active) return
+        const { data: configData } = await supabase
+          .from("system_config")
+          .select("*");
+        if (!active) return;
         if (configData) {
-          const hype = configData.find((c) => c.key === 'enable_hype_board')
-          const memory = configData.find((c) => c.key === 'enable_memory_board')
-          if (hype) setEnableHypeBoard(hype.value)
-          if (memory) setEnableMemoryBoard(memory.value)
+          const memory = configData.find(
+            (c) => c.key === "enable_memory_board",
+          );
+          if (memory) setEnableMemoryBoard(memory.value);
 
-          const emergency = configData.find((c) => c.key === 'emergency_announcement')
-          const strikes = configData.find((c) => c.key === 'max_allowed_strikes')
-          const baseCool = configData.find((c) => c.key === 'base_cooldown_minutes')
-          const maxCool = configData.find((c) => c.key === 'max_cooldown_minutes')
+          const emergency = configData.find(
+            (c) => c.key === "emergency_announcement",
+          );
+          const strikes = configData.find(
+            (c) => c.key === "max_allowed_strikes",
+          );
+          const baseCool = configData.find(
+            (c) => c.key === "base_cooldown_minutes",
+          );
+          const maxCool = configData.find(
+            (c) => c.key === "max_cooldown_minutes",
+          );
 
           if (emergency) {
-            setEmergencyActive(emergency.value)
-            setEmergencyText(emergency.text_value || '')
+            setEmergencyActive(emergency.value);
+            setEmergencyText(emergency.text_value || "");
           }
-          if (strikes) setMaxStrikes(strikes.int_value ?? 5)
-          if (baseCool) setBaseCooldown(baseCool.int_value ?? 1)
-          if (maxCool) setMaxCooldown(maxCool.int_value ?? 30)
+          if (strikes) setMaxStrikes(strikes.int_value ?? 5);
+          if (baseCool) setBaseCooldown(baseCool.int_value ?? 1);
+          if (maxCool) setMaxCooldown(maxCool.int_value ?? 30);
+
+          // Command Center config keys
+          const hypeMode = configData.find((c) => c.key === "hype_board_mode");
+          const globalMute = configData.find(
+            (c) => c.key === "global_mute_active",
+          );
+          const ticker = configData.find((c) => c.key === "ticker_text");
+
+          if (hypeMode?.text_value)
+            setHypeBoardMode(hypeMode.text_value as HypeBoardMode);
+          if (globalMute) setGlobalMuteActive(globalMute.value);
+          if (ticker) {
+            setTickerActive(ticker.value);
+            setTickerText(ticker.text_value || "");
+          }
         }
 
         // 2. Fetch users list (for Moderator)
-        if (user.role === 'moderator') {
+        if (user.role === "moderator") {
           const { data: usersData } = await supabase
-            .from('users')
-            .select('student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color')
-            .order('created_at', { ascending: false })
-          if (!active) return
-          if (usersData) setWhitelistedUsers(usersData as DBUser[])
+            .from("users")
+            .select(
+              "student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color",
+            )
+            .order("created_at", { ascending: false });
+          if (!active) return;
+          if (usersData) setWhitelistedUsers(usersData as DBUser[]);
 
           // Fetch vibe missions
           const { data: missionData } = await supabase
-            .from('vibe_missions')
-            .select('*')
-            .order('sequence_order', { ascending: true })
-          if (!active) return
-          if (missionData) setMissions(missionData as VibeMission[])
+            .from("vibe_missions")
+            .select("*")
+            .order("sequence_order", { ascending: true });
+          if (!active) return;
+          if (missionData) setMissions(missionData as VibeMission[]);
 
           // Fetch audit logs
           const { data: logData } = await supabase
-            .from('audit_logs')
-            .select('*, users(nickname)')
-            .order('created_at', { ascending: false })
-            .limit(50)
-          if (!active) return
-          if (logData) setAuditLogs(logData as unknown as AuditLog[])
+            .from("audit_logs")
+            .select("*, users(nickname)")
+            .order("created_at", { ascending: false })
+            .limit(50);
+          if (!active) return;
+          if (logData) setAuditLogs(logData as unknown as AuditLog[]);
 
           // Staff major counts
           const { data: staffData } = await supabase
-            .from('users')
-            .select('role, major')
-            .neq('role', 'student')
-          if (!active) return
+            .from("users")
+            .select("role, major")
+            .neq("role", "student");
+          if (!active) return;
           if (staffData) {
-            const counts: Record<string, number> = {}
+            const counts: Record<string, number> = {};
             staffData.forEach((s) => {
-              const grp = s.major || s.role
+              const grp = s.major || s.role;
               if (grp) {
-                counts[grp] = (counts[grp] || 0) + 1
+                counts[grp] = (counts[grp] || 0) + 1;
               }
-            })
-            setStaffCounts(counts)
+            });
+            setStaffCounts(counts);
           }
         }
 
@@ -358,271 +432,380 @@ export function AdminDashboardPage() {
         if (immichConfig.isConfigured && immichConfig.url) {
           setImmichStatus((prev) => ({
             ...prev,
-            ping: '200 OK (Droplet Live)',
-          }))
+            ping: "200 OK (Droplet Live)",
+          }));
         } else {
           setImmichStatus((prev) => ({
             ...prev,
-            ping: 'Not Configured (Fallback Active)',
-          }))
+            ping: "Not Configured (Fallback Active)",
+          }));
         }
 
         // 4. Fetch Next Event config
         const { data: eventData } = await supabase
-          .from('event_config')
-          .select('*')
-          .eq('key', 'next_event')
-          .single()
-        if (!active) return
+          .from("event_config")
+          .select("*")
+          .eq("key", "next_event")
+          .single();
+        if (!active) return;
         if (eventData) {
-          setEventTitle(eventData.title)
-          const d = new Date(eventData.event_time)
-          const pad = (n: number) => n.toString().padStart(2, '0')
-          const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-          setEventTime(localStr)
+          setEventTitle(eventData.title);
+          const d = new Date(eventData.event_time);
+          const pad = (n: number) => n.toString().padStart(2, "0");
+          const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          setEventTime(localStr);
         }
       } catch (err) {
-        console.error('Error fetching admin data:', err)
+        console.error("Error fetching admin data:", err);
         if (active) {
           toaster.create({
-            title: 'Error loading admin data',
-            type: 'error',
-          })
+            title: "Error loading admin data",
+            type: "error",
+          });
         }
       } finally {
-        if (active) setLoading(false)
+        if (active) setLoading(false);
       }
-    }
+    };
 
-    fetchAdminData()
+    fetchAdminData();
     return () => {
-      active = false
-    }
-  }, [user, immichConfig.isConfigured, immichConfig.url])
+      active = false;
+    };
+  }, [user, immichConfig.isConfigured, immichConfig.url]);
+
+  useEffect(() => {
+    if (!user || user.role !== "moderator") return;
+
+    const whitelistSubscription = supabase
+      .channel("whitelist_realtime_sync")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "users",
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newUser = payload.new as DBUser;
+            setWhitelistedUsers((prev) => {
+              if (prev.some((u) => u.student_id === newUser.student_id)) return prev;
+              return [newUser, ...prev];
+            });
+            if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+            setLastUpdatedStudentId(newUser.student_id);
+            highlightTimeoutRef.current = setTimeout(() => {
+              setLastUpdatedStudentId(null);
+            }, 1000);
+          } else if (payload.eventType === "UPDATE") {
+            const updatedUser = payload.new as DBUser;
+            setWhitelistedUsers((prev) =>
+              prev.map((u) =>
+                u.student_id === updatedUser.student_id ? updatedUser : u,
+              ),
+            );
+            if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+            setLastUpdatedStudentId(updatedUser.student_id);
+            highlightTimeoutRef.current = setTimeout(() => {
+              setLastUpdatedStudentId(null);
+            }, 1000);
+          } else if (payload.eventType === "DELETE") {
+            const oldUser = payload.old as { student_id: string };
+            setWhitelistedUsers((prev) =>
+              prev.filter((u) => u.student_id !== oldUser.student_id),
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      supabase.removeChannel(whitelistSubscription);
+    };
+  }, [user]);
 
   // Selection & Bulk Delete Helpers
-  const visibleIds = filteredWhitelistedUsers.map((u) => u.student_id)
-  const isAllSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedStudentIds.includes(id))
+  const visibleIds = filteredWhitelistedUsers.map((u) => u.student_id);
+  const isAllSelected =
+    visibleIds.length > 0 &&
+    visibleIds.every((id) => selectedStudentIds.includes(id));
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedStudentIds((prev) => {
-        const newSelections = [...prev]
+        const newSelections = [...prev];
         visibleIds.forEach((id) => {
           if (!newSelections.includes(id)) {
-            newSelections.push(id)
+            newSelections.push(id);
           }
-        })
-        return newSelections
-      })
+        });
+        return newSelections;
+      });
     } else {
-      setSelectedStudentIds((prev) => prev.filter((id) => !visibleIds.includes(id)))
+      setSelectedStudentIds((prev) =>
+        prev.filter((id) => !visibleIds.includes(id)),
+      );
     }
-  }
+  };
 
   const handleSelectUser = (studentId: string, checked: boolean) => {
     setSelectedStudentIds((prev) =>
-      checked ? [...prev, studentId] : prev.filter((id) => id !== studentId)
-    )
-  }
+      checked ? [...prev, studentId] : prev.filter((id) => id !== studentId),
+    );
+  };
 
   const handleBulkDeleteConfirm = async () => {
-    if (selectedStudentIds.length === 0) return
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          role: 'student',
-          nickname: null,
-          faculty: null,
-          major: null,
-          ig: null,
-          bio: null,
-          profile_pic_url: null,
-          images: [],
-          tags: []
-        })
-        .in('student_id', selectedStudentIds)
-
-      if (error) throw error
-
-      const count = selectedStudentIds.length
-      await logAuditAction(
-        'whitelist_bulk_remove',
-        selectedStudentIds.join(','),
-        `Moderator bulk-removed ${count} users: [${selectedStudentIds.join(', ')}]`
-      )
-
+    if (selectedStudentIds.length === 0) return;
+    if (!user) return;
+    const userRole = user.role as string;
+    if (userRole !== "moderator" && userRole !== "superadmin") {
       toaster.create({
-        title: 'Bulk Removal Successful',
-        description: `Revoked whitelist and reset profiles for ${count} users.`,
-        type: 'success',
-      })
-      setSelectedStudentIds([])
-      triggerRefresh()
-    } catch (err) {
-      console.error(err)
-      toaster.create({
-        title: 'Failed to bulk-remove users',
-        type: 'error',
-      })
+        title: "Unauthorized Action",
+        description: "Only moderators and superadmins can bulk remove users.",
+        type: "error",
+      });
+      return;
     }
-  }
+
+    try {
+      // 1. Delete post comments
+      await supabase.from("post_comments").delete().in("student_id", selectedStudentIds);
+
+      // 2. Delete posts
+      await supabase.from("posts").delete().in("student_id", selectedStudentIds);
+
+      // 3. Delete collected cards
+      await supabase.from("collected_cards").delete().in("student_id", selectedStudentIds);
+      await supabase.from("collected_cards").delete().in("staff_id", selectedStudentIds);
+
+      // 4. Delete vibe status
+      await supabase.from("user_vibe_status").delete().in("student_id", selectedStudentIds);
+
+      // 5. Delete live chats
+      await supabase.from("live_chats").delete().in("student_id", selectedStudentIds);
+
+      // 6. Delete users
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .in("student_id", selectedStudentIds);
+
+      if (error) throw error;
+
+      const count = selectedStudentIds.length;
+      await logAuditAction(
+        "whitelist_bulk_remove",
+        selectedStudentIds.join(","),
+        `Moderator bulk-deleted ${count} users and all associated data: [${selectedStudentIds.join(", ")}]`,
+      );
+
+      toaster.create({
+        title: "Bulk Deletion Successful",
+        description: `Wiped all records for ${count} users.`,
+        type: "success",
+      });
+      setSelectedStudentIds([]);
+      triggerRefresh();
+    } catch (err) {
+      console.error(err);
+      toaster.create({
+        title: "Failed to bulk-remove users",
+        description: err instanceof Error ? err.message : "Database error",
+        type: "error",
+      });
+    }
+  };
 
   const getRoleDescription = (role: string) => {
     switch (role) {
-      case 'moderator':
-        return 'Moderator: Full administrative control, whitelist management, emergency broadcasts, game configuration, and audit logs.'
-      case 'media_admin':
-        return 'Media Admin: Access to photo server connectivity status, droplet sync tracker, and media synchronization tools.'
-      case 'staff':
-        return 'Staff: Access to staff panel to verify cards, view house statistics, and manage general operations.'
+      case "moderator":
+        return "Moderator: Full administrative control, whitelist management, emergency broadcasts, game configuration, and audit logs.";
+      case "media_admin":
+        return "Media Admin: Access to photo server connectivity status, droplet sync tracker, and media synchronization tools.";
+      case "staff":
+        return "Staff: Access to staff panel to verify cards, view house statistics, and manage general operations.";
       default:
-        return 'Student: Freshmen role. Access to vibe check, collection book, hype board, and memory canvas.'
+        return "Student: Freshmen role. Access to vibe check, collection book, hype board, and memory canvas.";
     }
-  }
+  };
 
   // Handle Whitelist Add
   const handleAddWhitelist = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // Trim spaces and strip non-numeric symbols
-    const sanitizedId = newStudentId.trim().replace(/\D/g, '')
+    const sanitizedId = newStudentId.trim().replace(/\D/g, "");
 
     // Validate length fits between 7 and 10 digits
     if (!sanitizedId || sanitizedId.length < 7 || sanitizedId.length > 10) {
       toaster.create({
-        title: 'Validation Failed',
-        description: 'Student ID must be between 7 and 10 digits.',
-        type: 'error',
-      })
-      return
+        title: "Validation Failed",
+        description: "Student ID must be between 7 and 10 digits.",
+        type: "error",
+      });
+      return;
     }
 
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from("users")
         .insert({
           student_id: sanitizedId,
           role: newRole,
         })
-        .select()
+        .select();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (data) {
-        await logAuditAction('whitelist_add', sanitizedId, `Manually whitelisted student as role: ${newRole}`)
+        await logAuditAction(
+          "whitelist_add",
+          sanitizedId,
+          `Manually whitelisted student as role: ${newRole}`,
+        );
         toaster.create({
-          title: 'Student Whitelisted!',
+          title: "Student Whitelisted!",
           description: `ID ${sanitizedId} whitelisted as ${newRole}.`,
-          type: 'success',
-        })
-        setNewStudentId('')
-        triggerRefresh()
+          type: "success",
+        });
+        setNewStudentId("");
+        triggerRefresh();
       }
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Whitelisting failed',
-        description: 'ID might already be whitelisted.',
-        type: 'error',
-      })
+        title: "Whitelisting failed",
+        description: "ID might already be whitelisted.",
+        type: "error",
+      });
     }
-  }
+  };
 
-  // Handle Whitelist Remove (Soft Deactivation)
+  // Handle Whitelist Remove (Hard Cascading Delete)
   const handleRemoveWhitelist = async (studentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          role: 'student',
-          nickname: null,
-          faculty: null,
-          major: null,
-          ig: null,
-          bio: null,
-          profile_pic_url: null,
-          images: [],
-          tags: []
-        })
-        .eq('student_id', studentId)
-
-      if (error) throw error
-
-      await logAuditAction('whitelist_remove', studentId, 'Revoked whitelist. Reverted role to student and purged profile fields.')
+    if (!user) return;
+    const userRole = user.role as string;
+    if (userRole !== "moderator" && userRole !== "superadmin") {
       toaster.create({
-        title: 'Whitelist Revoked!',
-        description: `ID ${studentId} role reverted to student successfully.`,
-        type: 'success',
-      })
-      triggerRefresh()
-    } catch (err) {
-      console.error(err)
-      toaster.create({
-        title: 'Failed to revoke whitelist',
-        type: 'error',
-      })
+        title: "Unauthorized Action",
+        description: "Only moderators and superadmins can remove whitelisted users.",
+        type: "error",
+      });
+      return;
     }
-  }
+
+    try {
+      // 1. Delete post comments
+      await supabase.from("post_comments").delete().eq("student_id", studentId);
+
+      // 2. Delete posts
+      await supabase.from("posts").delete().eq("student_id", studentId);
+
+      // 3. Delete collected cards
+      await supabase.from("collected_cards").delete().eq("student_id", studentId);
+      await supabase.from("collected_cards").delete().eq("staff_id", studentId);
+
+      // 4. Delete vibe status
+      await supabase.from("user_vibe_status").delete().eq("student_id", studentId);
+
+      // 5. Delete live chats
+      await supabase.from("live_chats").delete().eq("student_id", studentId);
+
+      // 6. Delete user
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("student_id", studentId);
+
+      if (error) throw error;
+
+      await logAuditAction(
+        "whitelist_remove",
+        studentId,
+        "Permanently deleted user and all associated records from all tables.",
+      );
+      toaster.create({
+        title: "User Wiped Successfully!",
+        description: `ID ${studentId} and all associated records have been permanently deleted.`,
+        type: "success",
+      });
+      triggerRefresh();
+    } catch (err) {
+      console.error(err);
+      toaster.create({
+        title: "Failed to revoke whitelist",
+        description: err instanceof Error ? err.message : "Database error",
+        type: "error",
+      });
+    }
+  };
 
   // Handle User Inspection details loading
   const handleInspectUser = async (u: DBUser) => {
-    setInspectUser(u)
-    setEditNickname(u.nickname || '')
-    setEditFaculty(u.faculty || '')
-    setEditRole(u.role)
-    setEditMajor('')
-    setEditHousePosition('')
-    setInspectUserStats(null)
-    setInspectUserLogs([])
+    setInspectUser(u);
+    setEditNickname(u.nickname || "");
+    setEditFaculty(u.faculty || "");
+    setEditRole(u.role);
+    setEditMajor("");
+    setEditHousePosition("");
+    setInspectUserStats(null);
+    setInspectUserLogs([]);
 
     try {
       const { data: detailData } = await supabase
-        .from('users')
-        .select('major, house_position')
-        .eq('student_id', u.student_id)
-        .single()
+        .from("users")
+        .select("major, house_position")
+        .eq("student_id", u.student_id)
+        .single();
       if (detailData) {
-        setEditMajor(detailData.major || '')
-        setEditHousePosition(detailData.house_position || '')
+        setEditMajor(detailData.major || "");
+        setEditHousePosition(detailData.house_position || "");
       }
 
       // Fetch collection statistics
       const { data: collectedData, count: collectedCount } = await supabase
-        .from('collected_cards')
-        .select('*', { count: 'exact' })
-        .eq('student_id', u.student_id)
+        .from("collected_cards")
+        .select("*", { count: "exact" })
+        .eq("student_id", u.student_id);
 
-      let unlockedStaff: { staff_id: string; nickname: string; profile_pic_url: string; avatar_color: string }[] = []
+      let unlockedStaff: {
+        staff_id: string;
+        nickname: string;
+        profile_pic_url: string;
+        avatar_color: string;
+      }[] = [];
       if (collectedData && collectedData.length > 0) {
-        const staffIds = collectedData.map(d => d.staff_id)
+        const staffIds = collectedData.map((d) => d.staff_id);
         const { data: staffData } = await supabase
-          .from('users')
-          .select('student_id, nickname, profile_pic_url, avatar_color')
-          .in('student_id', staffIds)
+          .from("users")
+          .select("student_id, nickname, profile_pic_url, avatar_color")
+          .in("student_id", staffIds);
         if (staffData) {
-          unlockedStaff = staffData.map(s => ({
+          unlockedStaff = staffData.map((s) => ({
             staff_id: s.student_id,
-            nickname: s.nickname || 'Unknown Staff',
-            profile_pic_url: s.profile_pic_url || '',
-            avatar_color: s.avatar_color || 'var(--c-muted)',
-          }))
+            nickname: s.nickname || "Unknown Staff",
+            profile_pic_url: s.profile_pic_url || "",
+            avatar_color: s.avatar_color || "var(--c-muted)",
+          }));
         }
       }
 
       const { count: collectedFromCount } = await supabase
-        .from('collected_cards')
-        .select('*', { count: 'exact', head: true })
-        .eq('staff_id', u.student_id)
+        .from("collected_cards")
+        .select("*", { count: "exact", head: true })
+        .eq("staff_id", u.student_id);
 
       // Fetch vibe check stats
       const { data: vibeData } = await supabase
-        .from('user_vibe_status')
-        .select('strike_count, locked_until, current_mission_id')
-        .eq('student_id', u.student_id)
-        .maybeSingle()
+        .from("user_vibe_status")
+        .select("strike_count, locked_until, current_mission_id")
+        .eq("student_id", u.student_id)
+        .maybeSingle();
 
-      const isLockedVal = vibeData?.locked_until ? new Date(vibeData.locked_until).getTime() > Date.now() : false
+      const isLockedVal = vibeData?.locked_until
+        ? new Date(vibeData.locked_until).getTime() > Date.now()
+        : false;
 
       setInspectUserStats({
         collectedCount: collectedCount || 0,
@@ -630,30 +813,30 @@ export function AdminDashboardPage() {
         vibeStatus: vibeData || null,
         isLocked: isLockedVal,
         unlockedStaff,
-      })
+      });
 
       // Fetch relevant audit logs
       const { data: userLogs } = await supabase
-        .from('audit_logs')
-        .select('*')
+        .from("audit_logs")
+        .select("*")
         .or(`target_id.eq.${u.student_id},moderator_id.eq.${u.student_id}`)
-        .order('created_at', { ascending: false })
-        .limit(10)
+        .order("created_at", { ascending: false })
+        .limit(10);
 
-      if (userLogs) setInspectUserLogs(userLogs as AuditLog[])
+      if (userLogs) setInspectUserLogs(userLogs as AuditLog[]);
     } catch (err) {
-      console.error('Error fetching user stats:', err)
+      console.error("Error fetching user stats:", err);
     }
-  }
+  };
 
   // Handle Edit User Form Submit
   const handleEditUser = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inspectUser) return
+    e.preventDefault();
+    if (!inspectUser) return;
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from("users")
         .update({
           nickname: editNickname || null,
           faculty: editFaculty || null,
@@ -661,333 +844,749 @@ export function AdminDashboardPage() {
           role: editRole,
           house_position: editHousePosition || null,
         })
-        .eq('student_id', inspectUser.student_id)
+        .eq("student_id", inspectUser.student_id);
 
-      if (error) throw error
+      if (error) throw error;
 
       await logAuditAction(
-        'user_update',
+        "user_update",
         inspectUser.student_id,
-        `Details edited: role=${editRole}, nickname="${editNickname}", faculty="${editFaculty}", major="${editMajor}", house_position="${editHousePosition}"`
-      )
+        `Details edited: role=${editRole}, nickname="${editNickname}", faculty="${editFaculty}", major="${editMajor}", house_position="${editHousePosition}"`,
+      );
 
       toaster.create({
-        title: 'User Profile Updated!',
-        type: 'success',
-      })
-      setInspectUser(null)
-      triggerRefresh()
+        title: "User Profile Updated!",
+        type: "success",
+      });
+      setInspectUser(null);
+      triggerRefresh();
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Error updating user profile',
-        type: 'error',
-      })
+        title: "Error updating user profile",
+        type: "error",
+      });
     }
-  }
+  };
 
   // Handle Config Toggle
-  const handleToggleConfig = async (key: 'enable_hype_board' | 'enable_memory_board', currentVal: boolean) => {
-    const newVal = !currentVal
-    if (key === 'enable_hype_board') setEnableHypeBoard(newVal)
-    if (key === 'enable_memory_board') setEnableMemoryBoard(newVal)
+  const handleToggleConfig = async (
+    key: "enable_memory_board",
+    currentVal: boolean,
+  ) => {
+    const newVal = !currentVal;
+    if (key === "enable_memory_board") setEnableMemoryBoard(newVal);
 
     try {
       const { error } = await supabase
-        .from('system_config')
+        .from("system_config")
         .update({ value: newVal })
-        .eq('key', key)
+        .eq("key", key);
 
-      if (error) throw error
+      if (error) throw error;
 
-      await logAuditAction('toggle_board', key, `Switched ${key} to ${newVal}`)
+      await logAuditAction("toggle_board", key, `Switched ${key} to ${newVal}`);
+      await broadcastConfigSync("config_change", { key, value: newVal });
       toaster.create({
-        title: 'Settings Updated',
-        description: `${key.replace('enable_', '').replace('_', ' ')} switch is now ${newVal ? 'OPEN' : 'CLOSED'}.`,
-        type: 'success',
-      })
+        title: "Settings Updated",
+        description: `${key.replace("enable_", "").replace("_", " ")} switch is now ${newVal ? "OPEN" : "CLOSED"}.`,
+        type: "success",
+      });
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to update setting',
-        type: 'error',
-      })
-      if (key === 'enable_hype_board') setEnableHypeBoard(currentVal)
-      if (key === 'enable_memory_board') setEnableMemoryBoard(currentVal)
+        title: "Failed to update setting",
+        type: "error",
+      });
+      if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
     }
-  }
+  };
+
+  // ── Command Center: Broadcast config sync to all clients ──
+  const broadcastConfigSync = async (
+    event: string,
+    payload: Record<string, unknown>,
+  ) => {
+    const syncChannel = supabase.channel("live_chat:system_config_sync");
+    syncChannel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        syncChannel
+          .send({
+            type: "broadcast",
+            event,
+            payload,
+          })
+          .then(() => {
+            supabase.removeChannel(syncChannel);
+          });
+      }
+    });
+  };
+
+  // ── Command Center: Set Hype Board Mode ──
+  const handleSetHypeMode = async (mode: HypeBoardMode) => {
+    const prevMode = hypeBoardMode;
+    setHypeBoardMode(mode);
+
+    try {
+      const { error } = await supabase
+        .from("system_config")
+        .upsert(
+          { key: "hype_board_mode", value: true, text_value: mode },
+          { onConflict: "key" },
+        );
+
+      if (error) throw error;
+
+      await logAuditAction(
+        "toggle_hype_mode",
+        "hype_board_mode",
+        `Hype board mode changed: ${prevMode} → ${mode}`,
+      );
+      await broadcastConfigSync("hype_mode_change", { mode });
+
+      setAuditLogs((prev) => [
+        {
+          id: Date.now(),
+          moderator_id: user?.student_id || "",
+          action_type: "toggle_hype_mode",
+          target_id: "hype_board_mode",
+          details: `Hype board mode changed: ${prevMode} → ${mode}`,
+          created_at: new Date().toISOString(),
+          users: { nickname: user?.nickname || null },
+        },
+        ...prev,
+      ]);
+
+      toaster.create({
+        title: "Hype Board Mode Updated",
+        description: `Mode set to: ${mode === "active" ? "🟢 ACTIVE" : mode === "slow_3s" ? "🟡 SLOW MODE (3s)" : "🔴 READ ONLY"}`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      setHypeBoardMode(prevMode);
+      toaster.create({ title: "Failed to update mode", type: "error" });
+    }
+  };
+
+  // ── Command Center: Global Panic Mute ──
+  const handlePanicMute = async (mute: boolean) => {
+    const prev = globalMuteActive;
+    setGlobalMuteActive(mute);
+
+    try {
+      const token = localStorage.getItem("baan7_session_token");
+      const { error } = await supabase.rpc("global_panic_mute", {
+        p_session_token: token,
+        p_mute: mute,
+      });
+
+      // Fallback if RPC doesn't exist yet — direct update
+      if (error) {
+        const { error: fallbackErr } = await supabase
+          .from("system_config")
+          .upsert(
+            { key: "global_mute_active", value: mute },
+            { onConflict: "key" },
+          );
+        if (fallbackErr) throw fallbackErr;
+      }
+
+      await logAuditAction(
+        "panic_mute",
+        "global_mute_active",
+        `Global mute ${mute ? "ENGAGED" : "LIFTED"}`,
+      );
+      await broadcastConfigSync("global_mute_change", { active: mute });
+
+      setAuditLogs((prev) => [
+        {
+          id: Date.now(),
+          moderator_id: user?.student_id || "",
+          action_type: "panic_mute",
+          target_id: "global_mute_active",
+          details: `Global mute ${mute ? "ENGAGED 🚨" : "LIFTED ✅"}`,
+          created_at: new Date().toISOString(),
+          users: { nickname: user?.nickname || null },
+        },
+        ...prev,
+      ]);
+
+      toaster.create({
+        title: mute ? "🚨 GLOBAL MUTE ENGAGED" : "✅ Mute Lifted",
+        description: mute
+          ? "All chat inputs frozen across all clients."
+          : "Chat inputs restored to normal.",
+        type: mute ? "error" : "success",
+      });
+    } catch (err) {
+      console.error(err);
+      setGlobalMuteActive(prev);
+      toaster.create({ title: "Failed to toggle mute", type: "error" });
+    }
+  };
+
+  // ── Command Center: Publish Ticker ──
+  const handlePublishTicker = async () => {
+    const text = tickerText.trim();
+    if (!text) {
+      toaster.create({ title: "Ticker text is empty", type: "warning" });
+      return;
+    }
+
+    setIsSavingTicker(true);
+    try {
+      const { error } = await supabase
+        .from("system_config")
+        .upsert(
+          { key: "ticker_text", value: true, text_value: text },
+          { onConflict: "key" },
+        );
+
+      if (error) throw error;
+
+      setTickerActive(true);
+      await logAuditAction(
+        "ticker_update",
+        "ticker_text",
+        `Ticker published: "${text}"`,
+      );
+
+      // Broadcast ticker_change (non-blocking fire-and-forget)
+      const syncChannel = supabase.channel("live_chat:system_config_sync");
+      syncChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          syncChannel
+            .send({
+              type: "broadcast",
+              event: "ticker_change",
+              payload: { active: true, text },
+            })
+            .then(() => {
+              supabase.removeChannel(syncChannel);
+            });
+        }
+      });
+
+      setAuditLogs((prev) => [
+        {
+          id: Date.now(),
+          moderator_id: user?.student_id || "",
+          action_type: "ticker_update",
+          target_id: "ticker_text",
+          details: `Ticker published: "${text}"`,
+          created_at: new Date().toISOString(),
+          users: { nickname: user?.nickname || null },
+        },
+        ...prev,
+      ]);
+
+      toaster.create({
+        title: "Ticker Published!",
+        description: "Marquee is live across all clients.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      toaster.create({ title: "Failed to update ticker", type: "error" });
+    } finally {
+      setIsSavingTicker(false);
+    }
+  };
+
+  // ── Command Center: Clear/Kill Ticker ──
+  const handleClearTicker = async () => {
+    setIsSavingTicker(true);
+    try {
+      const { error } = await supabase
+        .from("system_config")
+        .upsert(
+          { key: "ticker_text", value: false, text_value: "" },
+          { onConflict: "key" },
+        );
+
+      if (error) throw error;
+
+      setTickerActive(false);
+      setTickerText("");
+      await logAuditAction(
+        "ticker_clear",
+        "ticker_text",
+        "Ticker cleared",
+      );
+
+      // Broadcast ticker_clear (non-blocking fire-and-forget)
+      const syncChannel = supabase.channel("live_chat:system_config_sync");
+      syncChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          syncChannel
+            .send({
+              type: "broadcast",
+              event: "ticker_clear",
+              payload: {},
+            })
+            .then(() => {
+              supabase.removeChannel(syncChannel);
+            });
+        }
+      });
+
+      setAuditLogs((prev) => [
+        {
+          id: Date.now(),
+          moderator_id: user?.student_id || "",
+          action_type: "ticker_update",
+          target_id: "ticker_text",
+          details: "Ticker cleared",
+          created_at: new Date().toISOString(),
+          users: { nickname: user?.nickname || null },
+        },
+        ...prev,
+      ]);
+
+      toaster.create({
+        title: "Ticker Cleared",
+        description: "Ticker removed from all screens.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      toaster.create({ title: "Failed to clear ticker", type: "error" });
+    } finally {
+      setIsSavingTicker(false);
+    }
+  };
+
+  // ── Command Center: Inline Role Mutation ──
+  const handleInlineRoleChange = async (
+    studentId: string,
+    newRole: string,
+    oldRole: string,
+  ) => {
+    if (newRole === oldRole) return;
+
+    // Optimistic update
+    setWhitelistedUsers((prev) =>
+      prev.map((u) =>
+        u.student_id === studentId ? { ...u, role: newRole } : u,
+      ),
+    );
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ role: newRole })
+        .eq("student_id", studentId);
+
+      if (error) throw error;
+
+      await logAuditAction(
+        "role_mutation",
+        studentId,
+        `Role changed: ${oldRole} → ${newRole}`,
+      );
+
+      setAuditLogs((prev) => [
+        {
+          id: Date.now(),
+          moderator_id: user?.student_id || "",
+          action_type: "role_mutation",
+          target_id: studentId,
+          details: `Role changed: ${oldRole} → ${newRole}`,
+          created_at: new Date().toISOString(),
+          users: { nickname: user?.nickname || null },
+        },
+        ...prev,
+      ]);
+
+      toaster.create({
+        title: "Role Updated",
+        description: `${studentId}: ${oldRole} → ${newRole}`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      // Rollback
+      setWhitelistedUsers((prev) =>
+        prev.map((u) =>
+          u.student_id === studentId ? { ...u, role: oldRole } : u,
+        ),
+      );
+      toaster.create({ title: "Failed to update role", type: "error" });
+    }
+  };
 
   // Handle Event Config Update
   const handleUpdateEvent = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!eventTime) return
-    setUpdatingEvent(true)
+    e.preventDefault();
+    if (!eventTime) return;
+    setUpdatingEvent(true);
     try {
-      const isoString = new Date(eventTime).toISOString()
+      const isoString = new Date(eventTime).toISOString();
       const { error } = await supabase
-        .from('event_config')
+        .from("event_config")
         .update({ title: eventTitle, event_time: isoString })
-        .eq('key', 'next_event')
+        .eq("key", "next_event");
 
-      if (error) throw error
+      if (error) throw error;
 
-      await logAuditAction('update_event', 'next_event', `Updated event to: ${eventTitle} at ${isoString}`)
+      await logAuditAction(
+        "update_event",
+        "next_event",
+        `Updated event to: ${eventTitle} at ${isoString}`,
+      );
       toaster.create({
-        title: 'Event Configured!',
+        title: "Event Configured!",
         description: `Event "${eventTitle}" updated successfully.`,
-        type: 'success',
-      })
+        type: "success",
+      });
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to configure event',
-        type: 'error',
-      })
+        title: "Failed to configure event",
+        type: "error",
+      });
     } finally {
-      setUpdatingEvent(false)
+      setUpdatingEvent(false);
     }
-  }
+  };
 
   // Handle Emergency Announcement Broadcast Save
   const handleSaveEmergencyAnnouncement = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const token = localStorage.getItem('baan7_session_token')
-    const trimmedText = emergencyText.trim()
-    
+    e.preventDefault();
+    const token = localStorage.getItem("baan7_session_token");
+    const trimmedText = emergencyText.trim();
+
     if (!trimmedText) {
       toaster.create({
-        title: 'Empty Announcement',
-        description: 'Please enter a valid announcement message.',
-        type: 'warning',
-      })
-      return
+        title: "Empty Announcement",
+        description: "Please enter a valid announcement message.",
+        type: "warning",
+      });
+      return;
     }
 
+    setIsSavingAnnouncement(true);
     try {
-      const { error } = await supabase.rpc('broadcast_emergency_message', {
+      const { error } = await supabase.rpc("broadcast_emergency_message", {
         p_session_token: token,
-        p_active: emergencyActive,
+        p_active: true,
         p_text: trimmedText,
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
-      setEmergencyText(trimmedText)
+      setEmergencyText(trimmedText);
+      setEmergencyActive(true);
 
       toaster.create({
-        title: 'Emergency Announcement Saved!',
-        description: emergencyActive ? 'Broadcast is live!' : 'Broadcast disabled.',
-        type: 'success',
-      })
+        title: "Announcement Published!",
+        description: "Static banner is live across all clients.",
+        type: "success",
+      });
 
-      // Broadcast the active real-time WebSocket state change to trigger layout sync
-      const syncChannel = supabase.channel('system_config_emergency')
+      // Broadcast announcement_change event (non-blocking fire-and-forget)
+      const syncChannel = supabase.channel("live_chat:system_config_sync");
       syncChannel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          syncChannel.send({
-            type: 'broadcast',
-            event: 'emergency_announcement',
-            payload: { value: emergencyActive, text_value: trimmedText }
-          }).then(() => {
-            supabase.removeChannel(syncChannel)
-          })
+        if (status === "SUBSCRIBED") {
+          syncChannel
+            .send({
+              type: "broadcast",
+              event: "announcement_change",
+              payload: { active: true, text: trimmedText },
+            })
+            .then(() => {
+              supabase.removeChannel(syncChannel);
+            });
         }
-      })
+      });
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to save announcement',
-        description: err instanceof Error ? err.message : 'An unexpected error occurred.',
-        type: 'error',
-      })
+        title: "Failed to save announcement",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred.",
+        type: "error",
+      });
+    } finally {
+      setIsSavingAnnouncement(false);
     }
-  }
+  };
+
+  // Handle Emergency Announcement Clear
+  const handleClearEmergencyAnnouncement = async () => {
+    const token = localStorage.getItem("baan7_session_token");
+    setIsSavingAnnouncement(true);
+    try {
+      const { error } = await supabase.rpc("broadcast_emergency_message", {
+        p_session_token: token,
+        p_active: false,
+        p_text: "",
+      });
+
+      if (error) throw error;
+
+      setEmergencyText("");
+      setEmergencyActive(false);
+
+      toaster.create({
+        title: "Announcement Cleared",
+        description: "Static banner removed from all screens.",
+        type: "success",
+      });
+
+      // Broadcast emergency_clear event (non-blocking fire-and-forget)
+      const syncChannel = supabase.channel("live_chat:system_config_sync");
+      syncChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          syncChannel
+            .send({
+              type: "broadcast",
+              event: "emergency_clear",
+              payload: {},
+            })
+            .then(() => {
+              supabase.removeChannel(syncChannel);
+            });
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      toaster.create({
+        title: "Failed to clear announcement",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred.",
+        type: "error",
+      });
+    } finally {
+      setIsSavingAnnouncement(false);
+    }
+  };
 
   // Handle Game Penalty Config Save
   const handleSaveGamePenalties = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
-      const { error } = await supabase
-        .from('system_config')
-        .upsert([
-          { key: 'max_allowed_strikes', value: true, int_value: maxStrikes },
-          { key: 'base_cooldown_minutes', value: true, int_value: baseCooldown },
-          { key: 'max_cooldown_minutes', value: true, int_value: maxCooldown },
-        ], { onConflict: 'key' })
+      const { error } = await supabase.from("system_config").upsert(
+        [
+          { key: "max_allowed_strikes", value: true, int_value: maxStrikes },
+          {
+            key: "base_cooldown_minutes",
+            value: true,
+            int_value: baseCooldown,
+          },
+          { key: "max_cooldown_minutes", value: true, int_value: maxCooldown },
+        ],
+        { onConflict: "key" },
+      );
 
-      if (error) throw error
+      if (error) throw error;
 
       await logAuditAction(
-        'game_penalties_update',
-        'system_config',
-        `Updated rules: max_strikes=${maxStrikes}, base_cooldown=${baseCooldown}m, max_cooldown=${maxCooldown}m`
-      )
+        "game_penalties_update",
+        "system_config",
+        `Updated rules: max_strikes=${maxStrikes}, base_cooldown=${baseCooldown}m, max_cooldown=${maxCooldown}m`,
+      );
+      await broadcastConfigSync("config_change", {
+        maxStrikes,
+        baseCooldown,
+        maxCooldown,
+      });
       toaster.create({
-        title: 'Penalties Saved!',
-        type: 'success',
-      })
+        title: "Penalties Saved!",
+        type: "success",
+      });
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to save penalties',
-        type: 'error',
-      })
+        title: "Failed to save penalties",
+        type: "error",
+      });
     }
-  }
+  };
 
   // Add Vibe Mission
   const handleAddMission = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMissionTarget) return
+    e.preventDefault();
+    if (!newMissionTarget) return;
 
     try {
-      const nextSeq = missions.length > 0 ? Math.max(...missions.map((m) => m.sequence_order)) + 1 : 1
-      const { error } = await supabase
-        .from('vibe_missions')
-        .insert({
-          sequence_order: nextSeq,
-          target_role: newMissionTarget,
-          required_count: newMissionCount,
-        })
+      const nextSeq =
+        missions.length > 0
+          ? Math.max(...missions.map((m) => m.sequence_order)) + 1
+          : 1;
+      const { error } = await supabase.from("vibe_missions").insert({
+        sequence_order: nextSeq,
+        target_role: newMissionTarget,
+        required_count: newMissionCount,
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
       await logAuditAction(
-        'mission_add',
+        "mission_add",
         nextSeq.toString(),
-        `Added mission sequence ${nextSeq}: target=${newMissionTarget}, count=${newMissionCount}`
-      )
+        `Added mission sequence ${nextSeq}: target=${newMissionTarget}, count=${newMissionCount}`,
+      );
       toaster.create({
-        title: 'Vibe Mission Added!',
-        type: 'success',
-      })
-      setNewMissionTarget('')
-      setNewMissionCount(1)
-      triggerRefresh()
+        title: "Vibe Mission Added!",
+        type: "success",
+      });
+      setNewMissionTarget("");
+      setNewMissionCount(1);
+      await triggerRefresh();
+      await broadcastConfigSync("vibe_quest_change", {});
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to add mission',
-        type: 'error',
-      })
+        title: "Failed to add mission",
+        type: "error",
+      });
     }
-  }
+  };
 
   // Delete Vibe Mission (Sequence alignment fallback)
   const handleRemoveMission = async (id: number, seqOrder: number) => {
-    if (!window.confirm(`Are you sure you want to remove Mission sequence ${seqOrder}?`)) return
+    if (
+      !window.confirm(
+        `Are you sure you want to remove Mission sequence ${seqOrder}?`,
+      )
+    )
+      return;
     try {
       // Find users active on this mission
       const { data: activeUsers } = await supabase
-        .from('user_vibe_status')
-        .select('student_id')
-        .eq('current_mission_id', id)
+        .from("user_vibe_status")
+        .select("student_id")
+        .eq("current_mission_id", id);
 
       // Delete the mission
       const { error } = await supabase
-        .from('vibe_missions')
+        .from("vibe_missions")
         .delete()
-        .eq('id', id)
+        .eq("id", id);
 
-      if (error) throw error
+      if (error) throw error;
 
       // Orphaned sequence alignment fallback
-      const remaining = missions.filter((m) => m.id !== id).sort((a, b) => a.sequence_order - b.sequence_order)
-      const nextMission = remaining.find((m) => m.sequence_order >= seqOrder) || remaining[0] || null
+      const remaining = missions
+        .filter((m) => m.id !== id)
+        .sort((a, b) => a.sequence_order - b.sequence_order);
+      const nextMission =
+        remaining.find((m) => m.sequence_order >= seqOrder) ||
+        remaining[0] ||
+        null;
 
       if (activeUsers && activeUsers.length > 0) {
         for (const u of activeUsers) {
           await supabase
-            .from('user_vibe_status')
+            .from("user_vibe_status")
             .update({ current_mission_id: nextMission ? nextMission.id : null })
-            .eq('student_id', u.student_id)
+            .eq("student_id", u.student_id);
         }
       }
 
       await logAuditAction(
-        'mission_delete',
+        "mission_delete",
         seqOrder.toString(),
-        `Deleted mission ${seqOrder}. Aligned active users to next sequence: ${nextMission ? nextMission.sequence_order : 'none'}`
-      )
+        `Deleted mission ${seqOrder}. Aligned active users to next sequence: ${nextMission ? nextMission.sequence_order : "none"}`,
+      );
       toaster.create({
-        title: 'Mission Removed!',
-        description: 'Active users progress re-aligned.',
-        type: 'success',
-      })
-      triggerRefresh()
+        title: "Mission Removed!",
+        description: "Active users progress re-aligned.",
+        type: "success",
+      });
+      await triggerRefresh();
+      await broadcastConfigSync("vibe_quest_change", {});
     } catch (err) {
-      console.error(err)
+      console.error(err);
       toaster.create({
-        title: 'Failed to delete mission',
-        type: 'error',
-      })
+        title: "Failed to delete mission",
+        type: "error",
+      });
     }
-  }
+  };
 
   // Handle CSV Parsing
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const parsed = (results.data as Array<Record<string, string | undefined>>).map((row) => ({
-          student_id: (row.student_id || row['Student ID'] || '').toString().trim(),
-          role: (row.role || row['Role'] || 'student').toString().trim().toLowerCase(),
-          nickname: (row.nickname || row['Nickname'] || '').toString().trim() || null,
-          faculty: (row.faculty || row['Faculty'] || '').toString().trim() || null,
-          major: (row.major || row['Major'] || '').toString().trim() || null,
-        })).filter((row) => row.student_id)
+        const parsed = (
+          results.data as Array<Record<string, string | undefined>>
+        )
+          .map((row) => ({
+            student_id: (row.student_id || row["Student ID"] || "")
+              .toString()
+              .trim(),
+            role: (row.role || row["Role"] || "student")
+              .toString()
+              .trim()
+              .toLowerCase(),
+            nickname:
+              (row.nickname || row["Nickname"] || "").toString().trim() || null,
+            faculty:
+              (row.faculty || row["Faculty"] || "").toString().trim() || null,
+            major: (row.major || row["Major"] || "").toString().trim() || null,
+          }))
+          .filter((row) => row.student_id);
 
-        setCsvRecords(parsed)
-        setShowCsvModal(true)
-        if (fileInputRef.current) fileInputRef.current.value = ''
+        setCsvRecords(parsed);
+        setShowCsvModal(true);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       },
       error: (err) => {
-        console.error('CSV parse error:', err)
-        toaster.create({ title: 'CSV parsing failed', type: 'error' })
-      }
-    })
-  }
+        console.error("CSV parse error:", err);
+        toaster.create({ title: "CSV parsing failed", type: "error" });
+      },
+    });
+  };
 
   const isDuplicate = (studentId: string) => {
-    return whitelistedUsers.some((u) => u.student_id === studentId)
-  }
+    return whitelistedUsers.some((u) => u.student_id === studentId);
+  };
 
   const handleBatchUpsert = async () => {
-    setUpserting(true)
+    setUpserting(true);
     try {
       const { error } = await supabase
-        .from('users')
-        .upsert(csvRecords, { onConflict: 'student_id' })
+        .from("users")
+        .upsert(csvRecords, { onConflict: "student_id" });
 
-      if (error) throw error
+      if (error) throw error;
 
-      await logAuditAction('csv_import', 'users', `Batch upserted ${csvRecords.length} records from CSV.`)
+      await logAuditAction(
+        "csv_import",
+        "users",
+        `Batch upserted ${csvRecords.length} records from CSV.`,
+      );
       toaster.create({
-        title: 'CSV Onboarded successfully!',
+        title: "CSV Onboarded successfully!",
         description: `Upserted ${csvRecords.length} student records.`,
-        type: 'success',
-      })
-      setShowCsvModal(false)
-      setCsvRecords([])
-      triggerRefresh()
+        type: "success",
+      });
+      setShowCsvModal(false);
+      setCsvRecords([]);
+      triggerRefresh();
     } catch (err) {
-      console.error('Batch upsert failed:', err)
-      toaster.create({ title: 'Batch upsert failed', type: 'error' })
+      console.error("Batch upsert failed:", err);
+      toaster.create({ title: "Batch upsert failed", type: "error" });
     } finally {
-      setUpserting(false)
+      setUpserting(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <Flex minH="80vh" align="center" justify="center">
         <Spinner size="xl" color="var(--c-lagoon)" />
       </Flex>
-    )
+    );
   }
 
   return (
@@ -1003,63 +1602,105 @@ export function AdminDashboardPage() {
         <Heading
           as="h1"
           fontFamily="heading"
-          fontSize={{ base: '2rem', md: '3rem' }}
+          fontSize={{ base: "2rem", md: "3rem" }}
           fontWeight={700}
           color="accent.solid"
         >
           Administrative Console
         </Heading>
         <Text color="fg.muted" fontSize="sm">
-          Protected Workspace — Signed in as: <Badge colorPalette="teal">{user?.role}</Badge> (ID: {user?.student_id})
+          Protected Workspace — Signed in as:{" "}
+          <Badge colorPalette="teal">{user?.role}</Badge> (ID:{" "}
+          {user?.student_id})
         </Text>
       </VStack>
 
       {/* Admin Panel Tabs */}
-      <HStack gap={2} mb={8} borderBottom="1px solid" borderColor="border.subtle" pb={2} flexWrap="wrap">
-        {user?.role === 'moderator' && (
+      <HStack
+        gap={2}
+        mb={8}
+        borderBottom="1px solid"
+        borderColor="border.subtle"
+        pb={2}
+        flexWrap="wrap"
+      >
+        {user?.role === "moderator" && (
           <Button
             type="button"
-            variant={activeTab === 'moderator' ? 'solid' : 'ghost'}
-            onClick={() => setActiveTab('moderator')}
+            variant={activeTab === "moderator" ? "solid" : "ghost"}
+            onClick={() => setActiveTab("moderator")}
             borderRadius="full"
             px={5}
             h="40px"
-            bg={activeTab === 'moderator' ? 'var(--c-chocolate)' : 'transparent'}
-            color={activeTab === 'moderator' ? 'white' : 'var(--c-muted)'}
+            bg={
+              activeTab === "moderator" ? "var(--c-chocolate)" : "transparent"
+            }
+            color={activeTab === "moderator" ? "white" : "var(--c-muted)"}
             cursor="pointer"
           >
             Moderator Command Center
           </Button>
         )}
-        {(user?.role === 'moderator' || user?.role === 'media_admin') && (
+        {(user?.role === "moderator" || user?.role === "media_admin") && (
           <Button
             type="button"
-            variant={activeTab === 'media' ? 'solid' : 'ghost'}
-            onClick={() => setActiveTab('media')}
+            variant={activeTab === "media" ? "solid" : "ghost"}
+            onClick={() => setActiveTab("media")}
             borderRadius="full"
             px={5}
             h="40px"
-            bg={activeTab === 'media' ? 'var(--c-chocolate)' : 'transparent'}
-            color={activeTab === 'media' ? 'white' : 'var(--c-muted)'}
+            bg={activeTab === "media" ? "var(--c-chocolate)" : "transparent"}
+            color={activeTab === "media" ? "white" : "var(--c-muted)"}
             cursor="pointer"
           >
             Media Controls (AV)
           </Button>
         )}
+        <Link to="/admin/kpi">
+          <Button
+            type="button"
+            variant="ghost"
+            borderRadius="full"
+            px={5}
+            h="40px"
+            bg="transparent"
+            color="var(--c-muted)"
+            cursor="pointer"
+            _hover={{
+              bg: "rgba(73, 98, 104, 0.05)",
+              color: "var(--c-chocolate)",
+            }}
+          >
+            Platform KPIs
+          </Button>
+        </Link>
       </HStack>
 
       {/* TIER 1: Moderator Panel */}
-      {activeTab === 'moderator' && user?.role === 'moderator' && (
+      {activeTab === "moderator" && user?.role === "moderator" && (
         <VStack align="stretch" gap={6}>
           {/* Section A: Emergency Broadcast Control */}
           <AccordionSection
             title="Emergency Broadcast Control (Emergency Announcement)"
             isOpen={expandedSections.sectionA}
-            onToggle={() => toggleSection('sectionA')}
+            onToggle={() => toggleSection("sectionA")}
           >
-            <VStack as="form" onSubmit={handleSaveEmergencyAnnouncement} gap={4} align="stretch">
+            <VStack
+              as="form"
+              onSubmit={handleSaveEmergencyAnnouncement}
+              gap={4}
+              align="stretch"
+            >
               <Box>
-                <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={1} textTransform="uppercase">Announcement Text</Text>
+                <Text
+                  fontSize="xs"
+                  fontWeight="700"
+                  color="var(--c-muted)"
+                  mb={1}
+                  textTransform="uppercase"
+                >
+                  Announcement Text
+                </Text>
                 <Textarea
                   placeholder="Type an announcement to display globally at the top header..."
                   value={emergencyText}
@@ -1072,75 +1713,463 @@ export function AdminDashboardPage() {
                   fontSize="sm"
                   outline="none"
                   resize="none"
-                  _focus={{ borderColor: 'var(--c-lagoon)', boxShadow: '0 0 0 2px var(--c-lagoon-light)' }}
+                  _focus={{
+                    borderColor: "var(--c-lagoon)",
+                    boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                  }}
+                  disabled={isSavingAnnouncement}
                 />
               </Box>
+
+              {/* [ Live Preview Strip ] for Announcement */}
+              <Box mb={2}>
+                <Flex align="center" gap={2} mb={2}>
+                  <Text
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="var(--c-muted)"
+                    textTransform="uppercase"
+                  >
+                    Live Preview
+                  </Text>
+                  <Badge variant="subtle" bg="orange.100" color="orange.800" fontSize="2xs">
+                    [ Live Preview Strip ]
+                  </Badge>
+                </Flex>
+                {emergencyText.trim() ? (
+                  <Box className="announcement-banner-container" borderRadius="lg" overflow="hidden">
+                    <Flex align="center" flex={1}>
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="18px"
+                        style={{ marginRight: "8px", flexShrink: 0 }}
+                      >
+                        info
+                      </Box>
+                      {(() => {
+                        const urlRegex = /(https?:\/\/[^\s]+)/g;
+                        const urlMatch = emergencyText.match(urlRegex);
+                        const url = urlMatch ? urlMatch[0] : null;
+                        const cleanText = url ? emergencyText.replace(urlRegex, "").trim() : emergencyText;
+                        return (
+                          <>
+                            <Text fontSize="xs" fontWeight="bold">
+                              {cleanText}
+                            </Text>
+                            {url && (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  backgroundColor: "#78350f",
+                                  color: "#fef3c7",
+                                  marginLeft: "12px",
+                                  height: "20px",
+                                  paddingLeft: "8px",
+                                  paddingRight: "8px",
+                                  borderRadius: "6px",
+                                  fontSize: "10px",
+                                  fontWeight: "700",
+                                  textDecoration: "none",
+                                  opacity: 0.9,
+                                }}
+                              >
+                                View Link
+                              </a>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </Flex>
+                    <Box
+                      className="material-symbols-outlined"
+                      fontSize="18px"
+                      opacity={0.7}
+                    >
+                      close
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box
+                    py={3}
+                    px={4}
+                    border="1px dashed var(--c-outline)"
+                    borderRadius="lg"
+                    bg="rgba(0,0,0,0.02)"
+                  >
+                    <Text fontSize="xs" color="var(--c-muted)" fontStyle="italic">
+                      Enter announcement text above to view live preview...
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+
               <Flex align="center" justify="space-between">
+                <HStack gap={3}>
+                  <Badge
+                    colorScheme={emergencyActive ? "green" : "red"}
+                    variant="surface"
+                    px={3}
+                    py={1.5}
+                    borderRadius="full"
+                    fontWeight="700"
+                    fontSize="xs"
+                  >
+                    {emergencyActive ? "● Live On Client Screens" : "○ Inactive"}
+                  </Badge>
+                </HStack>
                 <HStack gap={3}>
                   <Button
                     type="button"
-                    size="sm"
-                    variant={emergencyActive ? 'solid' : 'outline'}
-                    bg={emergencyActive ? 'red.500' : 'transparent'}
-                    color={emergencyActive ? 'white' : 'var(--c-chocolate)'}
-                    onClick={() => setEmergencyActive(!emergencyActive)}
-                    cursor="pointer"
+                    variant="outline"
+                    borderColor="red.300"
+                    color="red.600"
+                    _hover={{ bg: "red.50" }}
+                    onClick={handleClearEmergencyAnnouncement}
+                    disabled={isSavingAnnouncement || !emergencyActive}
+                    borderRadius="xl"
+                    h="40px"
+                    px={4}
+                    fontSize="sm"
+                    fontWeight="700"
                   >
-                    {emergencyActive ? 'Active Broadcast Live' : 'Status: Inactive'}
+                    {isSavingAnnouncement ? <Spinner size="xs" /> : "Clear Announcement"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    bg="var(--c-chocolate)"
+                    color="white"
+                    _hover={{ bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)" }}
+                    disabled={isSavingAnnouncement || !emergencyText.trim()}
+                    px={6}
+                    borderRadius="xl"
+                    h="40px"
+                    fontSize="sm"
+                    fontWeight="700"
+                  >
+                    {isSavingAnnouncement ? <Spinner size="xs" /> : "Publish Announcement"}
                   </Button>
                 </HStack>
-                <Button
-                  type="submit"
-                  bg="var(--c-chocolate)"
-                  color="white"
-                  px={6}
-                  borderRadius="xl"
-                  h="40px"
-                  cursor="pointer"
-                >
-                  Publish Announcement
-                </Button>
               </Flex>
             </VStack>
+
+            {/* Divider */}
+            <Box
+              borderTop="1px solid"
+              borderColor="border.subtle"
+              pt={5}
+              mt={2}
+            >
+              <Flex
+                gap={{ base: 4, md: 6 }}
+                flexDirection={{ base: "column", md: "row" }}
+              >
+                {/* Ticker Input Card */}
+                <VStack
+                  align="stretch"
+                  gap={3}
+                  flex={1}
+                  bg="color-mix(in srgb, var(--c-lagoon) 4%, transparent)"
+                  p={4}
+                  borderRadius="xl"
+                  border="1px solid"
+                  borderColor="border.subtle"
+                >
+                  <Flex align="center" gap={2}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="18px"
+                      color="var(--c-lagoon)"
+                    >
+                      breaking_news
+                    </Box>
+                    <Text
+                      fontWeight="700"
+                      color="var(--c-chocolate)"
+                      fontSize="sm"
+                    >
+                      Global Marquee Ticker
+                    </Text>
+                  </Flex>
+                  <Input
+                    placeholder="Enter scrolling ticker text for all clients..."
+                    value={tickerText}
+                    onChange={(e) => setTickerText(e.target.value)}
+                    h="44px"
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    bg="var(--c-white)"
+                    fontSize="sm"
+                    _focus={{
+                      borderColor: "var(--c-lagoon)",
+                      boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                    }}
+                    disabled={isSavingTicker}
+                  />
+
+                  {/* [ Live Preview Strip ] for Ticker */}
+                  <Box>
+                    <Flex align="center" gap={2} mb={2}>
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                        textTransform="uppercase"
+                      >
+                        Live Preview
+                      </Text>
+                      <Badge variant="subtle" bg="orange.100" color="orange.800" fontSize="2xs">
+                        [ Live Preview Strip ]
+                      </Badge>
+                    </Flex>
+                    {tickerText.trim() ? (
+                      <Box
+                        className="premium-ticker-container"
+                        borderRadius="lg"
+                        overflow="hidden"
+                        style={{
+                          WebkitMaskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                          maskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                        }}
+                      >
+                        <div className="premium-ticker-track">
+                          <span className="premium-ticker-item">{tickerText}</span>
+                          <span className="premium-ticker-item">{tickerText}</span>
+                          <span className="premium-ticker-item">{tickerText}</span>
+                        </div>
+                      </Box>
+                    ) : (
+                      <Box
+                        py={3}
+                        px={4}
+                        border="1px dashed var(--c-outline)"
+                        borderRadius="lg"
+                        bg="rgba(0,0,0,0.02)"
+                      >
+                        <Text fontSize="xs" color="var(--c-muted)" fontStyle="italic">
+                          Enter ticker text above to view live preview...
+                        </Text>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <HStack gap={2}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      borderColor="red.300"
+                      color="red.600"
+                      _hover={{ bg: "red.50" }}
+                      h="40px"
+                      px={4}
+                      borderRadius="lg"
+                      cursor="pointer"
+                      fontSize="xs"
+                      fontWeight="700"
+                      onClick={handleClearTicker}
+                      disabled={isSavingTicker || !tickerActive}
+                      flex={1}
+                    >
+                      {isSavingTicker ? <Spinner size="xs" /> : "Kill Ticker"}
+                    </Button>
+                    <Button
+                      type="button"
+                      bg="var(--c-lagoon)"
+                      color="white"
+                      _hover={{ bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)" }}
+                      h="40px"
+                      px={5}
+                      borderRadius="lg"
+                      cursor="pointer"
+                      fontSize="xs"
+                      fontWeight="700"
+                      onClick={handlePublishTicker}
+                      disabled={isSavingTicker || !tickerText.trim()}
+                      flex={1}
+                    >
+                      {isSavingTicker ? <Spinner size="xs" /> : "Publish Ticker"}
+                    </Button>
+                  </HStack>
+                </VStack>
+
+                {/* Panic Mute Card */}
+                <VStack
+                  align="stretch"
+                  gap={3}
+                  flex={1}
+                  bg={
+                    globalMuteActive
+                      ? "color-mix(in srgb, #c53030 6%, transparent)"
+                      : "color-mix(in srgb, var(--c-ivory) 80%, transparent)"
+                  }
+                  p={4}
+                  borderRadius="xl"
+                  border="1px solid"
+                  borderColor={globalMuteActive ? "red.200" : "border.subtle"}
+                  transition="all 0.3s ease"
+                >
+                  <Flex align="center" gap={2}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="18px"
+                      color={globalMuteActive ? "red.600" : "var(--c-muted)"}
+                    >
+                      {globalMuteActive ? "volume_off" : "volume_up"}
+                    </Box>
+                    <Text
+                      fontWeight="700"
+                      color="var(--c-chocolate)"
+                      fontSize="sm"
+                    >
+                      Instant Panic Mute
+                    </Text>
+                    {globalMuteActive && (
+                      <Badge
+                        colorPalette="red"
+                        fontSize="2xs"
+                        borderRadius="full"
+                        px={2}
+                      >
+                        ENGAGED
+                      </Badge>
+                    )}
+                  </Flex>
+                  <Text fontSize="2xs" color="fg.muted" lineHeight="tall">
+                    Immediately freezes ALL chat inputs across every connected
+                    client. Use in emergencies to silence the entire chat
+                    system.
+                  </Text>
+                  {!globalMuteActive ? (
+                    <Button
+                      type="button"
+                      bg="red.600"
+                      color="white"
+                      h="48px"
+                      borderRadius="xl"
+                      cursor="pointer"
+                      fontSize="sm"
+                      fontWeight="800"
+                      _hover={{ bg: "red.700", transform: "scale(1.01)" }}
+                      transition="all 0.2s ease"
+                      onClick={() => handlePanicMute(true)}
+                      w="100%"
+                    >
+                      <HStack gap={2}>
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="20px"
+                        >
+                          emergency
+                        </Box>
+                        <Text>INSTANT GLOBAL MUTE</Text>
+                      </HStack>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      bg="var(--c-lagoon)"
+                      color="white"
+                      h="48px"
+                      borderRadius="xl"
+                      cursor="pointer"
+                      fontSize="sm"
+                      fontWeight="800"
+                      _hover={{
+                        bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                      }}
+                      transition="all 0.2s ease"
+                      onClick={() => handlePanicMute(false)}
+                      w="100%"
+                    >
+                      <HStack gap={2}>
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="20px"
+                        >
+                          check_circle
+                        </Box>
+                        <Text>LIFT MUTE — Restore Chat</Text>
+                      </HStack>
+                    </Button>
+                  )}
+                </VStack>
+              </Flex>
+            </Box>
           </AccordionSection>
 
           {/* Section B: Daily Vibe Mission Sequence Configurator */}
           <AccordionSection
             title="Daily Vibe Mission Sequence Configurator (Daily Mission Queue)"
             isOpen={expandedSections.sectionB}
-            onToggle={() => toggleSection('sectionB')}
+            onToggle={() => toggleSection("sectionB")}
           >
             <VStack align="stretch" gap={6}>
               {/* Mission list */}
-              <Box border="1px solid" borderColor="border.subtle" borderRadius="xl" overflow="hidden">
+              <Box
+                border="1px solid"
+                borderColor="border.subtle"
+                borderRadius="xl"
+                overflow="hidden"
+              >
                 <Table.Root size="sm">
                   <Table.Header bg="var(--c-ivory)">
                     <Table.Row>
                       <Table.ColumnHeader>Seq Order</Table.ColumnHeader>
-                      <Table.ColumnHeader>Target Position / Role</Table.ColumnHeader>
-                      <Table.ColumnHeader>Required Card Count</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Actions</Table.ColumnHeader>
+                      <Table.ColumnHeader>
+                        Target Position / Role
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader>
+                        Required Card Count
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">
+                        Actions
+                      </Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
                     {missions.map((m) => (
                       <Table.Row key={m.id}>
-                        <Table.Cell fontWeight="bold">Quest #{m.sequence_order}</Table.Cell>
+                        <Table.Cell fontWeight="bold">
+                          Quest #{m.sequence_order}
+                        </Table.Cell>
                         <Table.Cell>
-                          <Badge colorPalette="teal" px={2} py={0.5} borderRadius="md">
+                          <Badge
+                            colorPalette="teal"
+                            px={2}
+                            py={0.5}
+                            borderRadius="md"
+                          >
                             {m.target_role}
                           </Badge>
-                          <Text as="span" fontSize="2xs" color="fg.subtle" ml={2}>
+                          <Text
+                            as="span"
+                            fontSize="2xs"
+                            color="fg.subtle"
+                            ml={2}
+                          >
                             ({staffCounts[m.target_role] || 0} active in system)
                           </Text>
                         </Table.Cell>
-                        <Table.Cell fontWeight="600">{m.required_count} cards</Table.Cell>
+                        <Table.Cell fontWeight="600">
+                          {m.required_count} cards
+                        </Table.Cell>
                         <Table.Cell textAlign="right">
                           <Button
                             type="button"
                             variant="ghost"
                             colorPalette="red"
-                            onClick={() => handleRemoveMission(m.id, m.sequence_order)}
+                            onClick={() =>
+                              handleRemoveMission(m.id, m.sequence_order)
+                            }
                             cursor="pointer"
                             h={{ base: "40px", md: "28px" }}
                             px={{ base: 4, md: 3 }}
@@ -1153,8 +2182,15 @@ export function AdminDashboardPage() {
                     ))}
                     {missions.length === 0 && (
                       <Table.Row>
-                        <Table.Cell colSpan={4} textAlign="center" py={4} color="fg.subtle" fontStyle="italic">
-                          No missions configured in the system. Cards can be swiped without constraints.
+                        <Table.Cell
+                          colSpan={4}
+                          textAlign="center"
+                          py={4}
+                          color="fg.subtle"
+                          fontStyle="italic"
+                        >
+                          No missions configured in the system. Cards can be
+                          swiped without constraints.
                         </Table.Cell>
                       </Table.Row>
                     )}
@@ -1163,10 +2199,26 @@ export function AdminDashboardPage() {
               </Box>
 
               {/* Add Mission Form */}
-              <Flex as="form" onSubmit={handleAddMission} gap={3} flexWrap="wrap" align="end" bg="var(--c-ivory)" p={4} borderRadius="xl">
+              <Flex
+                as="form"
+                onSubmit={handleAddMission}
+                gap={3}
+                flexWrap="wrap"
+                align="end"
+                bg="var(--c-ivory)"
+                p={4}
+                borderRadius="xl"
+              >
                 <VStack align="start" gap={1}>
-                  <Box fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
-                    <label htmlFor="add-mission-target">Target Staff Category</label>
+                  <Box
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="var(--c-muted)"
+                    textTransform="uppercase"
+                  >
+                    <label htmlFor="add-mission-target">
+                      Target Staff Category
+                    </label>
                   </Box>
                   <select
                     id="add-mission-target"
@@ -1191,13 +2243,17 @@ export function AdminDashboardPage() {
                   </select>
                 </VStack>
                 <VStack align="start" gap={1}>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">Required Card Count</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    Required Card Count
+                  </Text>
                   <Input
                     type="number"
                     min={1}
                     max={20}
                     value={newMissionCount}
-                    onChange={(e) => setNewMissionCount(parseInt(e.target.value) || 1)}
+                    onChange={(e) =>
+                      setNewMissionCount(parseInt(e.target.value) || 1)
+                    }
                     h="38px"
                     bg="white"
                     borderRadius="lg"
@@ -1205,52 +2261,105 @@ export function AdminDashboardPage() {
                     maxW="90px"
                   />
                 </VStack>
-                <Button type="submit" bg="var(--c-chocolate)" color="white" h={{ base: "40px", md: "38px" }} px={4} borderRadius="lg" cursor="pointer">
+                <Button
+                  type="submit"
+                  bg="var(--c-chocolate)"
+                  color="white"
+                  h={{ base: "40px", md: "38px" }}
+                  px={4}
+                  borderRadius="lg"
+                  cursor="pointer"
+                >
                   Append Quest
                 </Button>
               </Flex>
 
               {/* Penalty Lockout Variable Inputs */}
-              <VStack as="form" onSubmit={handleSaveGamePenalties} align="stretch" gap={4} borderTop="1px solid" borderColor="border.subtle" pt={4}>
-                <Heading as="h3" fontSize="sm" fontWeight="700" color="var(--c-chocolate)">
+              <VStack
+                as="form"
+                onSubmit={handleSaveGamePenalties}
+                align="stretch"
+                gap={4}
+                borderTop="1px solid"
+                borderColor="border.subtle"
+                pt={4}
+              >
+                <Heading
+                  as="h3"
+                  fontSize="sm"
+                  fontWeight="700"
+                  color="var(--c-chocolate)"
+                >
                   Swipe Penalty & Exponential Lockout Variables
                 </Heading>
                 <Flex gap={4} flexWrap="wrap">
                   <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text fontSize="2xs" fontWeight="700" color="var(--c-muted)">Max Allowed Strikes</Text>
+                    <Text
+                      fontSize="2xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                    >
+                      Max Allowed Strikes
+                    </Text>
                     <Input
                       type="number"
                       value={maxStrikes}
-                      onChange={(e) => setMaxStrikes(parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setMaxStrikes(parseInt(e.target.value) || 1)
+                      }
                       bg="var(--c-ivory)"
                       h="40px"
                       borderRadius="lg"
                     />
                   </VStack>
                   <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text fontSize="2xs" fontWeight="700" color="var(--c-muted)">Base Cooldown (minutes)</Text>
+                    <Text
+                      fontSize="2xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                    >
+                      Base Cooldown (minutes)
+                    </Text>
                     <Input
                       type="number"
                       value={baseCooldown}
-                      onChange={(e) => setBaseCooldown(parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setBaseCooldown(parseInt(e.target.value) || 1)
+                      }
                       bg="var(--c-ivory)"
                       h="40px"
                       borderRadius="lg"
                     />
                   </VStack>
                   <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text fontSize="2xs" fontWeight="700" color="var(--c-muted)">Max Cooldown ceiling (minutes)</Text>
+                    <Text
+                      fontSize="2xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                    >
+                      Max Cooldown ceiling (minutes)
+                    </Text>
                     <Input
                       type="number"
                       value={maxCooldown}
-                      onChange={(e) => setMaxCooldown(parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        setMaxCooldown(parseInt(e.target.value) || 1)
+                      }
                       bg="var(--c-ivory)"
                       h="40px"
                       borderRadius="lg"
                     />
                   </VStack>
                 </Flex>
-                <Button type="submit" bg="var(--c-lagoon)" color="white" h="40px" maxW="200px" borderRadius="lg" cursor="pointer">
+                <Button
+                  type="submit"
+                  bg="var(--c-lagoon)"
+                  color="white"
+                  h="40px"
+                  maxW="200px"
+                  borderRadius="lg"
+                  cursor="pointer"
+                >
                   Save Rules Config
                 </Button>
               </VStack>
@@ -1261,14 +2370,26 @@ export function AdminDashboardPage() {
           <AccordionSection
             title="Student Whitelist Matrix Table (Tab-based Record Filtering)"
             isOpen={expandedSections.sectionC}
-            onToggle={() => toggleSection('sectionC')}
+            onToggle={() => toggleSection("sectionC")}
           >
             <Box>
-              <Flex justify="space-between" align="center" mb={4} flexWrap="wrap" gap={3}>
-                <Heading as="h3" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" m={0}>
+              <Flex
+                justify="space-between"
+                align="center"
+                mb={4}
+                flexWrap="wrap"
+                gap={3}
+              >
+                <Heading
+                  as="h3"
+                  fontSize="lg"
+                  fontWeight="700"
+                  color="var(--c-chocolate)"
+                  m={0}
+                >
                   Student ID Whitelisting
                 </Heading>
-                
+
                 {/* CSV Upload Inputs */}
                 <Box>
                   <Input
@@ -1286,20 +2407,38 @@ export function AdminDashboardPage() {
                     px={6}
                     borderRadius="xl"
                     cursor="pointer"
-                    _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
+                    _hover={{
+                      bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                    }}
                   >
                     Upload CSV
                   </Button>
                 </Box>
               </Flex>
 
-              <Flex as="form" onSubmit={handleAddWhitelist} gap={3} flexWrap="wrap" align="end" mb={6}>
+              <Flex
+                as="form"
+                onSubmit={handleAddWhitelist}
+                gap={3}
+                flexWrap="wrap"
+                align="end"
+                mb={6}
+              >
                 <VStack align="start" gap={1}>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">Student ID</Text>
+                  <Text
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="var(--c-muted)"
+                    textTransform="uppercase"
+                  >
+                    Student ID
+                  </Text>
                   <Input
                     placeholder="e.g. 6688225"
                     value={newStudentId}
-                    onChange={(e) => setNewStudentId(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) =>
+                      setNewStudentId(e.target.value.replace(/\D/g, ""))
+                    }
                     h="44px"
                     borderRadius="xl"
                     border="1.5px solid var(--c-outline)"
@@ -1309,7 +2448,12 @@ export function AdminDashboardPage() {
                   />
                 </VStack>
                 <VStack align="start" gap={1}>
-                  <Box fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                  <Box
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="var(--c-muted)"
+                    textTransform="uppercase"
+                  >
                     <label htmlFor="add-user-role">Role Assignment</label>
                   </Box>
                   <Tooltip label={getRoleDescription(newRole)}>
@@ -1323,7 +2467,9 @@ export function AdminDashboardPage() {
                     >
                       <option value="student">Student (Freshman)</option>
                       <option value="staff">Staff (Orientation Staff)</option>
-                      <option value="media_admin">Media Admin (AV Control)</option>
+                      <option value="media_admin">
+                        Media Admin (AV Control)
+                      </option>
                       <option value="moderator">Moderator</option>
                     </select>
                   </Tooltip>
@@ -1336,29 +2482,101 @@ export function AdminDashboardPage() {
                   px={6}
                   borderRadius="xl"
                   cursor="pointer"
-                  _hover={{ bg: 'color-mix(in srgb, var(--c-lagoon) 85%, black)' }}
+                  _hover={{
+                    bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                  }}
                 >
                   Whitelist ID
                 </Button>
               </Flex>
 
               {/* Whitelist tab filters */}
-              <Tabs.Root 
-                defaultValue="student" 
-                value={whitelistRoleTab} 
-                onValueChange={(details) => setWhitelistRoleTab(details.value as 'student' | 'staff')}
-                variant="line" 
+              <Tabs.Root
+                defaultValue="student"
+                value={whitelistRoleTab}
+                onValueChange={(details) =>
+                  setWhitelistRoleTab(details.value as "student" | "staff")
+                }
+                variant="line"
                 mb={4}
               >
                 <Tabs.List borderColor="border.subtle">
-                  <Tabs.Trigger value="student" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2} h={{ base: "40px", md: "auto" }}>
-                    Freshmen Only ({whitelistedUsers.filter(u => u.role === 'student').length})
+                  <Tabs.Trigger
+                    value="student"
+                    cursor="pointer"
+                    fontSize="xs"
+                    fontWeight="700"
+                    px={4}
+                    py={2}
+                    h={{ base: "40px", md: "auto" }}
+                  >
+                    Freshmen Only (
+                    {
+                      whitelistedUsers.filter((u) => u.role === "student")
+                        .length
+                    }
+                    )
                   </Tabs.Trigger>
-                  <Tabs.Trigger value="staff" cursor="pointer" fontSize="xs" fontWeight="700" px={4} py={2} h={{ base: "40px", md: "auto" }}>
-                    Staff & Moderators ({whitelistedUsers.filter(u => u.role !== 'student').length})
+                  <Tabs.Trigger
+                    value="staff"
+                    cursor="pointer"
+                    fontSize="xs"
+                    fontWeight="700"
+                    px={4}
+                    py={2}
+                    h={{ base: "40px", md: "auto" }}
+                  >
+                    Staff & Moderators (
+                    {
+                      whitelistedUsers.filter((u) => u.role !== "student")
+                        .length
+                    }
+                    )
                   </Tabs.Trigger>
                 </Tabs.List>
               </Tabs.Root>
+
+              {/* Search / Filter Bar */}
+              <Flex align="center" gap={3} mb={4}>
+                <Box position="relative" flex={1}>
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    position="absolute"
+                    left="12px"
+                    top="50%"
+                    transform="translateY(-50%)"
+                    fontSize="18px"
+                    color="var(--c-muted)"
+                    pointerEvents="none"
+                  >
+                    search
+                  </Box>
+                  <Input
+                    placeholder="Search by ID, Nickname, or Faculty..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    h="40px"
+                    pl="38px"
+                    borderRadius="lg"
+                    border="1.5px solid var(--c-outline)"
+                    bg="var(--c-white)"
+                    fontSize="xs"
+                    _focus={{
+                      borderColor: "var(--c-lagoon)",
+                      boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                    }}
+                  />
+                </Box>
+                <Text
+                  fontSize="2xs"
+                  color="fg.muted"
+                  whiteSpace="nowrap"
+                  fontWeight="600"
+                >
+                  {filteredWhitelistedUsers.length} results
+                </Text>
+              </Flex>
 
               {/* Whitelisted Users Table */}
               <Box overflowX="auto" maxH="350px" overflowY="auto">
@@ -1376,10 +2594,10 @@ export function AdminDashboardPage() {
                             checked={isAllSelected}
                             onChange={(e) => handleSelectAll(e.target.checked)}
                             style={{
-                              width: '20px',
-                              height: '20px',
-                              accentColor: 'var(--c-lagoon)',
-                              cursor: 'pointer',
+                              width: "20px",
+                              height: "20px",
+                              accentColor: "var(--c-lagoon)",
+                              cursor: "pointer",
                             }}
                             aria-label="Select all students on page"
                             title="Select all students on page"
@@ -1391,12 +2609,18 @@ export function AdminDashboardPage() {
                       <Table.ColumnHeader>Faculty</Table.ColumnHeader>
                       <Table.ColumnHeader>Role</Table.ColumnHeader>
                       <Table.ColumnHeader>Status</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">Actions</Table.ColumnHeader>
+                      <Table.ColumnHeader textAlign="right">
+                        Actions
+                      </Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
                     {filteredWhitelistedUsers.map((u) => (
-                      <Table.Row key={u.student_id}>
+                      <Table.Row 
+                        key={u.student_id}
+                        bg={lastUpdatedStudentId === u.student_id ? "rgba(235, 126, 61, 0.25)" : "transparent"}
+                        transition="background-color 0.8s ease-out"
+                      >
                         <Table.Cell textAlign="center" py={3}>
                           <label
                             htmlFor={`select-user-${u.student_id}`}
@@ -1405,13 +2629,17 @@ export function AdminDashboardPage() {
                             <input
                               id={`select-user-${u.student_id}`}
                               type="checkbox"
-                              checked={selectedStudentIds.includes(u.student_id)}
-                              onChange={(e) => handleSelectUser(u.student_id, e.target.checked)}
+                              checked={selectedStudentIds.includes(
+                                u.student_id,
+                              )}
+                              onChange={(e) =>
+                                handleSelectUser(u.student_id, e.target.checked)
+                              }
                               style={{
-                                width: '20px',
-                                height: '20px',
-                                accentColor: 'var(--c-lagoon)',
-                                cursor: 'pointer',
+                                width: "20px",
+                                height: "20px",
+                                accentColor: "var(--c-lagoon)",
+                                cursor: "pointer",
                               }}
                               aria-label={`Select student ID ${u.student_id}`}
                               title={`Select student ID ${u.student_id}`}
@@ -1419,17 +2647,43 @@ export function AdminDashboardPage() {
                           </label>
                         </Table.Cell>
                         <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
-                        <Table.Cell>{u.nickname || <Text as="span" color="fg.subtle" fontStyle="italic">Pending Onboarding</Text>}</Table.Cell>
-                        <Table.Cell>{u.faculty || '-'}</Table.Cell>
                         <Table.Cell>
-                          <Tooltip label={getRoleDescription(u.role)}>
-                            <Badge
-                              colorPalette={u.role === 'moderator' ? 'red' : u.role === 'staff' ? 'orange' : u.role === 'media_admin' ? 'blue' : 'gray'}
-                              cursor="help"
+                          {u.nickname || (
+                            <Text
+                              as="span"
+                              color="fg.subtle"
+                              fontStyle="italic"
                             >
-                              {u.role}
-                            </Badge>
-                          </Tooltip>
+                              Pending Onboarding
+                            </Text>
+                          )}
+                        </Table.Cell>
+                        <Table.Cell>{u.faculty || "-"}</Table.Cell>
+                        <Table.Cell>
+                          <select
+                            value={u.role}
+                            onChange={(e) =>
+                              handleInlineRoleChange(
+                                u.student_id,
+                                e.target.value,
+                                u.role,
+                              )
+                            }
+                            className="admin-select-white-sm custom-select"
+                            aria-label={`Change role for ${u.student_id}`}
+                            title={`Change role for ${u.student_id}`}
+                            style={{
+                              minWidth: "100px",
+                              fontSize: "11px",
+                              height: "32px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <option value="student">student</option>
+                            <option value="staff">staff</option>
+                            <option value="media_admin">media_admin</option>
+                            <option value="moderator">moderator</option>
+                          </select>
                         </Table.Cell>
                         <Table.Cell>
                           {u.nickname ? (
@@ -1479,40 +2733,127 @@ export function AdminDashboardPage() {
           <AccordionSection
             title="Historical Administrative Audit Logs Timeline (System Audit Logs)"
             isOpen={expandedSections.sectionD}
-            onToggle={() => toggleSection('sectionD')}
+            onToggle={() => toggleSection("sectionD")}
           >
-            <Box overflowY="auto" maxH="250px" border="1px solid" borderColor="border.subtle" borderRadius="xl">
+            <Flex justify="flex-end" mb={3}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => triggerRefresh()}
+                cursor="pointer"
+                h="32px"
+                px={3}
+                fontSize="xs"
+                fontWeight="600"
+                color="var(--c-muted)"
+              >
+                <HStack gap={1}>
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="14px"
+                  >
+                    refresh
+                  </Box>
+                  <Text as="span">Refresh</Text>
+                </HStack>
+              </Button>
+            </Flex>
+            <Box
+              overflowY="auto"
+              maxH="320px"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="xl"
+            >
               <Table.Root size="sm" variant="line">
                 <Table.Header bg="var(--c-ivory)">
                   <Table.Row>
                     <Table.ColumnHeader>Timestamp</Table.ColumnHeader>
-                    <Table.ColumnHeader>Moderator Nickname</Table.ColumnHeader>
+                    <Table.ColumnHeader>Moderator</Table.ColumnHeader>
                     <Table.ColumnHeader>Action</Table.ColumnHeader>
                     <Table.ColumnHeader>Target</Table.ColumnHeader>
                     <Table.ColumnHeader>Details</Table.ColumnHeader>
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {auditLogs.map((log) => (
-                    <Table.Row key={log.id}>
-                      <Table.Cell fontSize="2xs" color="fg.subtle">
-                        {new Date(log.created_at).toLocaleString()}
-                      </Table.Cell>
-                      <Table.Cell fontWeight="600">
-                        {log.users?.nickname || `ID: ${log.moderator_id}`}
-                      </Table.Cell>
-                      <Table.Cell>
-                        <Badge colorPalette={log.action_type.includes('remove') ? 'red' : log.action_type.includes('add') ? 'green' : 'blue'}>
-                          {log.action_type}
-                        </Badge>
-                      </Table.Cell>
-                      <Table.Cell fontSize="xs" fontFamily="monospace">{log.target_id || '-'}</Table.Cell>
-                      <Table.Cell fontSize="xs">{log.details}</Table.Cell>
-                    </Table.Row>
-                  ))}
+                  {auditLogs.map((log, idx) => {
+                    // Enhanced color coding for action types
+                    const getActionColor = (type: string) => {
+                      if (
+                        type.includes("remove") ||
+                        type.includes("delete") ||
+                        type === "panic_mute"
+                      )
+                        return "red";
+                      if (type.includes("add") || type.includes("csv"))
+                        return "green";
+                      if (type === "role_mutation") return "orange";
+                      if (type.includes("toggle") || type.includes("hype_mode"))
+                        return "blue";
+                      if (type.includes("ticker")) return "teal";
+                      if (type.includes("emergency")) return "red";
+                      if (type.includes("mission")) return "cyan";
+                      if (type.includes("user_update")) return "blue";
+                      return "gray";
+                    };
+                    return (
+                      <Table.Row
+                        key={log.id}
+                        className={idx < 3 ? "chat-message-enter" : undefined}
+                      >
+                        <Table.Cell
+                          fontSize="2xs"
+                          color="fg.subtle"
+                          whiteSpace="nowrap"
+                        >
+                          {new Date(log.created_at).toLocaleString()}
+                        </Table.Cell>
+                        <Table.Cell fontWeight="600" fontSize="xs">
+                          {log.users?.nickname || `ID: ${log.moderator_id}`}
+                        </Table.Cell>
+                        <Table.Cell>
+                          <Badge
+                            colorPalette={getActionColor(log.action_type)}
+                            fontSize="2xs"
+                            px={2}
+                            py={0.5}
+                            borderRadius="md"
+                            textTransform="uppercase"
+                            letterSpacing="wider"
+                          >
+                            {log.action_type.includes("panic_mute") && "🚨 "}
+                            {log.action_type}
+                          </Badge>
+                        </Table.Cell>
+                        <Table.Cell
+                          fontSize="2xs"
+                          fontFamily="monospace"
+                          color="fg.subtle"
+                        >
+                          {log.target_id || "-"}
+                        </Table.Cell>
+                        <Table.Cell
+                          fontSize="2xs"
+                          maxW="240px"
+                          overflow="hidden"
+                          textOverflow="ellipsis"
+                        >
+                          {log.details}
+                        </Table.Cell>
+                      </Table.Row>
+                    );
+                  })}
                   {auditLogs.length === 0 && (
                     <Table.Row>
-                      <Table.Cell colSpan={5} textAlign="center" py={4} color="fg.subtle" fontStyle="italic">
+                      <Table.Cell
+                        colSpan={5}
+                        textAlign="center"
+                        py={4}
+                        color="fg.subtle"
+                        fontStyle="italic"
+                      >
                         No audit events recorded yet.
                       </Table.Cell>
                     </Table.Row>
@@ -1526,46 +2867,210 @@ export function AdminDashboardPage() {
           <AccordionSection
             title="Portal Master Switches (System Control)"
             isOpen={expandedSections.sectionE}
-            onToggle={() => toggleSection('sectionE')}
+            onToggle={() => toggleSection("sectionE")}
           >
-            <VStack gap={4} align="stretch">
-              <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
+            <VStack gap={6} align="stretch">
+              {/* Hype Board Mode — Tri-State Segmented Control */}
+              <Box
+                p={4}
+                bg="var(--c-ivory)"
+                borderRadius="xl"
+                border="1px solid"
+                borderColor="border.subtle"
+              >
+                <Flex align="center" justify="space-between" mb={3}>
+                  <Box>
+                    <Text
+                      fontWeight="700"
+                      color="var(--c-chocolate)"
+                      fontSize="sm"
+                    >
+                      Hype Board Mode
+                    </Text>
+                    <Text fontSize="2xs" color="fg.muted">
+                      Controls the live chat stream behavior for all connected
+                      clients.
+                    </Text>
+                  </Box>
+                  <Badge
+                    colorPalette={
+                      hypeBoardMode === "active"
+                        ? "green"
+                        : hypeBoardMode === "slow_3s"
+                          ? "yellow"
+                          : "red"
+                    }
+                    fontSize="2xs"
+                    px={2}
+                    py={0.5}
+                    borderRadius="full"
+                  >
+                    {hypeBoardMode === "active"
+                      ? "● LIVE"
+                      : hypeBoardMode === "slow_3s"
+                        ? "◐ SLOW"
+                        : "○ LOCKED"}
+                  </Badge>
+                </Flex>
+                <Flex
+                  gap={2}
+                  bg="var(--c-white)"
+                  p={1}
+                  borderRadius="xl"
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  flexDirection={{ base: "column", md: "row" }}
+                >
+                  {[
+                    {
+                      mode: "active" as const,
+                      label: "ACTIVE",
+                      icon: "stream",
+                      color: "var(--c-lagoon)",
+                      desc: "Normal streaming",
+                    },
+                    {
+                      mode: "slow_3s" as const,
+                      label: "SLOW MODE (3s)",
+                      icon: "speed",
+                      color: "#d4a017",
+                      desc: "3s throttle",
+                    },
+                    {
+                      mode: "read_only" as const,
+                      label: "READ ONLY",
+                      icon: "lock",
+                      color: "#c53030",
+                      desc: "No input",
+                    },
+                  ].map((opt) => (
+                    <Button
+                      key={opt.mode}
+                      type="button"
+                      flex={1}
+                      h={{ base: "44px", md: "42px" }}
+                      borderRadius="lg"
+                      cursor="pointer"
+                      bg={
+                        hypeBoardMode === opt.mode ? opt.color : "transparent"
+                      }
+                      color={
+                        hypeBoardMode === opt.mode ? "white" : "var(--c-muted)"
+                      }
+                      border={
+                        hypeBoardMode === opt.mode
+                          ? "none"
+                          : "1px solid transparent"
+                      }
+                      fontWeight="700"
+                      fontSize="xs"
+                      _hover={{
+                        bg:
+                          hypeBoardMode === opt.mode
+                            ? opt.color
+                            : "color-mix(in srgb, var(--c-ivory) 80%, var(--c-outline))",
+                      }}
+                      onClick={() => handleSetHypeMode(opt.mode)}
+                      transition="all 0.2s ease"
+                    >
+                      <HStack gap={1.5}>
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="16px"
+                        >
+                          {opt.icon}
+                        </Box>
+                        <Text
+                          as="span"
+                          display={{ base: "inline", md: "inline" }}
+                        >
+                          {opt.label}
+                        </Text>
+                      </HStack>
+                    </Button>
+                  ))}
+                </Flex>
+              </Box>
+
+              {/* Memory Board Toggle — Binary Switch */}
+              <Flex
+                align="center"
+                justify="space-between"
+                p={4}
+                bg="var(--c-ivory)"
+                borderRadius="xl"
+                border="1px solid"
+                borderColor="border.subtle"
+              >
                 <Box>
-                  <Text fontWeight="600" color="var(--c-chocolate)">Hype Board Active</Text>
-                  <Text fontSize="xs" color="fg.muted">Enable the aggregate chat block feeds.</Text>
+                  <Text
+                    fontWeight="700"
+                    color="var(--c-chocolate)"
+                    fontSize="sm"
+                  >
+                    Memory Board
+                  </Text>
+                  <Text fontSize="2xs" color="fg.muted">
+                    Shared orientation photo posting canvas. When disabled,
+                    students are locked out (staff bypass).
+                  </Text>
                 </Box>
                 <Button
                   type="button"
-                  bg={enableHypeBoard ? 'var(--c-lagoon)' : 'var(--c-outline)'}
+                  bg={
+                    enableMemoryBoard ? "var(--c-lagoon)" : "var(--c-outline)"
+                  }
                   color="white"
-                  onClick={() => handleToggleConfig('enable_hype_board', enableHypeBoard)}
+                  onClick={() =>
+                    handleToggleConfig("enable_memory_board", enableMemoryBoard)
+                  }
                   cursor="pointer"
-                  h={{ base: "40px", md: "38px" }}
-                  px={4}
+                  h={{ base: "44px", md: "40px" }}
+                  px={5}
                   borderRadius="lg"
+                  fontWeight="700"
+                  fontSize="xs"
+                  transition="all 0.2s ease"
                 >
-                  {enableHypeBoard ? 'ACTIVE' : 'DISABLED'}
+                  <HStack gap={1.5}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="16px"
+                    >
+                      {enableMemoryBoard ? "visibility" : "visibility_off"}
+                    </Box>
+                    {enableMemoryBoard ? "ACTIVE" : "DISABLED"}
+                  </HStack>
                 </Button>
               </Flex>
 
-              <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
-                <Box>
-                  <Text fontWeight="600" color="var(--c-chocolate)">Memory Board Active</Text>
-                  <Text fontSize="xs" color="fg.muted">Enable the shared orientation photo posting memory canvas.</Text>
-                </Box>
-                <Button
-                  type="button"
-                  bg={enableMemoryBoard ? 'var(--c-lagoon)' : 'var(--c-outline)'}
-                  color="white"
-                  onClick={() => handleToggleConfig('enable_memory_board', enableMemoryBoard)}
-                  cursor="pointer"
-                  h={{ base: "40px", md: "38px" }}
-                  px={4}
-                  borderRadius="lg"
+              {/* Global Mute Status Indicator */}
+              {globalMuteActive && (
+                <Flex
+                  align="center"
+                  gap={2}
+                  p={3}
+                  bg="color-mix(in srgb, #c53030 8%, transparent)"
+                  border="1px solid"
+                  borderColor="red.200"
+                  borderRadius="xl"
                 >
-                  {enableMemoryBoard ? 'ACTIVE' : 'DISABLED'}
-                </Button>
-              </Flex>
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="18px"
+                    color="red.600"
+                  >
+                    volume_off
+                  </Box>
+                  <Text fontSize="xs" fontWeight="700" color="red.700">
+                    GLOBAL MUTE IS ACTIVE — All chat inputs are frozen across
+                    all clients.
+                  </Text>
+                </Flex>
+              )}
             </VStack>
           </AccordionSection>
 
@@ -1573,12 +3078,19 @@ export function AdminDashboardPage() {
           <AccordionSection
             title="Orientation Milestones Timer Setup (Countdown Timer)"
             isOpen={expandedSections.sectionF}
-            onToggle={() => toggleSection('sectionF')}
+            onToggle={() => toggleSection("sectionF")}
           >
-            <VStack as="form" onSubmit={handleUpdateEvent} gap={4} align="stretch">
+            <VStack
+              as="form"
+              onSubmit={handleUpdateEvent}
+              gap={4}
+              align="stretch"
+            >
               <Flex gap={4} flexWrap="wrap">
                 <VStack align="start" gap={1} flex={1} minW="200px">
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">Countdown Target Label</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    Countdown Target Label
+                  </Text>
                   <Input
                     placeholder="Event Title e.g. First Meet"
                     value={eventTitle}
@@ -1590,7 +3102,9 @@ export function AdminDashboardPage() {
                   />
                 </VStack>
                 <VStack align="start" gap={1} flex={1} minW="200px">
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">Milestone Calendar Time</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    Milestone Calendar Time
+                  </Text>
                   <Input
                     type="datetime-local"
                     value={eventTime}
@@ -1620,50 +3134,126 @@ export function AdminDashboardPage() {
       )}
 
       {/* TIER 2: Media Admin Panel */}
-      {activeTab === 'media' && (user?.role === 'moderator' || user?.role === 'media_admin') && (
-        <VStack align="stretch" gap={6}>
-          <Box bg="var(--c-white)" p={6} border="1px solid" borderColor="border.subtle" borderRadius="2xl" boxShadow="var(--shadow-card)">
-            <Heading as="h2" fontSize="lg" fontWeight="700" color="var(--c-chocolate)" mb={4}>
-              Immich Photo Server Connectivity (AV)
-            </Heading>
-            <VStack gap={4} align="stretch" mb={6}>
-              <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
-                <Text fontWeight="600" color="var(--c-chocolate)">External Server Status</Text>
-                <Badge colorPalette={immichConfig.isConfigured ? 'green' : 'red'}>
-                  {immichStatus.ping}
-                </Badge>
-              </Flex>
-              <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
-                <Text fontWeight="600" color="var(--c-chocolate)">Configured Server Endpoint</Text>
-                <Text fontSize="xs" fontWeight="700" color="var(--c-lagoon)">
-                  {immichConfig.url || 'None (Using local Supabase fallback)'}
-                </Text>
-              </Flex>
-              <Flex align="center" justify="space-between" p={3} bg="var(--c-ivory)" borderRadius="xl">
-                <Text fontWeight="600" color="var(--c-chocolate)">Synced Image Records</Text>
-                <Text fontSize="sm" fontWeight="700" color="var(--c-chocolate)">
-                  {immichStatus.totalImages} images
-                </Text>
-              </Flex>
-            </VStack>
+      {activeTab === "media" &&
+        (user?.role === "moderator" || user?.role === "media_admin") && (
+          <VStack align="stretch" gap={6}>
+            <Box
+              bg="var(--c-white)"
+              p={6}
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              boxShadow="var(--shadow-card)"
+            >
+              <Heading
+                as="h2"
+                fontSize="lg"
+                fontWeight="700"
+                color="var(--c-chocolate)"
+                mb={4}
+              >
+                Immich Photo Server Connectivity (AV)
+              </Heading>
+              <VStack gap={4} align="stretch" mb={6}>
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  p={3}
+                  bg="var(--c-ivory)"
+                  borderRadius="xl"
+                >
+                  <Text fontWeight="600" color="var(--c-chocolate)">
+                    External Server Status
+                  </Text>
+                  <Badge
+                    colorPalette={immichConfig.isConfigured ? "green" : "red"}
+                  >
+                    {immichStatus.ping}
+                  </Badge>
+                </Flex>
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  p={3}
+                  bg="var(--c-ivory)"
+                  borderRadius="xl"
+                >
+                  <Text fontWeight="600" color="var(--c-chocolate)">
+                    Configured Server Endpoint
+                  </Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-lagoon)">
+                    {immichConfig.url || "None (Using local Supabase fallback)"}
+                  </Text>
+                </Flex>
+                <Flex
+                  align="center"
+                  justify="space-between"
+                  p={3}
+                  bg="var(--c-ivory)"
+                  borderRadius="xl"
+                >
+                  <Text fontWeight="600" color="var(--c-chocolate)">
+                    Synced Image Records
+                  </Text>
+                  <Text
+                    fontSize="sm"
+                    fontWeight="700"
+                    color="var(--c-chocolate)"
+                  >
+                    {immichStatus.totalImages} images
+                  </Text>
+                </Flex>
+              </VStack>
 
-            <Heading as="h3" fontSize="sm" fontWeight="700" color="var(--c-chocolate)" mb={2}>
-              DigitalOcean Droplet Sync Log Tracker
-            </Heading>
-            <Box bg="var(--c-ink)" color="green.400" p={4} borderRadius="xl" fontFamily="monospace" fontSize="xs" h="150px" overflowY="auto">
-              <Text>[{new Date().toISOString()}] INITIALIZING Droplet connectivity check...</Text>
-              <Text>[{new Date().toISOString()}] GET config url: {immichConfig.url || 'local_db'}</Text>
-              <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
-              <Text>[{new Date().toISOString()}] SYNC STATUS: Completed successfully. {immichStatus.activeSyncs} background tasks active.</Text>
+              <Heading
+                as="h3"
+                fontSize="sm"
+                fontWeight="700"
+                color="var(--c-chocolate)"
+                mb={2}
+              >
+                DigitalOcean Droplet Sync Log Tracker
+              </Heading>
+              <Box
+                bg="var(--c-ink)"
+                color="green.400"
+                p={4}
+                borderRadius="xl"
+                fontFamily="monospace"
+                fontSize="xs"
+                h="150px"
+                overflowY="auto"
+              >
+                <Text>
+                  [{new Date().toISOString()}] INITIALIZING Droplet connectivity
+                  check...
+                </Text>
+                <Text>
+                  [{new Date().toISOString()}] GET config url:{" "}
+                  {immichConfig.url || "local_db"}
+                </Text>
+                <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
+                <Text>
+                  [{new Date().toISOString()}] SYNC STATUS: Completed
+                  successfully. {immichStatus.activeSyncs} background tasks
+                  active.
+                </Text>
+              </Box>
             </Box>
-          </Box>
-        </VStack>
-      )}
+          </VStack>
+        )}
 
       {/* CSV Preview Dialog */}
       {showCsvModal && (
-        <Dialog.Root open={showCsvModal} onOpenChange={(e) => setShowCsvModal(e.open)} placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={showCsvModal}
+          onOpenChange={(e) => setShowCsvModal(e.open)}
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={1000} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
@@ -1678,21 +3268,47 @@ export function AdminDashboardPage() {
               flexDirection="column"
               position="relative"
             >
-              <Box as="form" onSubmit={async (e) => {
-                e.preventDefault();
-                await handleBatchUpsert();
-              }} display="flex" flexDirection="column" height="100%" width="100%">
+              <Box
+                as="form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleBatchUpsert();
+                }}
+                display="flex"
+                flexDirection="column"
+                height="100%"
+                width="100%"
+              >
                 <Dialog.Header p={0} mb={2}>
-                  <Dialog.Title fontSize="xl" fontWeight="bold" color="var(--c-chocolate)">
+                  <Dialog.Title
+                    fontSize="xl"
+                    fontWeight="bold"
+                    color="var(--c-chocolate)"
+                  >
                     CSV Upload Preview & Duplicate Validation
                   </Dialog.Title>
                 </Dialog.Header>
-                <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" mb={4}>
+                <Dialog.Body
+                  p={0}
+                  flex={1}
+                  overflowY="auto"
+                  display="flex"
+                  flexDirection="column"
+                  mb={4}
+                >
                   <Text fontSize="xs" color="fg.subtle" mb={4}>
-                    Highlighting duplicates in orange. Conflict values will be updated/overwritten upon upsert.
+                    Highlighting duplicates in orange. Conflict values will be
+                    updated/overwritten upon upsert.
                   </Text>
 
-                  <Box overflowY="auto" flex={1} mb={4} border="1px solid" borderColor="border.subtle" borderRadius="xl">
+                  <Box
+                    overflowY="auto"
+                    flex={1}
+                    mb={4}
+                    border="1px solid"
+                    borderColor="border.subtle"
+                    borderRadius="xl"
+                  >
                     <Table.Root size="sm" variant="line">
                       <Table.Header>
                         <Table.Row>
@@ -1705,24 +3321,33 @@ export function AdminDashboardPage() {
                       </Table.Header>
                       <Table.Body>
                         {csvRecords.map((row, idx) => {
-                          const dup = isDuplicate(row.student_id)
+                          const dup = isDuplicate(row.student_id);
                           return (
-                            <Table.Row key={idx} bg={dup ? 'rgba(235, 150, 40, 0.08)' : 'transparent'}>
-                              <Table.Cell fontWeight="600">{row.student_id}</Table.Cell>
-                              <Table.Cell>{row.nickname || '-'}</Table.Cell>
-                              <Table.Cell>{row.faculty || '-'}</Table.Cell>
+                            <Table.Row
+                              key={idx}
+                              bg={
+                                dup ? "rgba(235, 150, 40, 0.08)" : "transparent"
+                              }
+                            >
+                              <Table.Cell fontWeight="600">
+                                {row.student_id}
+                              </Table.Cell>
+                              <Table.Cell>{row.nickname || "-"}</Table.Cell>
+                              <Table.Cell>{row.faculty || "-"}</Table.Cell>
                               <Table.Cell>
                                 <Badge colorPalette="gray">{row.role}</Badge>
                               </Table.Cell>
                               <Table.Cell>
                                 {dup ? (
-                                  <Badge colorPalette="orange">Duplicate (Will Update)</Badge>
+                                  <Badge colorPalette="orange">
+                                    Duplicate (Will Update)
+                                  </Badge>
                                 ) : (
                                   <Badge colorPalette="green">New Record</Badge>
                                 )}
                               </Table.Cell>
                             </Table.Row>
-                          )
+                          );
                         })}
                       </Table.Body>
                     </Table.Root>
@@ -1749,13 +3374,20 @@ export function AdminDashboardPage() {
                     px={6}
                     borderRadius="xl"
                     cursor="pointer"
-                    _hover={{ bg: 'color-mix(in srgb, var(--c-chocolate) 85%, black)' }}
+                    _hover={{
+                      bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                    }}
                   >
                     Batch Upsert ({csvRecords.length} records)
                   </Button>
                 </Dialog.Footer>
               </Box>
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -1769,7 +3401,11 @@ export function AdminDashboardPage() {
                   color="var(--c-muted)"
                   p={0}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -1781,8 +3417,15 @@ export function AdminDashboardPage() {
 
       {/* User Inspector Dialog */}
       {inspectUser && (
-        <Dialog.Root open={!!inspectUser} onOpenChange={() => setInspectUser(null)} placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={!!inspectUser}
+          onOpenChange={() => setInspectUser(null)}
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
@@ -1798,20 +3441,43 @@ export function AdminDashboardPage() {
               position="relative"
             >
               <Dialog.Header p={0} mb={3}>
-                <Dialog.Title fontSize="md" color="var(--c-chocolate)" fontWeight="700">
+                <Dialog.Title
+                  fontSize="md"
+                  color="var(--c-chocolate)"
+                  fontWeight="700"
+                >
                   User Audit & Inspector
                 </Dialog.Title>
               </Dialog.Header>
 
-              <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" gap={4}>
+              <Dialog.Body
+                p={0}
+                flex={1}
+                overflowY="auto"
+                display="flex"
+                flexDirection="column"
+                gap={4}
+              >
                 <VStack align="stretch" gap={5}>
                   {/* Profile Header Block */}
-                  <Flex bg="var(--c-ivory)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle" gap={4} align="center">
+                  <Flex
+                    bg="var(--c-ivory)"
+                    p={4}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                    gap={4}
+                    align="center"
+                  >
                     <Box
                       w="64px"
                       h="64px"
                       borderRadius="full"
-                      bg={inspectUser.profile_pic_url ? 'transparent' : (inspectUser.avatar_color || 'var(--c-lagoon)')}
+                      bg={
+                        inspectUser.profile_pic_url
+                          ? "transparent"
+                          : inspectUser.avatar_color || "var(--c-lagoon)"
+                      }
                       overflow="hidden"
                       flexShrink={0}
                       display="flex"
@@ -1819,25 +3485,55 @@ export function AdminDashboardPage() {
                       justifyContent="center"
                     >
                       {inspectUser.profile_pic_url ? (
-                        <Image src={inspectUser.profile_pic_url} alt={`${inspectUser.nickname || 'User'}'s profile picture`} w="100%" h="100%" objectFit="cover" />
+                        <Image
+                          src={inspectUser.profile_pic_url}
+                          alt={`${inspectUser.nickname || "User"}'s profile picture`}
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                        />
                       ) : (
                         <Text color="white" fontWeight="800" fontSize="lg">
-                          {(inspectUser.nickname || 'NN').substring(0, 2).toUpperCase()}
+                          {(inspectUser.nickname || "NN")
+                            .substring(0, 2)
+                            .toUpperCase()}
                         </Text>
                       )}
                     </Box>
                     <VStack align="start" gap={0} flex={1}>
                       <HStack gap={2}>
-                        <Heading as="h3" fontSize="sm" fontWeight="700" color="var(--c-chocolate)">
-                          {inspectUser.nickname || 'No Nickname'}
+                        <Heading
+                          as="h3"
+                          fontSize="sm"
+                          fontWeight="700"
+                          color="var(--c-chocolate)"
+                        >
+                          {inspectUser.nickname || "No Nickname"}
                         </Heading>
-                        <Badge colorPalette={inspectUser.role === 'moderator' ? 'red' : inspectUser.role === 'staff' ? 'orange' : inspectUser.role === 'media_admin' ? 'blue' : 'gray'}>
+                        <Badge
+                          colorPalette={
+                            inspectUser.role === "moderator"
+                              ? "red"
+                              : inspectUser.role === "staff"
+                                ? "orange"
+                                : inspectUser.role === "media_admin"
+                                  ? "blue"
+                                  : "gray"
+                          }
+                        >
                           {inspectUser.role}
                         </Badge>
                       </HStack>
-                      <Text fontSize="xs" color="fg.muted">ID: {inspectUser.student_id}</Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        ID: {inspectUser.student_id}
+                      </Text>
                       {inspectUser.ig && (
-                        <Text fontSize="2xs" color="var(--c-lagoon)" fontWeight="600" mt={0.5}>
+                        <Text
+                          fontSize="2xs"
+                          color="var(--c-lagoon)"
+                          fontWeight="600"
+                          mt={0.5}
+                        >
                           IG: {inspectUser.ig}
                         </Text>
                       )}
@@ -1846,79 +3542,234 @@ export function AdminDashboardPage() {
 
                   {inspectUser.bio && (
                     <Box px={2}>
-                      <Text fontSize="xs" fontStyle="italic" color="fg.subtle">"{inspectUser.bio}"</Text>
+                      <Text fontSize="xs" fontStyle="italic" color="fg.subtle">
+                        "{inspectUser.bio}"
+                      </Text>
                     </Box>
                   )}
 
                   {/* Vibe Stats Block */}
-                  <VStack align="stretch" gap={2} bg="color-mix(in srgb, var(--c-lagoon) 5%, transparent)" p={4} borderRadius="xl" border="1px solid" borderColor="border.subtle">
-                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-lagoon)" textTransform="uppercase" mb={1}>
+                  <VStack
+                    align="stretch"
+                    gap={2}
+                    bg="color-mix(in srgb, var(--c-lagoon) 5%, transparent)"
+                    p={4}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                  >
+                    <Heading
+                      as="h4"
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="var(--c-lagoon)"
+                      textTransform="uppercase"
+                      mb={1}
+                    >
                       Vibe Check Statistics
                     </Heading>
                     {inspectUserStats ? (
                       <>
                         <Flex flexWrap="wrap" gap={4}>
                           <Box flex={1} minW="140px">
-                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Cards Collected</Text>
-                            <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedCount}</Text>
+                            <Text
+                              fontSize="2xs"
+                              color="fg.muted"
+                              fontWeight="600"
+                            >
+                              Cards Collected
+                            </Text>
+                            <Text
+                              fontSize="sm"
+                              fontWeight="800"
+                              color="var(--c-ink)"
+                            >
+                              {inspectUserStats.collectedCount}
+                            </Text>
                           </Box>
-                          {inspectUser.role !== 'student' && (
+                          {inspectUser.role !== "student" && (
                             <Box flex={1} minW="140px">
-                              <Text fontSize="2xs" color="fg.muted" fontWeight="600">Collected By</Text>
-                              <Text fontSize="sm" fontWeight="800" color="var(--c-ink)">{inspectUserStats.collectedFromCount} students</Text>
+                              <Text
+                                fontSize="2xs"
+                                color="fg.muted"
+                                fontWeight="600"
+                              >
+                                Collected By
+                              </Text>
+                              <Text
+                                fontSize="sm"
+                                fontWeight="800"
+                                color="var(--c-ink)"
+                              >
+                                {inspectUserStats.collectedFromCount} students
+                              </Text>
                             </Box>
                           )}
                           <Box flex={1} minW="140px">
-                            <Text fontSize="2xs" color="fg.muted" fontWeight="600">Mistakes/Strikes</Text>
+                            <Text
+                              fontSize="2xs"
+                              color="fg.muted"
+                              fontWeight="600"
+                            >
+                              Mistakes/Strikes
+                            </Text>
                             <HStack gap={1}>
-                              <Text fontSize="sm" fontWeight="800" color={(inspectUserStats.vibeStatus?.strike_count || 0) > 3 ? "red.600" : "var(--c-ink)"}>
-                                {inspectUserStats.vibeStatus?.strike_count || 0} / 5
+                              <Text
+                                fontSize="sm"
+                                fontWeight="800"
+                                color={
+                                  (inspectUserStats.vibeStatus?.strike_count ||
+                                    0) > 3
+                                    ? "red.600"
+                                    : "var(--c-ink)"
+                                }
+                              >
+                                {inspectUserStats.vibeStatus?.strike_count || 0}{" "}
+                                / 5
                               </Text>
-                              {(inspectUserStats.vibeStatus?.strike_count || 0) > 0 && (
-                                <Box as="span" className="material-symbols-outlined" fontSize="14px" color="red.500">warning</Box>
+                              {(inspectUserStats.vibeStatus?.strike_count ||
+                                0) > 0 && (
+                                <Box
+                                  as="span"
+                                  className="material-symbols-outlined"
+                                  fontSize="14px"
+                                  color="red.500"
+                                >
+                                  warning
+                                </Box>
                               )}
                             </HStack>
                           </Box>
-                          {inspectUserStats.vibeStatus?.locked_until && inspectUserStats.isLocked && (
-                            <Box w="100%" bg="red.50" p={2} borderRadius="md" border="1px solid" borderColor="red.200">
-                              <Text fontSize="xs" fontWeight="700" color="red.700" display="flex" alignItems="center" gap={1}>
-                                <Box as="span" className="material-symbols-outlined" fontSize="14px">lock_clock</Box>
-                                Locked until: {new Date(inspectUserStats.vibeStatus.locked_until).toLocaleTimeString()}
+                          {inspectUserStats.vibeStatus?.locked_until &&
+                            inspectUserStats.isLocked && (
+                              <Box
+                                w="100%"
+                                bg="red.50"
+                                p={2}
+                                borderRadius="md"
+                                border="1px solid"
+                                borderColor="red.200"
+                              >
+                                <Text
+                                  fontSize="xs"
+                                  fontWeight="700"
+                                  color="red.700"
+                                  display="flex"
+                                  alignItems="center"
+                                  gap={1}
+                                >
+                                  <Box
+                                    as="span"
+                                    className="material-symbols-outlined"
+                                    fontSize="14px"
+                                  >
+                                    lock_clock
+                                  </Box>
+                                  Locked until:{" "}
+                                  {new Date(
+                                    inspectUserStats.vibeStatus.locked_until,
+                                  ).toLocaleTimeString()}
+                                </Text>
+                              </Box>
+                            )}
+                        </Flex>
+                        {inspectUserStats.unlockedStaff &&
+                          inspectUserStats.unlockedStaff.length > 0 && (
+                            <Box
+                              mt={2}
+                              pt={2}
+                              borderTop="1px solid"
+                              borderColor="border.subtle"
+                            >
+                              <Text
+                                fontSize="2xs"
+                                color="fg.muted"
+                                fontWeight="600"
+                                mb={2}
+                              >
+                                Unlocked Staff Vibes
                               </Text>
+                              <Flex flexWrap="wrap" gap={2}>
+                                {inspectUserStats.unlockedStaff.map((staff) => (
+                                  <Flex
+                                    key={staff.staff_id}
+                                    align="center"
+                                    gap={2}
+                                    bg="var(--c-white)"
+                                    p={1}
+                                    pr={3}
+                                    borderRadius="full"
+                                    border="1px solid"
+                                    borderColor="border.subtle"
+                                    boxShadow="sm"
+                                  >
+                                    {staff.profile_pic_url ? (
+                                      <Image
+                                        src={staff.profile_pic_url}
+                                        alt={`${staff.nickname}'s profile picture`}
+                                        w="24px"
+                                        h="24px"
+                                        borderRadius="full"
+                                        objectFit="cover"
+                                      />
+                                    ) : (
+                                      <Flex
+                                        w="24px"
+                                        h="24px"
+                                        borderRadius="full"
+                                        bg={staff.avatar_color}
+                                        color="white"
+                                        align="center"
+                                        justify="center"
+                                        fontSize="10px"
+                                        fontWeight="700"
+                                      >
+                                        {staff.nickname
+                                          .substring(0, 2)
+                                          .toUpperCase()}
+                                      </Flex>
+                                    )}
+                                    <Text
+                                      fontSize="xs"
+                                      fontWeight="600"
+                                      color="var(--c-ink)"
+                                    >
+                                      {staff.nickname}
+                                    </Text>
+                                  </Flex>
+                                ))}
+                              </Flex>
                             </Box>
                           )}
-                        </Flex>
-                        {inspectUserStats.unlockedStaff && inspectUserStats.unlockedStaff.length > 0 && (
-                          <Box mt={2} pt={2} borderTop="1px solid" borderColor="border.subtle">
-                            <Text fontSize="2xs" color="fg.muted" fontWeight="600" mb={2}>Unlocked Staff Vibes</Text>
-                            <Flex flexWrap="wrap" gap={2}>
-                              {inspectUserStats.unlockedStaff.map(staff => (
-                                <Flex key={staff.staff_id} align="center" gap={2} bg="var(--c-white)" p={1} pr={3} borderRadius="full" border="1px solid" borderColor="border.subtle" boxShadow="sm">
-                                  {staff.profile_pic_url ? (
-                                    <Image src={staff.profile_pic_url} alt={`${staff.nickname}'s profile picture`} w="24px" h="24px" borderRadius="full" objectFit="cover" />
-                                  ) : (
-                                    <Flex w="24px" h="24px" borderRadius="full" bg={staff.avatar_color} color="white" align="center" justify="center" fontSize="10px" fontWeight="700">
-                                      {staff.nickname.substring(0, 2).toUpperCase()}
-                                    </Flex>
-                                  )}
-                                  <Text fontSize="xs" fontWeight="600" color="var(--c-ink)">{staff.nickname}</Text>
-                                </Flex>
-                              ))}
-                            </Flex>
-                          </Box>
-                        )}
                       </>
                     ) : (
                       <Spinner size="xs" color="var(--c-lagoon)" />
                     )}
                   </VStack>
 
-                  <VStack as="form" onSubmit={handleEditUser} gap={4} align="stretch">
-                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                  <VStack
+                    as="form"
+                    onSubmit={handleEditUser}
+                    gap={4}
+                    align="stretch"
+                  >
+                    <Heading
+                      as="h4"
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                      textTransform="uppercase"
+                    >
                       Manual Record Editor
                     </Heading>
                     <Box>
-                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                      <Box
+                        display="block"
+                        fontSize="2xs"
+                        fontWeight="700"
+                        color="fg.subtle"
+                        mb={1}
+                      >
                         <label htmlFor="inspect-nickname">Nickname</label>
                       </Box>
                       <Input
@@ -1930,7 +3781,13 @@ export function AdminDashboardPage() {
                       />
                     </Box>
                     <Box>
-                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                      <Box
+                        display="block"
+                        fontSize="2xs"
+                        fontWeight="700"
+                        color="fg.subtle"
+                        mb={1}
+                      >
                         <label htmlFor="inspect-faculty">Faculty</label>
                       </Box>
                       <NativeSelect.Root width="100%">
@@ -1939,7 +3796,9 @@ export function AdminDashboardPage() {
                           aria-label="Faculty"
                           title="Faculty"
                           value={editFaculty}
-                          onChange={(e) => setEditFaculty(e.currentTarget.value)}
+                          onChange={(e) =>
+                            setEditFaculty(e.currentTarget.value)
+                          }
                           bg="var(--c-ivory)"
                           h="38px"
                           borderRadius="md"
@@ -1962,8 +3821,16 @@ export function AdminDashboardPage() {
                       </NativeSelect.Root>
                     </Box>
                     <Box>
-                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                        <label htmlFor="inspect-major">Major (Field of Study)</label>
+                      <Box
+                        display="block"
+                        fontSize="2xs"
+                        fontWeight="700"
+                        color="fg.subtle"
+                        mb={1}
+                      >
+                        <label htmlFor="inspect-major">
+                          Major (Field of Study)
+                        </label>
                       </Box>
                       <Input
                         id="inspect-major"
@@ -1973,10 +3840,18 @@ export function AdminDashboardPage() {
                         h="38px"
                       />
                     </Box>
-                    {editRole !== 'student' && (
+                    {editRole !== "student" && (
                       <Box>
-                        <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
-                          <label htmlFor="inspect-house-position">House Position (Staff Assignment)</label>
+                        <Box
+                          display="block"
+                          fontSize="2xs"
+                          fontWeight="700"
+                          color="fg.subtle"
+                          mb={1}
+                        >
+                          <label htmlFor="inspect-house-position">
+                            House Position (Staff Assignment)
+                          </label>
                         </Box>
                         <select
                           id="inspect-house-position"
@@ -1988,13 +3863,21 @@ export function AdminDashboardPage() {
                         >
                           <option value="">None / Unknown</option>
                           {STAFF_ROLES.map((role) => (
-                            <option key={role} value={role}>{role}</option>
+                            <option key={role} value={role}>
+                              {role}
+                            </option>
                           ))}
                         </select>
                       </Box>
                     )}
                     <Box>
-                      <Box display="block" fontSize="2xs" fontWeight="700" color="fg.subtle" mb={1}>
+                      <Box
+                        display="block"
+                        fontSize="2xs"
+                        fontWeight="700"
+                        color="fg.subtle"
+                        mb={1}
+                      >
                         <label htmlFor="inspect-role">System Role</label>
                       </Box>
                       <Tooltip label={getRoleDescription(editRole)}>
@@ -2013,32 +3896,72 @@ export function AdminDashboardPage() {
                         </select>
                       </Tooltip>
                     </Box>
-                    <Button type="submit" bg="var(--c-chocolate)" color="white" h="40px" borderRadius="lg" cursor="pointer">
+                    <Button
+                      type="submit"
+                      bg="var(--c-chocolate)"
+                      color="white"
+                      h="40px"
+                      borderRadius="lg"
+                      cursor="pointer"
+                    >
                       Save Changes
                     </Button>
                   </VStack>
 
                   {/* Inspector local audit logs */}
                   <VStack align="stretch" gap={2} mt={2}>
-                    <Heading as="h4" fontSize="xs" fontWeight="700" color="var(--c-muted)" textTransform="uppercase">
+                    <Heading
+                      as="h4"
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                      textTransform="uppercase"
+                    >
                       Recent User Logs
                     </Heading>
-                    <Box maxH="120px" overflowY="auto" border="1px solid" borderColor="border.subtle" borderRadius="lg" p={2}>
+                    <Box
+                      maxH="120px"
+                      overflowY="auto"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      borderRadius="lg"
+                      p={2}
+                    >
                       {inspectUserLogs.map((log) => (
-                        <Box key={log.id} fontSize="3xs" borderBottom="1px solid" borderColor="border.subtle" py={1.5}>
-                          <Text color="fg.subtle">{new Date(log.created_at).toLocaleString()} - <strong>{log.action_type}</strong></Text>
+                        <Box
+                          key={log.id}
+                          fontSize="3xs"
+                          borderBottom="1px solid"
+                          borderColor="border.subtle"
+                          py={1.5}
+                        >
+                          <Text color="fg.subtle">
+                            {new Date(log.created_at).toLocaleString()} -{" "}
+                            <strong>{log.action_type}</strong>
+                          </Text>
                           <Text>{log.details}</Text>
                         </Box>
                       ))}
                       {inspectUserLogs.length === 0 && (
-                        <Text fontSize="2xs" fontStyle="italic" color="fg.subtle">No recent logs found for this user.</Text>
+                        <Text
+                          fontSize="2xs"
+                          fontStyle="italic"
+                          color="fg.subtle"
+                        >
+                          No recent logs found for this user.
+                        </Text>
                       )}
                     </Box>
                   </VStack>
                 </VStack>
               </Dialog.Body>
 
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -2053,7 +3976,11 @@ export function AdminDashboardPage() {
                   p={0}
                   onClick={() => setInspectUser(null)}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -2065,8 +3992,16 @@ export function AdminDashboardPage() {
 
       {/* Whitelist Remove Confirmation Dialog */}
       {userToDelete && (
-        <Dialog.Root open={!!userToDelete} onOpenChange={() => setUserToDelete(null)} role="alertdialog" placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={!!userToDelete}
+          onOpenChange={() => setUserToDelete(null)}
+          role="alertdialog"
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
@@ -2081,14 +4016,33 @@ export function AdminDashboardPage() {
               flexDirection="column"
               position="relative"
             >
-              <Box as="form" onSubmit={async (e) => {
-                e.preventDefault();
-                await handleRemoveWhitelist(userToDelete);
-                setUserToDelete(null);
-              }} display="flex" flexDirection="column" height="100%" width="100%" gap="12px">
+              <Box
+                as="form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleRemoveWhitelist(userToDelete);
+                  setUserToDelete(null);
+                }}
+                display="flex"
+                flexDirection="column"
+                height="100%"
+                width="100%"
+                gap="12px"
+              >
                 <Dialog.Header p={0}>
-                  <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
-                    <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Dialog.Title
+                    fontSize="md"
+                    fontWeight="bold"
+                    color="red.600"
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                  >
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="20px"
+                    >
                       warning
                     </Box>
                     Confirm Whitelist Removal
@@ -2096,7 +4050,9 @@ export function AdminDashboardPage() {
                 </Dialog.Header>
                 <Dialog.Body p={0} overflowY="auto">
                   <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                    Are you sure you want to remove user <strong>{userToDelete}</strong>? This action will revoke their whitelist status and soft-deactivate their profile.
+                    Are you sure you want to remove user{" "}
+                    <strong>{userToDelete}</strong>? This action will revoke
+                    their whitelist status and soft-deactivate their profile.
                   </Text>
                 </Dialog.Body>
                 <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
@@ -2128,7 +4084,12 @@ export function AdminDashboardPage() {
                   </Button>
                 </Dialog.Footer>
               </Box>
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -2142,7 +4103,11 @@ export function AdminDashboardPage() {
                   color="var(--c-muted)"
                   p={0}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -2172,7 +4137,12 @@ export function AdminDashboardPage() {
         >
           <Flex align="center" justify="space-between" gap={4}>
             <HStack gap={2}>
-              <Box as="span" className="material-symbols-outlined" fontSize="20px" color="var(--c-chocolate-light)">
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="20px"
+                color="var(--c-chocolate-light)"
+              >
                 check_box
               </Box>
               <Text fontSize="sm" fontWeight="700">
@@ -2182,7 +4152,7 @@ export function AdminDashboardPage() {
             <Button
               size="sm"
               bg="red.600"
-              _hover={{ bg: 'color-mix(in srgb, var(--c-error) 85%, black)' }}
+              _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
               color="white"
               borderRadius="xl"
               onClick={() => setIsBulkDeleteOpen(true)}
@@ -2199,8 +4169,16 @@ export function AdminDashboardPage() {
 
       {/* Bulk Delete Confirmation Dialog */}
       {isBulkDeleteOpen && (
-        <Dialog.Root open={isBulkDeleteOpen} onOpenChange={(e) => setIsBulkDeleteOpen(e.open)} role="alertdialog" placement={{ base: "bottom", md: "center" }}>
-          <Dialog.Backdrop bg="color-mix(in srgb, var(--c-ink) 70%, transparent)" backdropFilter="blur(4px)" />
+        <Dialog.Root
+          open={isBulkDeleteOpen}
+          onOpenChange={(e) => setIsBulkDeleteOpen(e.open)}
+          role="alertdialog"
+          placement={{ base: "bottom", md: "center" }}
+        >
+          <Dialog.Backdrop
+            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            backdropFilter="blur(4px)"
+          />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
               bg="var(--c-ivory)"
@@ -2215,14 +4193,33 @@ export function AdminDashboardPage() {
               flexDirection="column"
               position="relative"
             >
-              <Box as="form" onSubmit={async (e) => {
-                e.preventDefault();
-                await handleBulkDeleteConfirm();
-                setIsBulkDeleteOpen(false);
-              }} display="flex" flexDirection="column" height="100%" width="100%" gap="12px">
+              <Box
+                as="form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await handleBulkDeleteConfirm();
+                  setIsBulkDeleteOpen(false);
+                }}
+                display="flex"
+                flexDirection="column"
+                height="100%"
+                width="100%"
+                gap="12px"
+              >
                 <Dialog.Header p={0}>
-                  <Dialog.Title fontSize="md" fontWeight="bold" color="red.600" display="flex" alignItems="center" gap={2}>
-                    <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Dialog.Title
+                    fontSize="md"
+                    fontWeight="bold"
+                    color="red.600"
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                  >
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="20px"
+                    >
                       warning
                     </Box>
                     Confirm Bulk Removal
@@ -2230,7 +4227,11 @@ export function AdminDashboardPage() {
                 </Dialog.Header>
                 <Dialog.Body p={0} overflowY="auto">
                   <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                    Are you sure you want to remove <strong>{selectedStudentIds.length}</strong> selected users? This action will revoke their whitelist status, soft-deactivate their profiles, and revert their roles to student.
+                    Are you sure you want to remove{" "}
+                    <strong>{selectedStudentIds.length}</strong> selected users?
+                    This action will revoke their whitelist status,
+                    soft-deactivate their profiles, and revert their roles to
+                    student.
                   </Text>
                 </Dialog.Body>
                 <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
@@ -2252,7 +4253,9 @@ export function AdminDashboardPage() {
                     type="submit"
                     size="sm"
                     bg="red.600"
-                    _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
+                    _hover={{
+                      bg: "color-mix(in srgb, var(--c-error) 85%, black)",
+                    }}
                     color="white"
                     borderRadius="xl"
                     cursor="pointer"
@@ -2263,7 +4266,12 @@ export function AdminDashboardPage() {
                   </Button>
                 </Dialog.Footer>
               </Box>
-              <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Dialog.CloseTrigger
+                position="absolute"
+                top={4}
+                right={4}
+                asChild
+              >
                 <Button
                   variant="ghost"
                   w="44px"
@@ -2277,7 +4285,11 @@ export function AdminDashboardPage() {
                   color="var(--c-muted)"
                   p={0}
                 >
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                  <Box
+                    as="span"
+                    className="material-symbols-outlined"
+                    fontSize="20px"
+                  >
                     close
                   </Box>
                 </Button>
@@ -2287,6 +4299,5 @@ export function AdminDashboardPage() {
         </Dialog.Root>
       )}
     </Box>
-  )
+  );
 }
-

@@ -432,5 +432,105 @@ a:hover {
   white-space: nowrap;
 }
 
+/* ─── Live Chat ───────────────────────────────────────────────────────────── */
+
+.live-chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-outline) transparent;
+}
+.live-chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.live-chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.live-chat-scroll::-webkit-scrollbar-thumb {
+  background: var(--c-outline);
+  border-radius: 2px;
+}
+
+@keyframes chat-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message-enter {
+  animation: chat-slide-in 0.2s var(--ease-out-quart) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-message-enter {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ─── Marquee Ticker ──────────────────────────────────────────────────────── */
+
+@keyframes ticker-scroll {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-33.33%, 0, 0); } /* Seamless duplicate loop wrap */
+}
+
+.premium-ticker-container {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  background-color: #fef3c7; /* Soft amber warm fill */
+  border-bottom: 1px solid #fde68a; /* Soft amber accent border line */
+  color: #78350f; /* High-contrast readable premium text color */
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+}
+
+.premium-ticker-track {
+  display: inline-flex;
+  will-change: transform;
+  animation: ticker-scroll 30s linear infinite;
+}
+
+.premium-ticker-item {
+  display: inline-block;
+  padding-right: 120px; /* Force an absolute 120px elegant whitespace gap after each phrase */
+}
+
+/* Pause animation on hover to allow users to read long text comfortably */
+.premium-ticker-container:hover .premium-ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-ticker-track {
+    animation: none !important;
+    white-space: normal;
+    display: block;
+    text-align: center;
+  }
+}
+
+.announcement-banner-container {
+  width: 100%;
+  background-color: #fef3c7; /* Soft amber warm fill */
+  border-bottom: 1px solid #fde68a; /* Soft amber accent border line */
+  color: #78350f; /* High-contrast readable premium text color */
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 
 

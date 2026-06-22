@@ -201,61 +201,133 @@ export function Navbar() {
   const [emergencyAnnouncement, setEmergencyAnnouncement] = useState<
     string | null
   >(null);
+  const [tickerActive, setTickerActive] = useState(false);
+  const [tickerText, setTickerText] = useState("");
+  const [dismissedText, setDismissedText] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem("ween_dismissed_announcement_text") || "";
+    } catch {
+      return "";
+    }
+  });
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Consolidated System Configuration Sync
   useEffect(() => {
     let active = true;
 
-    const fetchEmergency = async () => {
+    const fetchInitialConfig = async () => {
       try {
-        const { data } = await supabase
+        const { data: configs, error } = await supabase
           .from("system_config")
-          .select("value, text_value")
-          .eq("key", "emergency_announcement")
-          .maybeSingle();
+          .select("key, value, text_value")
+          .in("key", ["ticker_text", "emergency_announcement"]);
 
-        if (active && data) {
-          if (data.value && data.text_value) {
-            setEmergencyAnnouncement(data.text_value);
-          } else {
-            setEmergencyAnnouncement(null);
+        if (error) throw error;
+
+        if (active && configs) {
+          const tickerConfig = configs.find((c) => c.key === "ticker_text");
+          const announcementConfig = configs.find((c) => c.key === "emergency_announcement");
+
+          if (tickerConfig) {
+            setTickerActive(Boolean(tickerConfig.value));
+            setTickerText(tickerConfig.text_value || "");
+          }
+
+          if (announcementConfig) {
+            if (announcementConfig.value && announcementConfig.text_value) {
+              setEmergencyAnnouncement(announcementConfig.text_value);
+            } else {
+              setEmergencyAnnouncement(null);
+            }
           }
         }
       } catch (err) {
-        console.error("Failed to fetch emergency announcement:", err);
+        console.error("Failed to fetch initial system config in Navbar:", err);
       }
     };
-    fetchEmergency();
 
-    const channel = supabase
-      .channel("system_config_realtime_stream")
+    fetchInitialConfig();
+
+    // Subscribe to Broadcast events on "live_chat:system_config_sync"
+    const syncChannel = supabase.channel("live_chat:system_config_sync");
+    syncChannel
+      .on("broadcast", { event: "ticker_change" }, (payload) => {
+        if (active && payload.payload) {
+          Promise.resolve().then(() => {
+            setTickerActive(Boolean(payload.payload.active));
+            setTickerText(payload.payload.text || "");
+          });
+        }
+      })
+      .on("broadcast", { event: "ticker_clear" }, () => {
+        if (active) {
+          Promise.resolve().then(() => {
+            setTickerActive(false);
+            setTickerText("");
+          });
+        }
+      })
+      .on("broadcast", { event: "announcement_change" }, (payload) => {
+        if (active && payload.payload) {
+          Promise.resolve().then(() => {
+            if (payload.payload.active && payload.payload.text) {
+              setEmergencyAnnouncement(payload.payload.text);
+            } else {
+              setEmergencyAnnouncement(null);
+            }
+          });
+        }
+      })
+      .on("broadcast", { event: "emergency_clear" }, () => {
+        if (active) {
+          Promise.resolve().then(() => {
+            setEmergencyAnnouncement(null);
+          });
+        }
+      })
+      .subscribe();
+
+    // Subscribe to PostgreSQL changes on "live_chat:system_config_realtime" as fallback
+    const dbChannel = supabase.channel("live_chat:system_config_realtime");
+    dbChannel
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "system_config",
-          filter: "key=eq.emergency_announcement",
         },
         (payload) => {
-          if (active && payload.new) {
-            const newRecord = payload.new as {
-              value: boolean;
-              text_value: string | null;
-            };
-            if (newRecord.value && newRecord.text_value) {
-              setEmergencyAnnouncement(newRecord.text_value);
-            } else {
-              setEmergencyAnnouncement(null);
-            }
+          if (!active || !payload.new) return;
+          const newRecord = payload.new as {
+            key: string;
+            value: boolean;
+            text_value: string | null;
+          };
+
+          if (newRecord.key === "ticker_text") {
+            Promise.resolve().then(() => {
+              setTickerActive(Boolean(newRecord.value));
+              setTickerText(newRecord.text_value || "");
+            });
+          } else if (newRecord.key === "emergency_announcement") {
+            Promise.resolve().then(() => {
+              if (newRecord.value && newRecord.text_value) {
+                setEmergencyAnnouncement(newRecord.text_value);
+              } else {
+                setEmergencyAnnouncement(null);
+              }
+            });
           }
-        },
+        }
       )
       .subscribe();
 
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(syncChannel);
+      supabase.removeChannel(dbChannel);
     };
   }, []);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
@@ -361,64 +433,11 @@ export function Navbar() {
         zIndex={1000}
         pointerEvents="none"
       >
-        {/* Node A (Top Line): Emergency Broadcast Banner */}
-        <AnimatePresence>
-          {emergencyAnnouncement && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                overflow: "hidden",
-                width: "100%",
-                pointerEvents: "auto",
-              }}
-            >
-              <Box
-                w="100%"
-                className="emergency-banner"
-                color="#4a2c11"
-                py={1.5}
-                px={4}
-                fontSize="xs"
-                fontWeight="bold"
-                boxShadow="sm"
-              >
-                <Box className="emergency-marquee">
-                  <HStack gap={2} display="inline-flex" mr={12}>
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="16px"
-                      color="#4a2c11"
-                    >
-                      warning
-                    </Box>
-                    <Text>{emergencyAnnouncement}</Text>
-                  </HStack>
-                  <HStack gap={2} display="inline-flex" mr={12}>
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="16px"
-                      color="#4a2c11"
-                    >
-                      warning
-                    </Box>
-                    <Text>{emergencyAnnouncement}</Text>
-                  </HStack>
-                </Box>
-              </Box>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Node B (Bottom Line - Desktop): Floating Capsule Navigation Menu Bar */}
         <Box
           display={{ base: "none", md: "block" }}
           w="100%"
-          pt={emergencyAnnouncement ? 3 : 4}
+          pt={4}
           pointerEvents="auto"
         >
           <Flex
@@ -682,6 +701,123 @@ export function Navbar() {
             )}
           </Flex>
         </Box>
+
+        {/* Track A: Static Announcement Banner (The Read-and-Acknowledge Layer) */}
+        <AnimatePresence>
+          {emergencyAnnouncement && emergencyAnnouncement !== dismissedText && (() => {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urlMatch = emergencyAnnouncement.match(urlRegex);
+            const url = urlMatch ? urlMatch[0] : null;
+            const cleanText = url ? emergencyAnnouncement.replace(urlRegex, "").trim() : emergencyAnnouncement;
+
+            return (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                style={{
+                  overflow: "hidden",
+                  width: "100%",
+                  pointerEvents: "auto",
+                }}
+              >
+                <Box className="announcement-banner-container">
+                  <Flex align="center" flex={1} mr={4}>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="18px"
+                      style={{ marginRight: "8px", flexShrink: 0 }}
+                    >
+                      info
+                    </Box>
+                    <Text fontSize="xs" fontWeight="bold">
+                      {cleanText}
+                    </Text>
+                    {url && (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          backgroundColor: "#78350f",
+                          color: "#fef3c7",
+                          marginLeft: "12px",
+                          height: "24px",
+                          paddingLeft: "12px",
+                          paddingRight: "12px",
+                          borderRadius: "6px",
+                          textDecoration: "none",
+                        }}
+                      >
+                        View Link
+                      </a>
+                    )}
+                  </Flex>
+                  <Button
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem("ween_dismissed_announcement_text", emergencyAnnouncement);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                      setDismissedText(emergencyAnnouncement);
+                    }}
+                    variant="ghost"
+                    size="xs"
+                    p={1}
+                    minW="auto"
+                    h="auto"
+                    color="#78350f"
+                    _hover={{ bg: "rgba(120, 53, 15, 0.1)" }}
+                    aria-label="Dismiss announcement"
+                  >
+                    <Box as="span" className="material-symbols-outlined" fontSize="18px">
+                      close
+                    </Box>
+                  </Button>
+                </Box>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+
+        {/* Node C: Ticker Marquee Announcement */}
+        <AnimatePresence>
+          {tickerActive && tickerText.trim() && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                overflow: "hidden",
+                width: "100%",
+                pointerEvents: "auto",
+              }}
+            >
+              <Box
+                className="premium-ticker-container"
+                style={{
+                  WebkitMaskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                  maskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                }}
+              >
+                <div className="premium-ticker-track">
+                  <span className="premium-ticker-item">{tickerText}</span>
+                  <span className="premium-ticker-item">{tickerText}</span>
+                  <span className="premium-ticker-item">{tickerText}</span>
+                </div>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Flex>
 
       {/* Mobile: Dock bottom bar */}

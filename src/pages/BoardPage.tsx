@@ -13,8 +13,9 @@ import {
   Image,
   Dialog,
   Skeleton,
+  Switch,
 } from "@chakra-ui/react";
-import { useState, useEffect, memo, useCallback } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import { useUser, type User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -22,9 +23,15 @@ import {
   type DBPost,
   type BoardTab,
 } from "../hooks/useBoardRealtime";
+import {
+  useLiveChat,
+  type ChatMessage,
+} from "../hooks/useLiveChat";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { compressImage } from "../utils/image";
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -67,7 +74,7 @@ function LivePresenceBadge({ count }: { count: number }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      style={{ display: "inline-flex" }}
+      style={{ display: "inline-flex", width: "100%", justifyContent: "center" }}
     >
       <Flex
         align="center"
@@ -79,6 +86,8 @@ function LivePresenceBadge({ count }: { count: number }) {
         border="1px solid"
         borderColor="accent.muted"
         display="inline-flex"
+        w="100%"
+        justifyContent="center"
       >
         {/* Pulsing dot */}
         <Box position="relative" w={2} h={2}>
@@ -110,6 +119,202 @@ function LivePresenceBadge({ count }: { count: number }) {
   );
 }
 
+// ─── Live Chat Bubble ─────────────────────────────────────────────────────────────
+
+function formatChatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return "now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
+const ROLE_BADGE_MAP: Record<string, { label: string; color: string; bg: string; borderColor: string; icon: string }> = {
+  moderator: {
+    label: "MOD",
+    color: "red.600",
+    bg: "red.50",
+    borderColor: "red.200",
+    icon: "gavel",
+  },
+  media_admin: {
+    label: "MEDIA_ADMIN",
+    color: "teal.600",
+    bg: "teal.50",
+    borderColor: "teal.200",
+    icon: "photo_camera",
+  },
+  staff: {
+    label: "STAFF",
+    color: "orange.600",
+    bg: "orange.50",
+    borderColor: "orange.200",
+    icon: "shield_person",
+  },
+};
+
+const LiveChatBubble = memo(function LiveChatBubble({
+  message,
+  isStaff,
+  isMe,
+  onDelete,
+  onInspectUser,
+}: {
+  message: ChatMessage;
+  isStaff: boolean;
+  isMe: boolean;
+  onDelete: (id: string) => Promise<void>;
+  onInspectUser: (userId: string) => void;
+}) {
+  const badge = ROLE_BADGE_MAP[message.sender_role];
+  const isSenderStaff = message.sender_role !== "student";
+  const prefix = isSenderStaff ? "P' " : "";
+
+  return (
+    <Box
+      className="chat-message-enter"
+      role="group"
+      px={{ base: 3, md: 5 }}
+      py={2}
+      _hover={{ bg: "bg.hero" }}
+      transition="background 0.15s"
+      w="100%"
+    >
+      <Flex gap={3} align="start" flexDirection={isMe ? "row-reverse" : "row"} w="100%">
+        {/* Avatar */}
+        <Box
+          as="button"
+          w={7}
+          h={7}
+          borderRadius="full"
+          bg={message.sender_avatar_color}
+          color="white"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          fontWeight="700"
+          fontSize="2xs"
+          flexShrink={0}
+          mt="2px"
+          cursor="pointer"
+          onClick={() => onInspectUser(message.sender_id)}
+          overflow="hidden"
+        >
+          {message.sender_profile_pic_url ? (
+            <Image
+              src={message.sender_profile_pic_url}
+              alt={message.sender_nickname}
+              w="100%"
+              h="100%"
+              objectFit="cover"
+              loading="lazy"
+            />
+          ) : (
+            getInitials(message.sender_nickname)
+          )}
+        </Box>
+
+        {/* Content Wrapper */}
+        <VStack align={isMe ? "end" : "start"} gap={1} flex={1} minW={0}>
+          {/* Meta Info */}
+          <Flex align="center" gap={1.5} flexWrap="wrap" flexDirection={isMe ? "row-reverse" : "row"}>
+            <Text
+              as="button"
+              fontSize={{ base: "xs", md: "sm" }}
+              fontWeight="700"
+              color={isMe ? "accent.solid" : isSenderStaff ? "accent.solid" : "fg.default"}
+              cursor="pointer"
+              onClick={() => onInspectUser(message.sender_id)}
+              textAlign={isMe ? "right" : "left"}
+              _hover={{ textDecoration: "underline" }}
+            >
+              {prefix}{message.sender_nickname}
+            </Text>
+            {badge && (
+              <Badge
+                fontSize="2xs"
+                px={1.5}
+                py={0.5}
+                borderRadius="full"
+                bg={badge.bg}
+                color={badge.color}
+                borderWidth="1px"
+                borderColor={badge.borderColor}
+                fontWeight="extrabold"
+                letterSpacing="wider"
+                textTransform="uppercase"
+                lineHeight={1}
+                display="inline-flex"
+                alignItems="center"
+                gap={0.5}
+              >
+                <Box className="material-symbols-outlined" fontSize="3xs" style={{ display: "inline-block", verticalAlign: "middle" }}>
+                  {badge.icon}
+                </Box>
+                {badge.label}
+              </Badge>
+            )}
+            <Text fontSize={{ base: "xs", md: "sm" }} color="fg.subtle" flexShrink={0}>
+              {formatChatTime(message.timestamp)}
+            </Text>
+            {isStaff && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="2xs"
+                p={0}
+                h={4}
+                w={4}
+                minW={4}
+                borderRadius="full"
+                color="fg.subtle"
+                opacity={0}
+                _groupHover={{ opacity: 1 }}
+                _hover={{ color: "red.500", bg: "red.50" }}
+                cursor="pointer"
+                onClick={() => {
+                  if (window.confirm("Delete this message?")) {
+                    onDelete(message.id);
+                  }
+                }}
+                aria-label="Delete message"
+              >
+                <Box className="material-symbols-outlined" fontSize="3xs">
+                  close
+                </Box>
+              </Button>
+            )}
+          </Flex>
+
+          {/* Chat Bubble Wrapper */}
+          <Box
+            bg={isMe ? "var(--c-chocolate, #7c563f)" : isSenderStaff ? "color-mix(in srgb, var(--c-chocolate) 6%, var(--c-white))" : "bg.muted"}
+            color={isMe ? "white" : "fg.default"}
+            border={isMe ? "none" : "1px solid"}
+            borderColor={isMe ? undefined : isSenderStaff ? "color-mix(in srgb, var(--c-chocolate) 20%, transparent)" : "border.subtle"}
+            px={{ base: 3.5, md: 4 }}
+            py={{ base: 2, md: 2.5 }}
+            borderRadius="xl"
+            borderBottomRightRadius={isMe ? "none" : "xl"}
+            borderBottomLeftRadius={isMe ? "xl" : "none"}
+            boxShadow="sm"
+            maxW={{ base: "85%", md: "70%" }}
+            alignSelf={isMe ? "flex-end" : "flex-start"}
+          >
+            <Text fontSize={{ base: "md", md: "15px" }} lineHeight="1.5" whiteSpace="pre-wrap" wordBreak="break-word">
+              {message.content}
+            </Text>
+          </Box>
+        </VStack>
+      </Flex>
+    </Box>
+  );
+});
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function BoardPage() {
@@ -130,18 +335,148 @@ export function BoardPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const [chatInput, setChatInput] = useState("");
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
+  // Realtime System Configuration Sync states
+  const [hypeBoardMode, setHypeBoardMode] = useState<"active" | "slow_3s" | "read_only">("active");
+  const [globalMuteActive, setGlobalMuteActive] = useState(false);
+  const [isMemoryBoardActive, setIsMemoryBoardActive] = useState(true);
+
+  // Cooldown timer states
+  const [lastChatSent, setLastChatSent] = useState<number | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+
+  // 1. Fetch initial configuration & subscribe to updates
+  useEffect(() => {
+    let active = true;
+    const fetchInitialConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("system_config")
+          .select("*");
+        if (error) throw error;
+        if (active && data) {
+          const hypeMode = data.find((c) => c.key === "hype_board_mode");
+          const globalMute = data.find((c) => c.key === "global_mute_active");
+          if (hypeMode?.text_value) {
+            setHypeBoardMode(hypeMode.text_value as "active" | "slow_3s" | "read_only");
+          }
+          if (globalMute) {
+            setGlobalMuteActive(Boolean(globalMute.value));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial system config in BoardPage:", err);
+      }
+    };
+
+    fetchInitialConfig();
+
+    const syncChannel = supabase.channel("live_chat:system_config_sync");
+    syncChannel
+      .on("broadcast", { event: "hype_mode_change" }, (payload) => {
+        if (active && payload.payload?.mode) {
+          setHypeBoardMode(payload.payload.mode);
+        }
+      })
+      .on("broadcast", { event: "global_mute_change" }, (payload) => {
+        if (active && payload.payload?.active !== undefined) {
+          setGlobalMuteActive(payload.payload.active);
+        }
+      })
+      .on("broadcast", { event: "config_change" }, (payload) => {
+        if (active && payload.payload) {
+          if (payload.payload.key === "enable_memory_board" && payload.payload.value !== undefined) {
+            setIsMemoryBoardActive(payload.payload.value);
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(syncChannel);
+    };
+  }, []);
+
+  // 2. Load last sent timestamp from LocalStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("ween_last_chat_sent");
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed)) {
+        Promise.resolve().then(() => {
+          setLastChatSent(parsed);
+        });
+      }
+    }
+  }, []);
+
+  // 3. Track active countdown clock for slow mode cooldown
+  useEffect(() => {
+    if (hypeBoardMode !== "slow_3s" || lastChatSent === null) {
+      Promise.resolve().then(() => {
+        setCooldownRemaining(0);
+      });
+      return;
+    }
+
+    const checkCooldown = () => {
+      const elapsed = Date.now() - lastChatSent;
+      const remaining = Math.max(0, 3000 - elapsed);
+      Promise.resolve().then(() => {
+        setCooldownRemaining(remaining);
+      });
+      return remaining;
+    };
+
+    const remaining = checkCooldown();
+    if (remaining <= 0) return;
+
+    const interval = setInterval(() => {
+      const rem = checkCooldown();
+      if (rem <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [lastChatSent, hypeBoardMode]);
+
+  // Memory board — existing hook (only active when on memory tab)
   const {
     posts,
-    loading,
+    loading: memoryLoading,
     submitting,
     hypeActive,
     memoryActive,
     handleCreatePost,
     handleLikePost,
-    handlePinPost,
-    handleDeletePost,
   } = useBoardRealtime(activeTab, user);
+
+  // Live chat — new hook (only active when on hype tab)
+  const {
+    messages: chatMessages,
+    loading: chatLoading,
+    sending: chatSending,
+    onlineCount: chatOnlineCount,
+    sendMessage,
+    deleteMessage,
+  } = useLiveChat(activeTab, user);
+
+  // Auto-scroll snapping for inbound messages
+  useEffect(() => {
+    if (chatMessages.length > 0 && virtuosoRef.current) {
+      const timer = setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: chatMessages.length - 1,
+          behavior: "smooth",
+        });
+      }, 30);
+      return () => clearTimeout(timer);
+    }
+  }, [chatMessages.length]);
 
   useEffect(() => {
     const presenceChannel: RealtimeChannel = supabase.channel("board:global:presence", {
@@ -176,9 +511,56 @@ export function BoardPage() {
   }, [user]);
 
   const isStaff = user?.role === 'staff' || user?.role === 'moderator' || user?.role === 'media_admin';
+  const isCooldownActive = !isStaff && hypeBoardMode === "slow_3s" && cooldownRemaining > 0;
   const effectiveHypeActive = hypeActive || isStaff;
   const effectiveMemoryActive = memoryActive || isStaff;
-  const isMemoryAccessible = effectiveMemoryActive || (user && user.role !== "student");
+  const isMemoryAccessible = true;
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      setIsMemoryBoardActive(memoryActive);
+    });
+  }, [memoryActive]);
+
+  const handleToggleMemoryBoard = async (newVal: boolean) => {
+    setIsMemoryBoardActive(newVal);
+    try {
+      const { error } = await supabase
+        .from("system_config")
+        .update({ value: newVal })
+        .eq("key", "enable_memory_board");
+      if (error) throw error;
+
+      // Broadcast changes to keep all clients in sync
+      const syncChannel = supabase.channel("live_chat:system_config_sync");
+      syncChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          syncChannel
+            .send({
+              type: "broadcast",
+              event: "config_change",
+              payload: { key: "enable_memory_board", value: newVal },
+            })
+            .then(() => {
+              supabase.removeChannel(syncChannel);
+            });
+        }
+      });
+
+      toaster.create({
+        title: "Memory Board Visibility Updated",
+        description: `The Memory Board is now ${newVal ? "OPEN" : "CLOSED"} for students.`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error("Failed to update enable_memory_board config:", err);
+      toaster.create({
+        title: "Local State Updated",
+        description: `Failed to sync to database, updated client-side visibility to ${newVal ? "OPEN" : "CLOSED"}.`,
+        type: "info",
+      });
+    }
+  };
 
   const handleInspectUser = useCallback(async (userId: string) => {
     setIsInspectorOpen(true);
@@ -208,24 +590,34 @@ export function BoardPage() {
 
     if (memoryImage && activeTab === 'memory') {
       setIsUploadingImage(true);
-      const fileExt = memoryImage.name.split('.').pop();
-      const fileName = `${user?.student_id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      try {
+        const compressedBlob = await compressImage(memoryImage);
+        const fileName = `${user?.student_id}-${Math.random()}-${Date.now()}.jpg`;
+        const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('board_media')
-        .upload(filePath, memoryImage);
-
-      if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('board_media')
-          .getPublicUrl(filePath);
-        imageUrl = publicUrlData.publicUrl;
-      } else {
-         console.error('Upload Error', uploadError);
-         toaster.create({ title: 'Image upload failed', type: 'error' });
+          .upload(filePath, compressedBlob, {
+            contentType: 'image/jpeg',
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (!uploadError) {
+          const { data: publicUrlData } = supabase.storage
+            .from('board_media')
+            .getPublicUrl(filePath);
+          imageUrl = publicUrlData.publicUrl;
+        } else {
+           console.error('Upload Error', uploadError);
+           toaster.create({ title: 'Image upload failed', type: 'error' });
+        }
+      } catch (err) {
+        console.error('Compression/Upload Error', err);
+        toaster.create({ title: 'Image upload failed', type: 'error' });
+      } finally {
+        setIsUploadingImage(false);
       }
-      setIsUploadingImage(false);
     }
 
     await handleCreatePost(newPostText.trim(), [selectedTag], isAnonymous, imageUrl);
@@ -301,7 +693,7 @@ export function BoardPage() {
 
         {/* Live Presence Badge */}
         {(effectiveHypeActive || isMemoryAccessible) && (
-          <Box display="flex" gap={2} mx="auto" justifyContent="center" w="fit-content">
+          <Box display="flex" gap={2} mx="auto" justifyContent="center" w={{ base: "90%", md: "auto" }}>
             <LivePresenceBadge count={onlineCount} />
           </Box>
         )}
@@ -343,101 +735,172 @@ export function BoardPage() {
             บอร์ดสนทนาปิดปรับปรุงชั่วคราวตามลำดับกิจกรรมโปรดรอสัญญาณจากพี่สตาฟ
           </Text>
         </Flex>
-      ) : (
-        <>
-          {/* Category Filters */}
-          <Box
-          bg="bg.hero"
+      ) : activeTab === "hype" ? (
+        /* ═══ LIVE CHAT (Hype Tab) ═══════════════════════════════════════ */
+        <Box
+          maxW="3xl"
+          mx="auto"
+          w="100%"
+          bg="bg.surface"
           border="1px solid"
           borderColor="border.subtle"
-          borderRadius="xl"
-          px={{ base: 3, md: 5 }}
-          py={3}
-          mb={{ base: 4, md: 6 }}
-          animation="fade-in-up 0.6s var(--ease-out-expo) 0.1s both"
+          borderRadius="2xl"
+          overflow="hidden"
+          display="flex"
+          flexDirection="column"
+          h={{ base: "calc(100vh - 200px)", md: "calc(100vh - 280px)" }}
+          minH="400px"
+          animation="fade-in-up 0.5s var(--ease-out-expo) both"
         >
-          <Flex align="center" gap={{ base: 2, md: 3 }} flexWrap="wrap">
-            <Text
-              fontSize="xs"
-              fontWeight="600"
-              letterSpacing="0.05em"
-              color="fg.subtle"
-              display={{ base: "none", md: "block" }}
-            >
-              Filter by:
-            </Text>
-            <HStack
-              gap={2}
-              overflowX="auto"
-              whiteSpace="nowrap"
-              w="100%"
-              css={{
-                "&::-webkit-scrollbar": { display: "none" },
-                "-ms-overflow-style": "none",
-                "scrollbar-width": "none",
-              }}
-            >
-              {categories.map((cat) => (
-                <Button
-                  key={cat.value}
-                  type="button"
-                  aria-pressed={activeCategory === cat.value}
-                  onClick={() => {
-                    setActiveCategory(cat.value);
-                    setVisibleCount(6);
-                    setPrevVisibleCount(6);
-                  }}
-                  px={4}
-                  py={2}
-                  h={{ base: "40px", md: "44px" }}
-                  minH={{ base: "40px", md: "44px" }}
+          {/* Chat Header */}
+          <Flex
+            align="center"
+            justify="space-between"
+            px={{ base: 4, md: 6 }}
+            py={3}
+            borderBottom="1px solid"
+            borderColor="border.subtle"
+            bg="bg.hero"
+            flexShrink={0}
+          >
+            <HStack gap={3}>
+              <Box className="material-symbols-outlined" fontSize="xl" color="accent.solid">
+                chat
+              </Box>
+              <Heading
+                as="h2"
+                fontSize={{ base: "md", md: "lg" }}
+                fontWeight={700}
+                fontFamily="heading"
+                color="fg.default"
+              >
+                Live Chat
+              </Heading>
+            </HStack>
+            <HStack gap={2}>
+              <Box position="relative" w={2} h={2}>
+                <Box
+                  w={2}
+                  h={2}
                   borderRadius="full"
-                  fontSize="xs"
-                  fontWeight="600"
-                  letterSpacing="0.03em"
-                  cursor="pointer"
-                  transition="all 0.2s"
-                  bg={
-                    activeCategory === cat.value ? "accent.solid" : "bg.surface"
-                  }
-                  color={activeCategory === cat.value ? "white" : "fg.default"}
-                  border="1px solid"
-                  borderColor={
-                    activeCategory === cat.value
-                      ? "accent.solid"
-                      : "border.subtle"
-                  }
-                  _hover={{
-                    bg:
-                      activeCategory === cat.value ? "accent.solid" : "bg.hero",
-                  }}
-                >
-                  {cat.label}
-                </Button>
-              ))}
+                  bg="green.500"
+                  position="absolute"
+                />
+                {!shouldReduceMotion && (
+                  <motion.div
+                    animate={{ scale: [1, 2], opacity: [0.6, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: "50%",
+                      background: "var(--chakra-colors-green-500, #38a169)",
+                    }}
+                  />
+                )}
+              </Box>
+              <Text fontSize="xs" fontWeight="600" color="fg.muted">
+                {chatOnlineCount} {chatOnlineCount === 1 ? "viewer" : "viewers"}
+              </Text>
             </HStack>
           </Flex>
-        </Box>
 
-      {/* Main Column */}
-        <Box maxW="4xl" mx="auto" w="100%">
-          {/* Posts Column */}
-          <VStack align="stretch" gap={{ base: 4, md: 6 }}>
-            {/* Composer */}
+          {/* Chat Message List — Virtualized */}
+          <Box flex={1} overflow="hidden">
+            {chatLoading ? (
+              <Flex justify="center" align="center" h="100%">
+                <Spinner size="lg" color="var(--c-lagoon)" />
+              </Flex>
+            ) : chatMessages.length === 0 ? (
+              <Flex justify="center" align="center" h="100%" p={6}>
+                <VStack gap={2}>
+                  <Box className="material-symbols-outlined" fontSize="4xl" color="fg.subtle">
+                    forum
+                  </Box>
+                  <Text color="fg.subtle" fontSize="sm" textAlign="center">
+                    No messages yet. Be the first to chat!
+                  </Text>
+                </VStack>
+              </Flex>
+            ) : (
+              <Virtuoso
+                ref={virtuosoRef}
+                data={chatMessages}
+                className="live-chat-scroll"
+                followOutput={(isAtBottom) => isAtBottom ? "smooth" : "smooth"}
+                initialTopMostItemIndex={Math.max(0, chatMessages.length - 1)}
+                itemContent={(_index, msg) => (
+                  <LiveChatBubble
+                    key={msg.id}
+                    message={msg}
+                    isStaff={user?.role !== "student" && user?.role !== undefined}
+                    isMe={msg.sender_id === user?.student_id}
+                    onDelete={deleteMessage}
+                    onInspectUser={handleInspectUser}
+                  />
+                )}
+              />
+            )}
+          </Box>
+
+          {/* Chat Composer */}
+          {hypeBoardMode === "read_only" && !isStaff ? (
             <Box
-              display={{ base: "none", md: "block" }}
-              bg="bg.surface"
-              border="1px solid"
+              px={{ base: 3, md: 5 }}
+              py={4}
+              borderTop="1px solid"
               borderColor="border.subtle"
-              borderRadius="2xl"
-              p={{ base: 4, md: 6 }}
-              animation="fade-in-up 0.6s var(--ease-out-expo) 0.15s both"
+              bg="var(--c-ivory)"
+              flexShrink={0}
+              textAlign="center"
             >
-              <Flex gap={{ base: 3, md: 4 }} align="start">
+              <Text color="fg.subtle" fontSize="sm" fontWeight="600">
+                ระบบบอร์ดคุยสดถูกปรับเป็นโหมดอ่านอย่างเดียว (Read Only Mode)
+              </Text>
+            </Box>
+          ) : (
+            <Box
+              px={{ base: 3, md: 5 }}
+              py={3}
+              borderTop="1px solid"
+              borderColor="border.subtle"
+              bg="bg.surface"
+              flexShrink={0}
+              position="relative"
+            >
+              {/* Panic Mute Overlay */}
+              {globalMuteActive && !isStaff && (
+                <Flex
+                  position="absolute"
+                  inset={0}
+                  bg="rgba(252, 249, 248, 0.85)"
+                  backdropFilter="blur(2px)"
+                  align="center"
+                  justify="center"
+                  zIndex={10}
+                  px={4}
+                >
+                  <Text
+                    color="var(--c-error)"
+                    fontWeight="bold"
+                    fontSize="sm"
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                  >
+                    <Box className="material-symbols-outlined" fontSize="md">
+                      block
+                    </Box>
+                    ช่องแชทถูกปิดเสียงชั่วคราวโดยผู้ดูแลระบบ
+                  </Text>
+                </Flex>
+              )}
+
+              <Flex gap={3} align="center">
                 {user ? (
                   <Box
-                    w={{ base: 10, md: 12 }}
-                    h={{ base: 10, md: 12 }}
+                    w={8}
+                    h={8}
                     borderRadius="full"
                     bg={user.avatar_color}
                     color="white"
@@ -445,15 +908,15 @@ export function BoardPage() {
                     alignItems="center"
                     justifyContent="center"
                     fontWeight="700"
-                    fontSize="sm"
+                    fontSize="xs"
                     flexShrink={0}
                   >
                     {getInitials(user.nickname || user.student_id)}
                   </Box>
                 ) : (
                   <Box
-                    w={{ base: 10, md: 12 }}
-                    h={{ base: 10, md: 12 }}
+                    w={8}
+                    h={8}
                     borderRadius="full"
                     bg="brand.muted"
                     display="flex"
@@ -461,377 +924,586 @@ export function BoardPage() {
                     justifyContent="center"
                     flexShrink={0}
                   >
-                    <Box
-                      className="material-symbols-outlined"
-                      fontSize="xl"
-                      color="brand.fg"
-                    >
+                    <Box className="material-symbols-outlined" fontSize="md" color="brand.fg">
                       person
                     </Box>
                   </Box>
                 )}
-                <Box flex={1}>
-                  <label htmlFor="board-composer" className="sr-only">
-                    {activeTab === "hype"
-                      ? "Share the hype"
-                      : "Pin something new"}
-                  </label>
-                  <Textarea
-                    id="board-composer"
-                    placeholder={
-                      !user
-                        ? "Sign in to post orientation hype..."
-                        : activeTab === "hype"
-                          ? "Share the hype! What's exciting today?"
-                          : "Pin something new to the board..."
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!chatInput.trim() || chatSending || isCooldownActive || (globalMuteActive && !isStaff)) return;
+                    const textToSend = chatInput.trim();
+                    const success = await sendMessage(textToSend);
+                    if (success) {
+                      setChatInput("");
+                      if (hypeBoardMode === "slow_3s" && !isStaff) {
+                        const now = Date.now();
+                        localStorage.setItem("ween_last_chat_sent", String(now));
+                        setLastChatSent(now);
+                      }
                     }
-                    value={newPostText}
-                    onChange={(e) => setNewPostText(e.target.value)}
-                    disabled={!user || submitting}
-                    maxLength={activeTab === "hype" ? 280 : 150}
-                    variant="flushed"
-                    resize="none"
-                    fontSize="md"
-                    color="var(--c-ink)"
-                    _focus={{ borderColor: "var(--c-lagoon)" }}
-                    minH="60px"
+                  }}
+                  style={{ flex: 1, display: "flex", gap: "8px", alignItems: "center" }}
+                >
+                  <Box position="relative" flex={1} display="flex" alignItems="center">
+                    <Input
+                      placeholder={
+                        isCooldownActive
+                          ? "Slow mode: Cooldown active"
+                          : user
+                          ? "Type a message..."
+                          : "Sign in to chat..."
+                      }
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      disabled={!user || chatSending || isCooldownActive || (globalMuteActive && !isStaff)}
+                      maxLength={200}
+                      h="40px"
+                      borderRadius="xl"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      bg="bg.hero"
+                      fontSize="sm"
+                      _focus={{ borderColor: "accent.solid", bg: "bg.surface" }}
+                      aria-label="Chat message input"
+                      pr={isCooldownActive ? "70px" : "12px"}
+                    />
+                    {isCooldownActive && (
+                      <Box
+                        position="absolute"
+                        right="12px"
+                        bg="var(--c-lagoon-light)"
+                        color="var(--c-lagoon)"
+                        px={2}
+                        py={0.5}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight="bold"
+                        pointerEvents="none"
+                      >
+                        {(cooldownRemaining / 1000).toFixed(1)}s
+                      </Box>
+                    )}
+                  </Box>
+                  <Button
+                    type="submit"
+                    bg="accent.solid"
+                    color="white"
+                    h="40px"
+                    w="40px"
+                    minW="40px"
                     p={0}
-                    mb={2}
-                  />
-
-                  {user && (
-                    <VStack align="start" gap={2} my={3} w="100%">
-                      <Text fontSize="xs" fontWeight="700" color="fg.muted">
-                        Select a Tag (Required):
-                      </Text>
-                      <HStack
-                        gap={2}
-                        overflowX="auto"
-                        whiteSpace="nowrap"
-                        w="100%"
-                        css={{
-                          "&::-webkit-scrollbar": { display: "none" },
-                          "-ms-overflow-style": "none",
-                          "scrollbar-width": "none",
-                        }}
-                      >
-                        {["#Hype", "#Question", "#Memory", "#Ween2026"].map(
-                          (tag) => {
-                            const isSelected = selectedTag === tag;
-                            return (
-                              <Button
-                                key={tag}
-                                type="button"
-                                onClick={() => setSelectedTag(tag)}
-                                size="xs"
-                                borderRadius="full"
-                                bg={isSelected ? "accent.solid" : "bg.surface"}
-                                color={isSelected ? "white" : "fg.default"}
-                                border="1px solid"
-                                borderColor={
-                                  isSelected ? "accent.solid" : "border.subtle"
-                                }
-                                h={{ base: "40px", md: "32px" }}
-                                px={3}
-                                cursor="pointer"
-                                _hover={{
-                                  bg: isSelected ? "accent.solid" : "bg.hero",
-                                }}
-                              >
-                                {tag}
-                              </Button>
-                            );
-                          },
-                        )}
-                      </HStack>
-                    </VStack>
-                  )}
-
-                  <Flex
-                    justify="space-between"
-                    align="center"
-                    mt={2}
-                    flexWrap="wrap"
-                    gap={3}
+                    borderRadius="xl"
+                    cursor="pointer"
+                    disabled={!user || !chatInput.trim() || chatSending || isCooldownActive || (globalMuteActive && !isStaff)}
+                    loading={chatSending}
+                    _hover={{
+                      boxShadow: "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
+                    }}
+                    aria-label="Send message"
                   >
-                    <HStack gap={3}>
-                      {user && activeTab === "hype" && (
-                        <HStack gap={2}>
-                          <input
-                            type="checkbox"
-                            id="anon-checkbox"
-                            checked={isAnonymous}
-                            onChange={(e) => setIsAnonymous(e.target.checked)}
-                            className="anon-checkbox"
-                          />
-                          <label htmlFor="anon-checkbox" className="anon-label">
-                            Post Anonymously
-                          </label>
-                        </HStack>
-                      )}
-                      {user && activeTab === "memory" && (
-                        <HStack gap={2}>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            id="memory-image-upload"
-                            onChange={handleImageChange}
-                            style={{ display: "none" }}
-                          />
-                          <label htmlFor="memory-image-upload" style={{ cursor: "pointer", fontSize: "0.875rem", color: "var(--c-chocolate)", fontWeight: 600 }}>
-                            <Box as="span" className="material-symbols-outlined" fontSize="md" verticalAlign="middle" mr={1}>
-                              image
-                            </Box>
-                            {memoryImage ? memoryImage.name : "Attach Image (Max 1)"}
-                          </label>
-                        </HStack>
-                      )}
-                    </HStack>
-                    <HStack gap={4} align="center">
-                      {user && (
-                        <Text fontSize="xs" color="fg.subtle" fontWeight="600">
-                          {newPostText.length} /{" "}
-                          {activeTab === "hype" ? 280 : 150}
-                        </Text>
-                      )}
-                      <Button
-                        bg="accent.solid"
-                        color="white"
-                        px={6}
-                        py={2}
-                        borderRadius="xl"
-                        fontSize="sm"
-                        fontWeight="600"
-                        cursor="pointer"
-                        onClick={handleSubmitPost}
-                        loading={submitting || isUploadingImage}
-                        disabled={!user || !newPostText.trim() || !selectedTag}
-                        _hover={{
-                          boxShadow:
-                            "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
-                        }}
-                        minH="44px"
-                      >
-                        {activeTab === "hype" ? "Post" : "Pin it!"}
-                      </Button>
-                    </HStack>
-                  </Flex>
-                </Box>
+                    <Box className="material-symbols-outlined" fontSize="md">
+                      send
+                    </Box>
+                  </Button>
+                </form>
+                {user && chatInput.length > 0 && (
+                  <Text fontSize="2xs" color="fg.subtle" fontWeight="600" flexShrink={0}>
+                    {chatInput.length}/200
+                  </Text>
+                )}
               </Flex>
             </Box>
-
-            {/* Posts Grid */}
-            {loading ? (
-              <Flex justify="center" py={12}>
-                <Spinner
-                  size="lg"
-                  color="var(--c-lagoon)"
-                  title="Loading posts"
-                  aria-label="Loading posts"
-                />
-              </Flex>
-            ) : filteredPosts.length === 0 ? (
-              <Flex
-                justify="center"
-                py={12}
-                bg="bg.surface"
-                border="1px dashed"
-                borderColor="border.subtle"
-                borderRadius="2xl"
-              >
-                <Text color="fg.subtle">
-                  No posts in this category yet. Be the first to post!
-                </Text>
-              </Flex>
-            ) : activeTab === "memory" ? (
-              <Box
-                position="relative"
-                css={{
-                  columnCount: { base: 1, sm: 2, md: 3 },
-                  columnGap: "24px",
-                  "& > div": {
-                    breakInside: "avoid",
-                    marginBottom: "24px",
-                  },
-                }}
-              >
-                <AnimatePresence mode="popLayout">
-                  {visiblePosts.map((post, i) =>
-                    i >= prevVisibleCount ? (
-                      <motion.div
-                        key={post.id}
-                        layout
-                        initial={
-                          shouldReduceMotion
-                            ? { opacity: 0 }
-                            : { y: 20, opacity: 0 }
-                        }
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={
-                          shouldReduceMotion
-                            ? { duration: 0.2 }
-                            : {
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 20,
-                                delay: (i - prevVisibleCount) * 0.05,
-                              }
-                        }
-                        style={{ height: "100%" }}
-                      >
-                        <MemoryCard
-                          post={post}
-                          index={i}
-                          onLike={handleLikePost}
-                          currentUserRole={user?.role}
-                          onInspectUser={handleInspectUser}
-                        />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key={post.id}
-                        layout
-                        style={{ height: "100%" }}
-                      >
-                        <MemoryCard
-                          post={post}
-                          index={i}
-                          onLike={handleLikePost}
-                          currentUserRole={user?.role}
-                          onInspectUser={handleInspectUser}
-                        />
-                      </motion.div>
-                    ),
-                  )}
-                </AnimatePresence>
-              </Box>
-            ) : (
-              <Box
-                css={{
-                  columnCount: { base: 1, sm: 2, md: 3 },
-                  columnGap: "24px",
-                  "& > div": {
-                    breakInside: "avoid",
-                    marginBottom: "24px",
-                  },
-                }}
-              >
-                <AnimatePresence mode="popLayout">
-                  {visiblePosts.map((post, i) =>
-                    i >= prevVisibleCount ? (
-                      <motion.div
-                        key={post.id}
-                        layout
-                        initial={
-                          shouldReduceMotion
-                            ? { opacity: 0 }
-                            : { y: 20, opacity: 0 }
-                        }
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={
-                          shouldReduceMotion
-                            ? { duration: 0.2 }
-                            : {
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 20,
-                                delay: (i - prevVisibleCount) * 0.05,
-                              }
-                        }
-                        style={{ height: "100%" }}
-                      >
-                        <HypeCard
-                          post={post}
-                          index={i}
-                          onLike={handleLikePost}
-                          onPin={handlePinPost}
-                          onDelete={handleDeletePost}
-                          currentUserRole={user?.role}
-                          onInspectUser={handleInspectUser}
-                        />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key={post.id}
-                        layout
-                        style={{ height: "100%" }}
-                      >
-                        <HypeCard
-                          post={post}
-                          index={i}
-                          onLike={handleLikePost}
-                          onPin={handlePinPost}
-                          onDelete={handleDeletePost}
-                          currentUserRole={user?.role}
-                          onInspectUser={handleInspectUser}
-                        />
-                      </motion.div>
-                    ),
-                  )}
-                </AnimatePresence>
-              </Box>
-            )}
-          </VStack>
+          )}
         </Box>
+      ) : (
+        /* ═══ MEMORY BOARD (Memory Tab) ═══════════════════════════════════ */
+        <Box maxW="4xl" mx="auto" w="100%">
+          {/* 1. Governance Configuration Panel for Moderator / Admin */}
+          {(user?.role === "moderator" || (user?.role as string) === "superadmin" || (user?.role as string) === "admin") && (
+            <Box
+              bg="bg.surface"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              p={5}
+              mb={6}
+              boxShadow="sm"
+            >
+              <Flex align="center" justify="space-between" flexWrap="wrap" gap={4}>
+                <Box>
+                  <Heading as="h3" fontSize="md" fontWeight="700" color="accent.solid" mb={1}>
+                    Memory Board Governance Panel
+                  </Heading>
+                  <Text fontSize="xs" color="fg.subtle">
+                    Control public visibility of the Memory Board for general students.
+                  </Text>
+                </Box>
+                <HStack gap={3}>
+                  <Text fontSize="sm" fontWeight="600" color={isMemoryBoardActive ? "green.600" : "red.600"}>
+                    {isMemoryBoardActive ? "Publicly Open" : "Publicly Closed"}
+                  </Text>
+                  <Switch.Root
+                    checked={isMemoryBoardActive}
+                    onCheckedChange={(details: { checked: boolean }) => handleToggleMemoryBoard(details.checked)}
+                    colorPalette="teal"
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                  </Switch.Root>
+                </HStack>
+              </Flex>
+            </Box>
+          )}
 
-      {/* Load More */}
-      {(effectiveHypeActive || isMemoryAccessible) && (hasMore || isFetchingMore) && (
-        <Flex justify="center" py={12} position="relative" zIndex={1} minH="60px">
-          <AnimatePresence mode="wait">
-            {isFetchingMore ? (
-              <motion.div
-                key="loader"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <JellyScrollLoader />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="button"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Button
-                  type="button"
-                  onClick={handleLoadMore}
-                  display="inline-flex"
-                  alignItems="center"
-                  gap={2}
-                  bg="bg.surface"
+          {/* 2. Access Gate Check */}
+          {!isMemoryBoardActive && user?.role === "student" ? (
+            /* Student Locked Placeholder Card */
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              minH="300px"
+              bg="bg.surface"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              p={8}
+              textAlign="center"
+              boxShadow="sm"
+            >
+              <Box className="material-symbols-outlined" fontSize="5xl" color="accent.solid" mb={4}>
+                lock
+              </Box>
+              <Heading as="h3" fontSize="xl" fontWeight="700" color="fg.default" mb={2}>
+                Memory Board Locked
+              </Heading>
+              <Text fontSize="md" color="fg.muted" maxW="md">
+                Memory Board will be unlocked during the final session. Stay tuned!
+              </Text>
+            </Flex>
+          ) : (
+            /* Accessible Flow (Board is open, or board is closed but accessed by Staff / Media Admin / Moderator) */
+            <>
+              {/* Subtle staff-only indicator banner */}
+              {!isMemoryBoardActive && (user?.role === "staff" || user?.role === "media_admin") && (
+                <Box
+                  bg="orange.50"
                   border="1px solid"
-                  borderColor="border.subtle"
-                  px={{ base: 6, md: 8 }}
-                  py={3}
-                  borderRadius="full"
-                  fontSize="sm"
-                  fontWeight="600"
-                  color="fg.default"
-                  cursor="pointer"
-                  transition="all 0.2s"
-                  _hover={{
-                    bg: "bg.hero",
-                    boxShadow: "var(--shadow-card-hover)",
-                  }}
-                  minH="44px"
+                  borderColor="orange.200"
+                  borderRadius="xl"
+                  p={3}
+                  mb={6}
+                  textAlign="center"
                 >
-                  Load More {activeTab === "hype" ? "Hype" : "Memories"}
-                  <Box className="material-symbols-outlined" fontSize="md">
-                    expand_more
+                  <Text fontSize="sm" fontWeight="600" color="orange.700">
+                    [Staff Only View: Board is currently hidden from Students]
+                  </Text>
+                </Box>
+              )}
+
+              {/* Category Filters */}
+              <Box
+                bg="bg.hero"
+                border="1px solid"
+                borderColor="border.subtle"
+                borderRadius="xl"
+                px={{ base: 3, md: 5 }}
+                py={3}
+                mb={{ base: 4, md: 6 }}
+                animation="fade-in-up 0.6s var(--ease-out-expo) 0.1s both"
+              >
+                <Flex align="center" gap={{ base: 2, md: 3 }} flexWrap="wrap">
+                  <Text
+                    fontSize="xs"
+                    fontWeight="600"
+                    letterSpacing="0.05em"
+                    color="fg.subtle"
+                    display={{ base: "none", md: "block" }}
+                  >
+                    Filter by:
+                  </Text>
+                  <HStack
+                    gap={2}
+                    overflowX="auto"
+                    whiteSpace="nowrap"
+                    w="100%"
+                    css={{
+                      "&::-webkit-scrollbar": { display: "none" },
+                      "-ms-overflow-style": "none",
+                      "scrollbar-width": "none",
+                    }}
+                  >
+                    {categories.map((cat) => (
+                      <Button
+                        key={cat.value}
+                        type="button"
+                        aria-pressed={activeCategory === cat.value}
+                        onClick={() => {
+                          setActiveCategory(cat.value);
+                          setVisibleCount(6);
+                          setPrevVisibleCount(6);
+                        }}
+                        px={4}
+                        py={2}
+                        h={{ base: "40px", md: "44px" }}
+                        minH={{ base: "40px", md: "44px" }}
+                        borderRadius="full"
+                        fontSize="xs"
+                        fontWeight="600"
+                        letterSpacing="0.03em"
+                        cursor="pointer"
+                        transition="all 0.2s"
+                        bg={
+                          activeCategory === cat.value ? "accent.solid" : "bg.surface"
+                        }
+                        color={activeCategory === cat.value ? "white" : "fg.default"}
+                        border="1px solid"
+                        borderColor={
+                          activeCategory === cat.value
+                            ? "accent.solid"
+                            : "border.subtle"
+                        }
+                        _hover={{
+                          bg:
+                            activeCategory === cat.value ? "accent.solid" : "bg.hero",
+                        }}
+                      >
+                        {cat.label}
+                      </Button>
+                    ))}
+                  </HStack>
+                </Flex>
+              </Box>
+
+              {/* Main Column */}
+              <Box maxW="4xl" mx="auto" w="100%">
+                {/* Posts Column */}
+                <VStack align="stretch" gap={{ base: 4, md: 6 }}>
+                  {/* Composer */}
+                  <Box
+                    display={{ base: "none", md: "block" }}
+                    bg="bg.surface"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                    borderRadius="2xl"
+                    p={{ base: 4, md: 6 }}
+                    animation="fade-in-up 0.6s var(--ease-out-expo) 0.15s both"
+                  >
+                    <Flex gap={{ base: 3, md: 4 }} align="start">
+                      {user ? (
+                        <Box
+                          w={{ base: 10, md: 12 }}
+                          h={{ base: 10, md: 12 }}
+                          borderRadius="full"
+                          bg={user.avatar_color}
+                          color="white"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          fontWeight="700"
+                          fontSize="sm"
+                          flexShrink={0}
+                        >
+                          {getInitials(user.nickname || user.student_id)}
+                        </Box>
+                      ) : (
+                        <Box
+                          w={{ base: 10, md: 12 }}
+                          h={{ base: 10, md: 12 }}
+                          borderRadius="full"
+                          bg="brand.muted"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          flexShrink={0}
+                        >
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="xl"
+                            color="brand.fg"
+                          >
+                            person
+                          </Box>
+                        </Box>
+                      )}
+                      <Box flex={1}>
+                        <label htmlFor="board-composer" className="sr-only">
+                          Pin something new
+                        </label>
+                        <Textarea
+                          id="board-composer"
+                          placeholder={
+                            !user
+                              ? "Sign in to post orientation hype..."
+                              : "Pin something new to the board..."
+                          }
+                          value={newPostText}
+                          onChange={(e) => setNewPostText(e.target.value)}
+                          disabled={!user || submitting}
+                          maxLength={150}
+                          variant="flushed"
+                          resize="none"
+                          fontSize="md"
+                          color="var(--c-ink)"
+                          _focus={{ borderColor: "var(--c-lagoon)" }}
+                          minH="60px"
+                          p={0}
+                          mb={2}
+                        />
+
+                        {user && (
+                          <VStack align="start" gap={2} my={3} w="100%">
+                            <Text fontSize="xs" fontWeight="700" color="fg.muted">
+                              Select a Tag (Required):
+                            </Text>
+                            <HStack
+                              gap={2}
+                              overflowX="auto"
+                              whiteSpace="nowrap"
+                              w="100%"
+                              css={{
+                                "&::-webkit-scrollbar": { display: "none" },
+                                "-ms-overflow-style": "none",
+                                "scrollbar-width": "none",
+                              }}
+                            >
+                              {["#Hype", "#Question", "#Memory", "#Ween2026"].map(
+                                (tag) => {
+                                  const isSelected = selectedTag === tag;
+                                  return (
+                                    <Button
+                                      key={tag}
+                                      type="button"
+                                      onClick={() => setSelectedTag(tag)}
+                                      size="xs"
+                                      borderRadius="full"
+                                      bg={isSelected ? "accent.solid" : "bg.surface"}
+                                      color={isSelected ? "white" : "fg.default"}
+                                      border="1px solid"
+                                      borderColor={
+                                        isSelected ? "accent.solid" : "border.subtle"
+                                      }
+                                      h={{ base: "40px", md: "32px" }}
+                                      px={3}
+                                      cursor="pointer"
+                                      _hover={{
+                                        bg: isSelected ? "accent.solid" : "bg.hero",
+                                      }}
+                                    >
+                                      {tag}
+                                    </Button>
+                                  );
+                                },
+                              )}
+                            </HStack>
+                          </VStack>
+                        )}
+
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          mt={2}
+                          flexWrap="wrap"
+                          gap={3}
+                        >
+                          <HStack gap={3}>
+                            {user && (
+                              <HStack gap={2}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  id="memory-image-upload"
+                                  onChange={handleImageChange}
+                                  style={{ display: "none" }}
+                                />
+                                <label htmlFor="memory-image-upload" style={{ cursor: "pointer", fontSize: "0.875rem", color: "var(--c-chocolate)", fontWeight: 600 }}>
+                                  <Box as="span" className="material-symbols-outlined" fontSize="md" verticalAlign="middle" mr={1}>
+                                    image
+                                  </Box>
+                                  {memoryImage ? memoryImage.name : "Attach Image (Max 1)"}
+                                </label>
+                              </HStack>
+                            )}
+                          </HStack>
+                          <HStack gap={4} align="center">
+                            {user && (
+                              <Text fontSize="xs" color="fg.subtle" fontWeight="600">
+                                {newPostText.length} / 150
+                              </Text>
+                            )}
+                            <Button
+                              bg="accent.solid"
+                              color="white"
+                              px={6}
+                              py={2}
+                              borderRadius="xl"
+                              fontSize="sm"
+                              fontWeight="600"
+                              cursor="pointer"
+                              onClick={handleSubmitPost}
+                              loading={submitting || isUploadingImage}
+                              disabled={!user || !newPostText.trim() || !selectedTag}
+                              _hover={{
+                                boxShadow:
+                                  "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
+                              }}
+                              minH="44px"
+                            >
+                              Pin it!
+                            </Button>
+                          </HStack>
+                        </Flex>
+                      </Box>
+                    </Flex>
                   </Box>
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Flex>
-      )}
-      </>
+
+                  {/* Posts Grid */}
+                  {memoryLoading ? (
+                    <Flex justify="center" py={12}>
+                      <JellyScrollLoader />
+                    </Flex>
+                  ) : filteredPosts.length === 0 ? (
+                    <Flex
+                      justify="center"
+                      py={12}
+                      bg="bg.surface"
+                      border="1px dashed"
+                      borderColor="border.subtle"
+                      borderRadius="2xl"
+                    >
+                      <Text color="fg.subtle">
+                        No posts in this category yet. Be the first to post!
+                      </Text>
+                    </Flex>
+                  ) : (
+                    <Box
+                      position="relative"
+                      css={{
+                        columnCount: { base: 1, sm: 2, md: 3 },
+                        columnGap: "24px",
+                        "& > div": {
+                          breakInside: "avoid",
+                          marginBottom: "24px",
+                        },
+                      }}
+                    >
+                      <AnimatePresence mode="popLayout">
+                        {visiblePosts.map((post, i) =>
+                          i >= prevVisibleCount ? (
+                            <motion.div
+                              key={post.id}
+                              layout
+                              initial={
+                                shouldReduceMotion
+                                  ? { opacity: 0 }
+                                  : { y: 20, opacity: 0 }
+                              }
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={
+                                shouldReduceMotion
+                                  ? { duration: 0.2 }
+                                  : {
+                                      type: "spring",
+                                      stiffness: 300,
+                                      damping: 20,
+                                      delay: (i - prevVisibleCount) * 0.05,
+                                    }
+                              }
+                              style={{ height: "100%" }}
+                            >
+                              <MemoryCard
+                                post={post}
+                                index={i}
+                                onLike={handleLikePost}
+                                currentUserRole={user?.role}
+                                onInspectUser={handleInspectUser}
+                              />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key={post.id}
+                              layout
+                              style={{ height: "100%" }}
+                            >
+                              <MemoryCard
+                                post={post}
+                                index={i}
+                                onLike={handleLikePost}
+                                currentUserRole={user?.role}
+                                onInspectUser={handleInspectUser}
+                              />
+                            </motion.div>
+                          ),
+                        )}
+                      </AnimatePresence>
+                    </Box>
+                  )}
+                </VStack>
+              </Box>
+
+              {/* Load More */}
+              {(hasMore || isFetchingMore) && (
+                <Flex justify="center" py={12} position="relative" zIndex={1} minH="60px">
+                  <AnimatePresence mode="wait">
+                    {isFetchingMore ? (
+                      <motion.div
+                        key="loader"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <JellyScrollLoader />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="button"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Button
+                          type="button"
+                          onClick={handleLoadMore}
+                          display="inline-flex"
+                          alignItems="center"
+                          gap={2}
+                          bg="bg.surface"
+                          border="1px solid"
+                          borderColor="border.subtle"
+                          px={{ base: 6, md: 8 }}
+                          py={3}
+                          borderRadius="full"
+                          fontSize="sm"
+                          fontWeight="600"
+                          color="fg.default"
+                          cursor="pointer"
+                          transition="all 0.2s"
+                          _hover={{
+                            bg: "bg.hero",
+                            boxShadow: "var(--shadow-card-hover)",
+                          }}
+                          minH="44px"
+                        >
+                          Load More Memories
+                          <Box className="material-symbols-outlined" fontSize="md">
+                            expand_more
+                          </Box>
+                        </Button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Flex>
+              )}
+            </>
+          )}
+        </Box>
       )}
 
     {/* Profile Inspector Dialog Layer */}
@@ -872,6 +1544,7 @@ export function BoardPage() {
                     w="100%"
                     h="100%"
                     objectFit="cover"
+                    loading="lazy"
                   />
                 ) : (
                   <Text fontSize="2xl" fontWeight="700" color="white">
@@ -933,8 +1606,9 @@ export function BoardPage() {
             as="button"
             display={{ base: "flex", md: "none" }}
             position="fixed"
-            bottom="24px"
-            left="24px"
+            bottom={{ base: "90px", md: "30px" }}
+            left={{ base: "24px", md: "auto" }}
+            right={{ base: "auto", md: "30px" }}
             w="56px"
             h="56px"
             borderRadius="full"
@@ -945,7 +1619,7 @@ export function BoardPage() {
             fontSize="3xl"
             fontWeight="bold"
             boxShadow="0 12px 40px rgba(73, 98, 104, 0.25)"
-            zIndex="popover"
+            zIndex="9999"
             onClick={() => setIsMobileComposerOpen(true)}
             transition="all 0.2s"
             _active={{ transform: "scale(0.95)" }}
@@ -1141,23 +1815,32 @@ export function BoardPage() {
                               let imageUrl = null;
                               if (memoryImage && activeTab === 'memory') {
                                 setIsUploadingImage(true);
-                                const fileExt = memoryImage.name.split('.').pop();
-                                const fileName = `${user?.student_id}-${Math.random()}.${fileExt}`;
-                                const filePath = `${fileName}`;
+                                try {
+                                  const compressedBlob = await compressImage(memoryImage);
+                                  const fileName = `${user?.student_id}-${Math.random()}-${Date.now()}.jpg`;
+                                  const filePath = `${fileName}`;
 
-                                const { error: uploadError } = await supabase.storage
-                                  .from('board_media')
-                                  .upload(filePath, memoryImage);
-
-                                if (!uploadError) {
-                                  const { data: publicUrlData } = supabase.storage
+                                  const { error: uploadError } = await supabase.storage
                                     .from('board_media')
-                                    .getPublicUrl(filePath);
-                                  imageUrl = publicUrlData.publicUrl;
-                                } else {
-                                  console.error('Upload Error', uploadError);
+                                    .upload(filePath, compressedBlob, {
+                                      contentType: 'image/jpeg',
+                                      cacheControl: '3600',
+                                      upsert: true
+                                    });
+
+                                  if (!uploadError) {
+                                    const { data: publicUrlData } = supabase.storage
+                                      .from('board_media')
+                                      .getPublicUrl(filePath);
+                                    imageUrl = publicUrlData.publicUrl;
+                                  } else {
+                                    console.error('Upload Error', uploadError);
+                                  }
+                                } catch (err) {
+                                  console.error('Compression/Upload Error', err);
+                                } finally {
+                                  setIsUploadingImage(false);
                                 }
-                                setIsUploadingImage(false);
                               }
 
                               await handleCreatePost(textarea.value.trim(), [], false, imageUrl);
@@ -1532,6 +2215,7 @@ function CommentSection({
                       w="100%"
                       h="100%"
                       objectFit="cover"
+                      loading="lazy"
                     />
                   ) : (
                     getInitials(comment.author?.nickname || comment.student_id)
@@ -1635,7 +2319,7 @@ function CommentSection({
   );
 }
 
-const HypeCard = memo(function HypeCard({
+export const HypeCard = memo(function HypeCard({
   post,
   index,
   onLike,
@@ -1738,6 +2422,7 @@ const HypeCard = memo(function HypeCard({
               w="100%"
               h="100%"
               objectFit="cover"
+              loading="lazy"
             />
           ) : (
             displayAuthorInitials
@@ -2042,6 +2727,7 @@ const MemoryCard = memo(function MemoryCard({
               w="100%"
               h="100%"
               objectFit="cover"
+              loading="lazy"
             />
           ) : (
             displayAuthorInitials
@@ -2085,7 +2771,7 @@ const MemoryCard = memo(function MemoryCard({
       </Text>
       {post.image_url && (
         <Box mb={3} borderRadius="lg" overflow="hidden" boxShadow="sm" maxH="240px">
-          <Image src={post.image_url} alt={`Memory board photo shared by ${isAnon ? 'Anonymous' : (post.author.nickname || 'User')}`} w="100%" h="100%" objectFit="cover" />
+          <Image src={post.image_url} alt={`Memory board photo shared by ${isAnon ? 'Anonymous' : (post.author.nickname || 'User')}`} w="100%" h="100%" objectFit="cover" loading="lazy" />
         </Box>
       )}
       <Flex gap={3} align="center">

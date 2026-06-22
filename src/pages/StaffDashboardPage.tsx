@@ -15,6 +15,7 @@ import {
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
+import { compressImage } from "../utils/image";
 
 interface DBPost {
   id: number;
@@ -281,13 +282,17 @@ export function StaffDashboardPage() {
     const idx = activeFileIdxRef.current;
     setUploadingIdx(idx);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `staff-${user.student_id}-${idx}-${Date.now()}.${fileExt}`;
+      const compressedBlob = await compressImage(file);
+      const fileName = `staff-${user.student_id}-${idx}-${Date.now()}.jpg`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("profiles")
-        .upload(filePath, file, { cacheControl: "3600", upsert: true });
+        .upload(filePath, compressedBlob, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
@@ -433,6 +438,7 @@ export function StaffDashboardPage() {
               </Text>
               <Input
                 placeholder="e.g. Apple, Recreation Staff of Baan 7, nice to meet you all! 🧡"
+                aria-label="Bio / Intro Phrase (Staff Intro)"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 h="44px"
@@ -454,6 +460,7 @@ export function StaffDashboardPage() {
               <Input
                 type="file"
                 accept="image/*"
+                aria-label="Upload photo"
                 onChange={handlePhotoUpload}
                 ref={fileInputRef}
                 display="none"

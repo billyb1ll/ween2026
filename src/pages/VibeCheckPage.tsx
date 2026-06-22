@@ -253,6 +253,22 @@ export function VibeCheckPage() {
     };
   }, [fetchGameData]);
 
+  useEffect(() => {
+    const syncChannel = supabase.channel("live_chat:system_config_sync");
+    syncChannel
+      .on("broadcast", { event: "vibe_quest_change" }, () => {
+        fetchGameData();
+      })
+      .on("broadcast", { event: "config_change" }, () => {
+        fetchGameData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(syncChannel);
+    };
+  }, [fetchGameData]);
+
   // Safe Swipe Handler wired into Secure DB RPC
   const performSwipeSecure = useCallback(
     async (direction: "left" | "right") => {
@@ -628,6 +644,7 @@ export function VibeCheckPage() {
                   w="100%"
                   h="100%"
                   objectFit="cover"
+                  loading="lazy"
                   draggable={false}
                 />
 
@@ -1040,6 +1057,7 @@ export function VibeCheckPage() {
                                         w="100%"
                                         h="100%"
                                         objectFit="cover"
+                                        loading="lazy"
                                       />
                                     ) : (
                                       <Flex
@@ -1243,6 +1261,7 @@ export function VibeCheckPage() {
                       objectFit="cover"
                       border="2px solid"
                       borderColor="accent.solid"
+                      loading="lazy"
                     />
                     <VStack align="start" gap={0.5}>
                       <Heading
@@ -1321,6 +1340,7 @@ export function VibeCheckPage() {
                                 border="1px solid"
                                 borderColor="border.subtle"
                                 flexShrink={0}
+                                loading="lazy"
                               />
                             ),
                           )}

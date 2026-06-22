@@ -92,17 +92,62 @@ export function useBoardRealtime(
   activeTab: BoardTab,
   user: User | null,
 ): UseBoardRealtimeReturn {
+  const userId = user?.student_id;
   const [posts, setPosts] = useState<DBPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [hypeActive, setHypeActive] = useState(true);
   const [memoryActive, setMemoryActive] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
+
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    typeof document !== "undefined" ? document.visibilityState === "visible" : true
+  );
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   // Keep a ref to the stream channel to send broadcasts from callbacks
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   // Track optimistic like origins so we don't double-apply realtime UPDATE
   const pendingLikes = useRef<Set<number>>(new Set());
+  const throttledLikes = useRef<Set<number>>(new Set());
+
+  // Reusable posts fetching function
+  const fetchPosts = useCallback(async (showLoadingSpinner = false) => {
+    if (showLoadingSpinner) {
+      setLoading(true);
+    }
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select(
+          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)",
+        )
+        .eq("type", activeTab)
+        .eq("is_hidden", false)
+        .order("is_pinned", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setPosts((data ?? []).map(mapPost));
+    } catch (err) {
+      console.error("[Board] fetchPosts error:", err);
+    } finally {
+      if (showLoadingSpinner) {
+        setLoading(false);
+      }
+    }
+  }, [activeTab]);
 
   // ── Initial fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -126,22 +171,7 @@ export function useBoardRealtime(
           if (memory) setMemoryActive(memory.value);
         }
 
-        // Posts snapshot for current tab — include comment count via subquery
-        const { data, error } = await supabase
-          .from("posts")
-          .select(
-            "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)",
-          )
-          .eq("type", activeTab)
-          .eq("is_hidden", false)
-          .order("is_pinned", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (error) throw error;
-        if (!active) return;
-
-        setPosts((data ?? []).map(mapPost));
+        await fetchPosts(false);
       } catch (err) {
         console.error("[Board] Initial fetch error:", err);
         toaster.create({
@@ -158,14 +188,24 @@ export function useBoardRealtime(
     return () => {
       active = false;
     };
-  }, [activeTab]); // Re-fetch when tab switches
+  }, [activeTab, fetchPosts]); // Re-fetch when tab switches
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
+    let connectionTimeout: NodeJS.Timeout | null = null;
+
     const channel = supabase.channel(`board:${activeTab}:stream`, {
       config: { private: true },
     });
     channelRef.current = channel;
+
+    // Handshake Timeout Setup: activate polling if subscription fails to connect in 4 seconds
+    connectionTimeout = setTimeout(() => {
+      if (channelRef.current && channelRef.current.state !== "joined") {
+        console.warn(`[Realtime Board Fallback - Tab ${activeTab}]: Connection handshake timed out. Activating REST polling.`);
+        setIsPolling(true);
+      }
+    }, 4000);
 
     channel
       // ── Broadcast: new post ──
@@ -227,12 +267,18 @@ export function useBoardRealtime(
           console.error(`[Realtime Board Error - Tab ${activeTab}]:`, err);
         }
         console.log(`[Realtime Board Status - Tab ${activeTab}]:`, status);
+
+        if (status === "SUBSCRIBED") {
+          if (connectionTimeout) clearTimeout(connectionTimeout);
+          setIsPolling(false);
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (connectionTimeout) clearTimeout(connectionTimeout);
+          console.warn(`[Realtime Board Fallback - Tab ${activeTab}]: Channel status ${status}. Activating REST polling.`);
+          setIsPolling(true);
+        }
       });
 
     // ── Global comment counter channel ─────────────────────────────────────
-    // Watches ALL inserts/deletes on post_comments and patches comment_count
-    // in the posts state array so face-card counters update without needing
-    // the comment drawer to be open first.
     const commentChannel = supabase
       .channel("global-comment-counts-" + activeTab, {
         config: { private: true },
@@ -270,17 +316,42 @@ export function useBoardRealtime(
           );
         },
       )
-      .subscribe((status, err) => {
-        if (err) console.error("[Comment Counts Realtime Error]:", err);
-        console.log("[Comment Counts Realtime Status]:", status);
-      });
+      .subscribe();
 
     return () => {
+      if (connectionTimeout) clearTimeout(connectionTimeout);
       supabase.removeChannel(channel);
       supabase.removeChannel(commentChannel);
       channelRef.current = null;
     };
-  }, [activeTab, user]);
+  }, [activeTab, userId]);
+
+  // ── Failover Polling Effect ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isPolling) return;
+
+    if (!isDocumentVisible) {
+      console.log(`[Eco Mode - Tab ${activeTab}] Tab hidden. Suspending polling.`);
+      return;
+    }
+
+    // Immediately fetch once when returning to visible state
+    Promise.resolve().then(() => {
+      fetchPosts(false);
+    });
+
+    // Stagger polling intervals between 30 to 45 seconds to prevent query grouping
+    const intervalTime = Math.floor(Math.random() * 15000) + 30000;
+    console.warn(`[Eco Mode - Tab ${activeTab}] Connection limit reached or unauthenticated. Falling back to staggered polling every ${Math.round(intervalTime / 1000)}s.`);
+
+    const interval = setInterval(async () => {
+      await fetchPosts(false);
+    }, intervalTime);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isPolling, isDocumentVisible, fetchPosts, activeTab]);
 
   // ── Create post ───────────────────────────────────────────────────────────
   const handleCreatePost = useCallback(
@@ -368,6 +439,19 @@ export function useBoardRealtime(
         });
         return;
       }
+
+      if (throttledLikes.current.has(postId)) {
+        toaster.create({
+          title: "Slow down!",
+          description: "Please wait a moment before liking this post again.",
+          type: "warning",
+        });
+        return;
+      }
+      throttledLikes.current.add(postId);
+      setTimeout(() => {
+        throttledLikes.current.delete(postId);
+      }, 1500);
 
       let match: DBPost | undefined;
       setPosts((prev) => {
