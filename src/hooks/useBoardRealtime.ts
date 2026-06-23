@@ -192,7 +192,7 @@ export function useBoardRealtime(
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
-    let connectionTimeout: NodeJS.Timeout | null = null;
+    let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase.channel(`board:${activeTab}:stream`, {
       config: { private: true },

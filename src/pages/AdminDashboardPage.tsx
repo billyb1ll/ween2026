@@ -11,89 +11,27 @@ import {
   Spinner,
   Table,
   Badge,
-  Tabs,
   Textarea,
   Dialog,
-  NativeSelect,
   Image,
+  SimpleGrid,
+  TableScrollArea,
+  Alert,
 } from "@chakra-ui/react";
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { getImmichConfig } from "../utils/immich";
+import { compressImage } from "../utils/image";
 import { Link } from "react-router-dom";
 import { toaster } from "../components/ui/toaster";
-import { Tooltip } from "../components/ui/tooltip";
 import Papa from "papaparse";
-import { THAI_FACULTIES, STAFF_ROLES } from "../lib/constants";
+import { SearchableSelect } from "../components/SearchableSelect";
+import { FiAlertTriangle } from "react-icons/fi";
+import { WhitelistTable } from "../components/admin/WhitelistTable";
+import { SystemControlPanel } from "../components/admin/SystemControlPanel";
+import { UserInspectModal } from "../components/admin/UserInspectModal";
 
-interface AccordionSectionProps {
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-function AccordionSection({
-  title,
-  isOpen,
-  onToggle,
-  children,
-}: AccordionSectionProps) {
-  return (
-    <Box
-      bg="var(--c-white)"
-      border="1px solid"
-      borderColor="border.subtle"
-      borderRadius="2xl"
-      boxShadow="var(--shadow-card)"
-      overflow="hidden"
-      w="100%"
-    >
-      <Heading as="h2" m={0}>
-        <Button
-          type="button"
-          onClick={onToggle}
-          variant="ghost"
-          w="100%"
-          justifyContent="space-between"
-          py={5}
-          px={6}
-          h="auto"
-          _hover={{
-            bg: "color-mix(in srgb, var(--c-ivory) 80%, var(--c-white))",
-          }}
-          borderRadius="none"
-          borderBottom={isOpen ? "1px solid" : "none"}
-          borderColor="border.subtle"
-          cursor="pointer"
-          display="flex"
-          alignItems="center"
-          fontSize="lg"
-          fontWeight="700"
-          color="var(--c-chocolate)"
-        >
-          <Box as="span">{title}</Box>
-          <Box
-            as="span"
-            className="material-symbols-outlined"
-            color="var(--c-chocolate)"
-            transition="transform 0.2s ease"
-            transform={isOpen ? "rotate(180deg)" : "rotate(0deg)"}
-          >
-            expand_more
-          </Box>
-        </Button>
-      </Heading>
-      {isOpen && (
-        <Box p={6} animation="scale-in 0.2s ease-out">
-          {children}
-        </Box>
-      )}
-    </Box>
-  );
-}
-
-interface DBUser {
+export interface DBUser {
   student_id: string;
   nickname: string | null;
   faculty: string | null;
@@ -115,7 +53,7 @@ interface CSVRecord {
   major: string | null;
 }
 
-interface AuditLog {
+export interface AuditLog {
   id: number;
   moderator_id: string;
   action_type: string;
@@ -132,22 +70,59 @@ interface VibeMission {
   required_count: number;
 }
 
+interface DBPost {
+  id: number;
+  content: string;
+  likes: number;
+  type: "hype" | "memory";
+  is_anonymous: boolean;
+  is_hidden: boolean;
+  student_id: string;
+  tags: string[];
+  created_at: string;
+  author: {
+    student_id: string;
+    nickname: string | null;
+    avatar_color: string;
+    role: string;
+  };
+}
+
+interface Comment {
+  id: number;
+  post_id: number;
+  student_id: string;
+  content: string;
+  created_at: string;
+  author: {
+    student_id: string;
+    nickname: string | null;
+    avatar_color: string;
+    role: string;
+  };
+}
+
 type HypeBoardMode = "active" | "slow_3s" | "read_only";
 
 export function AdminDashboardPage() {
-  const { user } = useUser();
+  const { user, updateProfile } = useUser();
 
   // Initialize tab directly from user role to avoid cascading useEffect renders
-  const [activeTab, setActiveTab] = useState<"moderator" | "media">(() => {
-    if (user?.role === "moderator") return "moderator";
-    return "media";
-  });
+  const [activeTab, setActiveTab] = useState<"moderator" | "media" | "staff">(
+    () => {
+      if (user?.role === "moderator") return "moderator";
+      if (user?.role === "staff") return "staff";
+      return "media";
+    },
+  );
 
   const [loading, setLoading] = useState(true);
 
   // Whitelist/Users States
   const [whitelistedUsers, setWhitelistedUsers] = useState<DBUser[]>([]);
-  const [lastUpdatedStudentId, setLastUpdatedStudentId] = useState<string | null>(null);
+  const [lastUpdatedStudentId, setLastUpdatedStudentId] = useState<
+    string | null
+  >(null);
   const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [newStudentId, setNewStudentId] = useState("");
   const [newRole, setNewRole] = useState("student");
@@ -167,23 +142,6 @@ export function AdminDashboardPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
-  // Accordion Sections State
-  const [expandedSections, setExpandedSections] = useState({
-    sectionA: false, // Emergency Broadcast
-    sectionB: false, // Daily Vibe Mission Sequence Configurator
-    sectionC: true, // Student Whitelist Matrix Table
-    sectionD: false, // Historical Administrative Audit Logs Timeline
-    sectionE: false, // Portal Master Switches
-    sectionF: false, // Orientation Milestones Timer Setup
-  });
-
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
   // Game Engine & Config states
   const [missions, setMissions] = useState<VibeMission[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -195,6 +153,18 @@ export function AdminDashboardPage() {
   const [maxStrikes, setMaxStrikes] = useState(5);
   const [baseCooldown, setBaseCooldown] = useState(1);
   const [maxCooldown, setMaxCooldown] = useState(30);
+
+  // Staff dashboard states
+  const [posts, setPosts] = useState<DBPost[]>([]);
+  const [commentsMap, setCommentsMap] = useState<Record<number, Comment[]>>({});
+  const [staffLoading, setStaffLoading] = useState(true);
+  const [bio, setBio] = useState(user?.bio || "");
+  const [photos, setPhotos] = useState<string[]>(user?.photo_pool || []);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const staffPhotoInputRef = useRef<HTMLInputElement>(null);
+  const activeFileIdxRef = useRef<number>(0);
+  const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
 
   // User Inspector states
   const [inspectUser, setInspectUser] = useState<DBUser | null>(null);
@@ -345,6 +315,11 @@ export function AdminDashboardPage() {
           );
           if (memory) setEnableMemoryBoard(memory.value);
 
+          const vibecheck = configData.find(
+            (c) => c.key === "vibecheck_enabled",
+          );
+          if (vibecheck) setVibecheckEnabled(vibecheck.value);
+
           const emergency = configData.find(
             (c) => c.key === "emergency_announcement",
           );
@@ -490,10 +465,12 @@ export function AdminDashboardPage() {
           if (payload.eventType === "INSERT") {
             const newUser = payload.new as DBUser;
             setWhitelistedUsers((prev) => {
-              if (prev.some((u) => u.student_id === newUser.student_id)) return prev;
+              if (prev.some((u) => u.student_id === newUser.student_id))
+                return prev;
               return [newUser, ...prev];
             });
-            if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+            if (highlightTimeoutRef.current)
+              clearTimeout(highlightTimeoutRef.current);
             setLastUpdatedStudentId(newUser.student_id);
             highlightTimeoutRef.current = setTimeout(() => {
               setLastUpdatedStudentId(null);
@@ -505,7 +482,8 @@ export function AdminDashboardPage() {
                 u.student_id === updatedUser.student_id ? updatedUser : u,
               ),
             );
-            if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+            if (highlightTimeoutRef.current)
+              clearTimeout(highlightTimeoutRef.current);
             setLastUpdatedStudentId(updatedUser.student_id);
             highlightTimeoutRef.current = setTimeout(() => {
               setLastUpdatedStudentId(null);
@@ -516,15 +494,321 @@ export function AdminDashboardPage() {
               prev.filter((u) => u.student_id !== oldUser.student_id),
             );
           }
-        }
+        },
       )
       .subscribe();
 
     return () => {
-      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      if (highlightTimeoutRef.current)
+        clearTimeout(highlightTimeoutRef.current);
       supabase.removeChannel(whitelistSubscription);
     };
   }, [user]);
+
+  // Staff moderation and VibeCheck data loading
+  useEffect(() => {
+    if (!user || activeTab !== "staff") return;
+
+    let active = true;
+    const fetchDashboardData = async () => {
+      if (active) setStaffLoading(true);
+      try {
+        const { data: postsData, error: postsError } = await supabase
+          .from("posts")
+          .select("*, author:users(student_id, nickname, avatar_color, role)")
+          .order("created_at", { ascending: false });
+
+        if (postsError) throw postsError;
+
+        if (active && postsData) {
+          setPosts(postsData as unknown as DBPost[]);
+
+          const postIds = postsData.map((p) => p.id);
+          if (postIds.length > 0) {
+            const { data: commentsData, error: commentsError } = await supabase
+              .from("post_comments")
+              .select(
+                "*, author:users(student_id, nickname, avatar_color, role)",
+              )
+              .in("post_id", postIds)
+              .order("created_at", { ascending: true });
+
+            if (commentsError) throw commentsError;
+
+            const mapped: Record<number, Comment[]> = {};
+            if (commentsData) {
+              (commentsData as unknown as Comment[]).forEach((c) => {
+                if (!mapped[c.post_id]) mapped[c.post_id] = [];
+                mapped[c.post_id].push(c);
+              });
+            }
+            setCommentsMap(mapped);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching staff moderation data:", err);
+        if (active) {
+          toaster.create({
+            title: "Error loading dashboard data",
+            type: "error",
+          });
+        }
+      } finally {
+        if (active) setStaffLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+
+    // Realtime channel setup for Staff Moderation
+    const channelName = "staff-moderation";
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts" },
+        async (payload) => {
+          const { data, error } = await supabase
+            .from("posts")
+            .select("*, author:users(student_id, nickname, avatar_color, role)")
+            .eq("id", payload.new.id)
+            .single();
+
+          if (!error && data && active) {
+            setPosts((prev) => {
+              if (prev.some((p) => p.id === data.id)) return prev;
+              return [data as unknown as DBPost, ...prev];
+            });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "posts" },
+        (payload) => {
+          const updated = payload.new;
+          if (active) {
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === updated.id
+                  ? {
+                      ...p,
+                      content: updated.content ?? p.content,
+                      is_hidden: updated.is_hidden ?? p.is_hidden,
+                      likes: updated.likes ?? p.likes,
+                      tags: Array.isArray(updated.tags) ? updated.tags : p.tags,
+                    }
+                  : p,
+              ),
+            );
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "posts" },
+        (payload) => {
+          if (active) {
+            setPosts((prev) => prev.filter((p) => p.id !== payload.old.id));
+            setCommentsMap((prev) => {
+              const next = { ...prev };
+              delete next[payload.old.id];
+              return next;
+            });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "post_comments" },
+        async (payload) => {
+          const { data, error } = await supabase
+            .from("post_comments")
+            .select("*, author:users(student_id, nickname, avatar_color, role)")
+            .eq("id", payload.new.id)
+            .single();
+
+          if (!error && data && active) {
+            setCommentsMap((prev) => {
+              const postId = data.post_id;
+              const existing = prev[postId] || [];
+              if (existing.some((c) => c.id === data.id)) return prev;
+              return {
+                ...prev,
+                [postId]: [...existing, data as unknown as Comment],
+              };
+            });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "post_comments" },
+        (payload) => {
+          if (active) {
+            setCommentsMap((prev) => {
+              const next = { ...prev };
+              for (const postId in next) {
+                next[postId] = next[postId].filter(
+                  (c) => c.id !== payload.old.id,
+                );
+              }
+              return next;
+            });
+          }
+        },
+      );
+
+    channel.subscribe((status, err) => {
+      if (err) {
+        console.error("[Staff Moderation Realtime Error]:", err);
+      }
+      console.log("[Staff Moderation Realtime Status]:", status);
+    });
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [user, activeTab]);
+
+  // Delete Post secure RPC call
+  const handleDeletePost = async (postId: number) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.rpc("delete_post_secure", {
+        p_post_id: postId,
+        p_student_id: user.student_id,
+        p_pin_hash: user.pin_hash || "",
+      });
+
+      if (error) throw error;
+
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      toaster.create({ title: "Post Deleted!", type: "success" });
+    } catch (err) {
+      console.error("Delete post error:", err);
+      toaster.create({ title: "Failed to delete post", type: "error" });
+    }
+  };
+
+  // Delete Comment secure RPC call
+  const handleDeleteComment = async (commentId: number, postId: number) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.rpc("delete_comment_secure", {
+        p_comment_id: commentId,
+        p_student_id: user.student_id,
+        p_pin_hash: user.pin_hash || "",
+      });
+
+      if (error) throw error;
+
+      setCommentsMap((prev) => {
+        const list = prev[postId] || [];
+        return {
+          ...prev,
+          [postId]: list.filter((c) => c.id !== commentId),
+        };
+      });
+      toaster.create({ title: "Comment Deleted!", type: "success" });
+    } catch (err) {
+      console.error("Delete comment error:", err);
+      toaster.create({ title: "Failed to delete comment", type: "error" });
+    }
+  };
+
+  // Handle vibe check photo upload to Supabase Storage
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const idx = activeFileIdxRef.current;
+    setUploadingIdx(idx);
+    try {
+      const compressedBlob = await compressImage(file);
+      const fileName = `staff-${user.student_id}-${idx}-${Date.now()}.jpg`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profiles")
+        .upload(filePath, compressedBlob, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("profiles").getPublicUrl(filePath);
+
+      const updated = [...photos];
+      updated[idx] = publicUrl;
+      setPhotos(updated);
+
+      toaster.create({ title: `Photo ${idx + 1} uploaded!`, type: "success" });
+    } catch (err) {
+      console.error("Staff photo upload failed:", err);
+      toaster.create({ title: "Upload failed", type: "error" });
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const triggerUploadClick = (idx: number) => {
+    activeFileIdxRef.current = idx;
+    staffPhotoInputRef.current?.click();
+  };
+
+  const triggerUrlPrompt = (idx: number) => {
+    const url = prompt(`Enter image URL for Photo ${idx + 1}:`);
+    if (url) {
+      const updated = [...photos];
+      updated[idx] = url.trim();
+      setPhotos(updated);
+    }
+  };
+
+  const removePhoto = (idx: number) => {
+    const updated = [...photos];
+    updated[idx] = "";
+    setPhotos(updated);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSavingProfile(true);
+    // Filter out empty slots
+    const photoPool = photos.filter((p) => p && p.trim());
+
+    try {
+      const success = await updateProfile({
+        nickname: user.nickname || "",
+        faculty: user.faculty || "",
+        major: user.major || undefined,
+        ig: user.ig || undefined,
+        avatarColor: user.avatar_color,
+        bio: bio.trim(),
+        profilePicUrl: user.profile_pic_url || undefined,
+        photoPool,
+      });
+
+      if (success) {
+        toaster.create({ title: "VibeCheck Profile Saved!", type: "success" });
+      } else {
+        throw new Error("Save failed");
+      }
+    } catch (err) {
+      console.error("Save staff vibe profile error:", err);
+      toaster.create({ title: "Failed to save profile", type: "error" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Selection & Bulk Delete Helpers
   const visibleIds = filteredWhitelistedUsers.map((u) => u.student_id);
@@ -571,20 +855,38 @@ export function AdminDashboardPage() {
 
     try {
       // 1. Delete post comments
-      await supabase.from("post_comments").delete().in("student_id", selectedStudentIds);
+      await supabase
+        .from("post_comments")
+        .delete()
+        .in("student_id", selectedStudentIds);
 
       // 2. Delete posts
-      await supabase.from("posts").delete().in("student_id", selectedStudentIds);
+      await supabase
+        .from("posts")
+        .delete()
+        .in("student_id", selectedStudentIds);
 
       // 3. Delete collected cards
-      await supabase.from("collected_cards").delete().in("student_id", selectedStudentIds);
-      await supabase.from("collected_cards").delete().in("staff_id", selectedStudentIds);
+      await supabase
+        .from("collected_cards")
+        .delete()
+        .in("student_id", selectedStudentIds);
+      await supabase
+        .from("collected_cards")
+        .delete()
+        .in("staff_id", selectedStudentIds);
 
       // 4. Delete vibe status
-      await supabase.from("user_vibe_status").delete().in("student_id", selectedStudentIds);
+      await supabase
+        .from("user_vibe_status")
+        .delete()
+        .in("student_id", selectedStudentIds);
 
       // 5. Delete live chats
-      await supabase.from("live_chats").delete().in("student_id", selectedStudentIds);
+      await supabase
+        .from("live_chats")
+        .delete()
+        .in("student_id", selectedStudentIds);
 
       // 6. Delete users
       const { error } = await supabase
@@ -689,7 +991,8 @@ export function AdminDashboardPage() {
     if (userRole !== "moderator" && userRole !== "superadmin") {
       toaster.create({
         title: "Unauthorized Action",
-        description: "Only moderators and superadmins can remove whitelisted users.",
+        description:
+          "Only moderators and superadmins can remove whitelisted users.",
         type: "error",
       });
       return;
@@ -703,11 +1006,17 @@ export function AdminDashboardPage() {
       await supabase.from("posts").delete().eq("student_id", studentId);
 
       // 3. Delete collected cards
-      await supabase.from("collected_cards").delete().eq("student_id", studentId);
+      await supabase
+        .from("collected_cards")
+        .delete()
+        .eq("student_id", studentId);
       await supabase.from("collected_cards").delete().eq("staff_id", studentId);
 
       // 4. Delete vibe status
-      await supabase.from("user_vibe_status").delete().eq("student_id", studentId);
+      await supabase
+        .from("user_vibe_status")
+        .delete()
+        .eq("student_id", studentId);
 
       // 5. Delete live chats
       await supabase.from("live_chats").delete().eq("student_id", studentId);
@@ -871,11 +1180,12 @@ export function AdminDashboardPage() {
 
   // Handle Config Toggle
   const handleToggleConfig = async (
-    key: "enable_memory_board",
+    key: "enable_memory_board" | "vibecheck_enabled",
     currentVal: boolean,
   ) => {
     const newVal = !currentVal;
     if (key === "enable_memory_board") setEnableMemoryBoard(newVal);
+    if (key === "vibecheck_enabled") setVibecheckEnabled(newVal);
 
     try {
       const { error } = await supabase
@@ -899,6 +1209,7 @@ export function AdminDashboardPage() {
         type: "error",
       });
       if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
+      if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
     }
   };
 
@@ -1006,7 +1317,7 @@ export function AdminDashboardPage() {
           moderator_id: user?.student_id || "",
           action_type: "panic_mute",
           target_id: "global_mute_active",
-          details: `Global mute ${mute ? "ENGAGED 🚨" : "LIFTED ✅"}`,
+          details: `Global mute ${mute ? "ENGAGED" : "LIFTED"}`,
           created_at: new Date().toISOString(),
           users: { nickname: user?.nickname || null },
         },
@@ -1014,7 +1325,7 @@ export function AdminDashboardPage() {
       ]);
 
       toaster.create({
-        title: mute ? "🚨 GLOBAL MUTE ENGAGED" : "✅ Mute Lifted",
+        title: mute ? "GLOBAL MUTE ENGAGED" : "Mute Lifted",
         description: mute
           ? "All chat inputs frozen across all clients."
           : "Chat inputs restored to normal.",
@@ -1110,11 +1421,7 @@ export function AdminDashboardPage() {
 
       setTickerActive(false);
       setTickerText("");
-      await logAuditAction(
-        "ticker_clear",
-        "ticker_text",
-        "Ticker cleared",
-      );
+      await logAuditAction("ticker_clear", "ticker_text", "Ticker cleared");
 
       // Broadcast ticker_clear (non-blocking fire-and-forget)
       const syncChannel = supabase.channel("live_chat:system_config_sync");
@@ -1616,1125 +1923,1020 @@ export function AdminDashboardPage() {
       </VStack>
 
       {/* Admin Panel Tabs */}
-      <HStack
-        gap={2}
+      <Flex
+        justify="space-between"
+        align="center"
         mb={8}
-        borderBottom="1px solid"
-        borderColor="border.subtle"
-        pb={2}
         flexWrap="wrap"
+        gap={4}
       >
-        {user?.role === "moderator" && (
-          <Button
-            type="button"
-            variant={activeTab === "moderator" ? "solid" : "ghost"}
-            onClick={() => setActiveTab("moderator")}
-            borderRadius="full"
-            px={5}
-            h="40px"
-            bg={
-              activeTab === "moderator" ? "var(--c-chocolate)" : "transparent"
-            }
-            color={activeTab === "moderator" ? "white" : "var(--c-muted)"}
-            cursor="pointer"
-          >
-            Moderator Command Center
-          </Button>
-        )}
-        {(user?.role === "moderator" || user?.role === "media_admin") && (
-          <Button
-            type="button"
-            variant={activeTab === "media" ? "solid" : "ghost"}
-            onClick={() => setActiveTab("media")}
-            borderRadius="full"
-            px={5}
-            h="40px"
-            bg={activeTab === "media" ? "var(--c-chocolate)" : "transparent"}
-            color={activeTab === "media" ? "white" : "var(--c-muted)"}
-            cursor="pointer"
-          >
-            Media Controls (AV)
-          </Button>
-        )}
+        <Flex
+          bg="rgba(73, 98, 104, 0.05)"
+          p="4px"
+          borderRadius="full"
+          align="center"
+          gap={1}
+          w={{ base: "100%", md: "fit-content" }}
+        >
+          {user?.role === "moderator" && (
+            <Button
+              type="button"
+              onClick={() => setActiveTab("moderator")}
+              borderRadius="full"
+              px={6}
+              py={1.5}
+              h="36px"
+              bg={
+                activeTab === "moderator" ? "var(--c-chocolate)" : "transparent"
+              }
+              color={activeTab === "moderator" ? "white" : "var(--c-muted)"}
+              boxShadow={activeTab === "moderator" ? "sm" : "none"}
+              _hover={{
+                bg:
+                  activeTab === "moderator"
+                    ? "var(--c-chocolate)"
+                    : "rgba(73, 98, 104, 0.08)",
+              }}
+              fontSize="xs"
+              fontWeight="700"
+              transition="all 0.2s"
+              cursor="pointer"
+              flex={{ base: 1, md: "initial" }}
+            >
+              Moderator Command Center
+            </Button>
+          )}
+          {(user?.role === "moderator" || user?.role === "media_admin") && (
+            <Button
+              type="button"
+              onClick={() => setActiveTab("media")}
+              borderRadius="full"
+              px={6}
+              py={1.5}
+              h="36px"
+              bg={activeTab === "media" ? "var(--c-chocolate)" : "transparent"}
+              color={activeTab === "media" ? "white" : "var(--c-muted)"}
+              boxShadow={activeTab === "media" ? "sm" : "none"}
+              _hover={{
+                bg:
+                  activeTab === "media"
+                    ? "var(--c-chocolate)"
+                    : "rgba(73, 98, 104, 0.08)",
+              }}
+              fontSize="xs"
+              fontWeight="700"
+              transition="all 0.2s"
+              cursor="pointer"
+              flex={{ base: 1, md: "initial" }}
+            >
+              Media Controls (AV)
+            </Button>
+          )}
+          {(user?.role === "moderator" || user?.role === "staff") && (
+            <Button
+              type="button"
+              onClick={() => setActiveTab("staff")}
+              borderRadius="full"
+              px={6}
+              py={1.5}
+              h="36px"
+              bg={activeTab === "staff" ? "var(--c-chocolate)" : "transparent"}
+              color={activeTab === "staff" ? "white" : "var(--c-muted)"}
+              boxShadow={activeTab === "staff" ? "sm" : "none"}
+              _hover={{
+                bg:
+                  activeTab === "staff"
+                    ? "var(--c-chocolate)"
+                    : "rgba(73, 98, 104, 0.08)",
+              }}
+              fontSize="xs"
+              fontWeight="700"
+              transition="all 0.2s"
+              cursor="pointer"
+              flex={{ base: 1, md: "initial" }}
+            >
+              Staff Moderation & Controls
+            </Button>
+          )}
+        </Flex>
+
         <Link to="/admin/kpi">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
+            borderColor="border.subtle"
             borderRadius="full"
-            px={5}
-            h="40px"
-            bg="transparent"
-            color="var(--c-muted)"
-            cursor="pointer"
+            px={6}
+            py={1.5}
+            h="36px"
+            color="var(--c-chocolate)"
             _hover={{
               bg: "rgba(73, 98, 104, 0.05)",
-              color: "var(--c-chocolate)",
             }}
+            fontSize="xs"
+            fontWeight="700"
+            cursor="pointer"
+            w={{ base: "100%", md: "auto" }}
           >
-            Platform KPIs
+            <HStack gap={1.5} justify="center">
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="16px"
+              >
+                monitoring
+              </Box>
+              <Text>Platform KPIs</Text>
+            </HStack>
           </Button>
         </Link>
-      </HStack>
+      </Flex>
 
       {/* TIER 1: Moderator Panel */}
       {activeTab === "moderator" && user?.role === "moderator" && (
         <VStack align="stretch" gap={6}>
-          {/* Section A: Emergency Broadcast Control */}
-          <AccordionSection
-            title="Emergency Broadcast Control (Emergency Announcement)"
-            isOpen={expandedSections.sectionA}
-            onToggle={() => toggleSection("sectionA")}
-          >
-            <VStack
-              as="form"
-              onSubmit={handleSaveEmergencyAnnouncement}
-              gap={4}
-              align="stretch"
-            >
-              <Box>
-                <Text
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="var(--c-muted)"
-                  mb={1}
-                  textTransform="uppercase"
-                >
-                  Announcement Text
-                </Text>
-                <Textarea
-                  placeholder="Type an announcement to display globally at the top header..."
-                  value={emergencyText}
-                  onChange={(e) => setEmergencyText(e.target.value)}
-                  h="80px"
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-ivory)"
-                  p={3}
-                  fontSize="sm"
-                  outline="none"
-                  resize="none"
-                  _focus={{
-                    borderColor: "var(--c-lagoon)",
-                    boxShadow: "0 0 0 2px var(--c-lagoon-light)",
-                  }}
-                  disabled={isSavingAnnouncement}
-                />
-              </Box>
+          {/* Top Grid for Control Cards */}
+          <SimpleGrid columns={{ base: 1, lg: 2 }} gap={6}>
+            {/* 1. Master Switches */}
+            {/* Section E: Portal Master Switches */}
+            <SystemControlPanel
+              hypeBoardMode={hypeBoardMode}
+              enableMemoryBoard={enableMemoryBoard}
+              vibecheckEnabled={vibecheckEnabled}
+              globalMuteActive={globalMuteActive}
+              handleSetHypeMode={handleSetHypeMode}
+              handleToggleConfig={handleToggleConfig}
+            />
 
-              {/* [ Live Preview Strip ] for Announcement */}
-              <Box mb={2}>
-                <Flex align="center" gap={2} mb={2}>
+            {/* 2. Emergency Broadcast */}
+            {/* Section A: Emergency Broadcast Control */}
+            <Box
+              bg="var(--c-white)"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="xl"
+              boxShadow="sm"
+              p={6}
+            >
+              <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+                Emergency Broadcast
+              </Heading>
+              <VStack
+                as="form"
+                onSubmit={handleSaveEmergencyAnnouncement}
+                gap={4}
+                align="stretch"
+              >
+                <Box>
                   <Text
                     fontSize="xs"
                     fontWeight="700"
                     color="var(--c-muted)"
+                    mb={1}
                     textTransform="uppercase"
                   >
-                    Live Preview
+                    Announcement Text
                   </Text>
-                  <Badge variant="subtle" bg="orange.100" color="orange.800" fontSize="2xs">
-                    [ Live Preview Strip ]
-                  </Badge>
-                </Flex>
-                {emergencyText.trim() ? (
-                  <Box className="announcement-banner-container" borderRadius="lg" overflow="hidden">
-                    <Flex align="center" flex={1}>
-                      <Box
-                        as="span"
-                        className="material-symbols-outlined"
-                        fontSize="18px"
-                        style={{ marginRight: "8px", flexShrink: 0 }}
-                      >
-                        info
-                      </Box>
-                      {(() => {
-                        const urlRegex = /(https?:\/\/[^\s]+)/g;
-                        const urlMatch = emergencyText.match(urlRegex);
-                        const url = urlMatch ? urlMatch[0] : null;
-                        const cleanText = url ? emergencyText.replace(urlRegex, "").trim() : emergencyText;
-                        return (
-                          <>
-                            <Text fontSize="xs" fontWeight="bold">
-                              {cleanText}
-                            </Text>
-                            {url && (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  backgroundColor: "#78350f",
-                                  color: "#fef3c7",
-                                  marginLeft: "12px",
-                                  height: "20px",
-                                  paddingLeft: "8px",
-                                  paddingRight: "8px",
-                                  borderRadius: "6px",
-                                  fontSize: "10px",
-                                  fontWeight: "700",
-                                  textDecoration: "none",
-                                  opacity: 0.9,
-                                }}
-                              >
-                                View Link
-                              </a>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </Flex>
-                    <Box
-                      className="material-symbols-outlined"
-                      fontSize="18px"
-                      opacity={0.7}
-                    >
-                      close
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box
-                    py={3}
-                    px={4}
-                    border="1px dashed var(--c-outline)"
-                    borderRadius="lg"
-                    bg="rgba(0,0,0,0.02)"
-                  >
-                    <Text fontSize="xs" color="var(--c-muted)" fontStyle="italic">
-                      Enter announcement text above to view live preview...
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-
-              <Flex align="center" justify="space-between">
-                <HStack gap={3}>
-                  <Badge
-                    colorScheme={emergencyActive ? "green" : "red"}
-                    variant="surface"
-                    px={3}
-                    py={1.5}
-                    borderRadius="full"
-                    fontWeight="700"
-                    fontSize="xs"
-                  >
-                    {emergencyActive ? "● Live On Client Screens" : "○ Inactive"}
-                  </Badge>
-                </HStack>
-                <HStack gap={3}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    borderColor="red.300"
-                    color="red.600"
-                    _hover={{ bg: "red.50" }}
-                    onClick={handleClearEmergencyAnnouncement}
-                    disabled={isSavingAnnouncement || !emergencyActive}
-                    borderRadius="xl"
-                    h="40px"
-                    px={4}
-                    fontSize="sm"
-                    fontWeight="700"
-                  >
-                    {isSavingAnnouncement ? <Spinner size="xs" /> : "Clear Announcement"}
-                  </Button>
-                  <Button
-                    type="submit"
-                    bg="var(--c-chocolate)"
-                    color="white"
-                    _hover={{ bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)" }}
-                    disabled={isSavingAnnouncement || !emergencyText.trim()}
-                    px={6}
-                    borderRadius="xl"
-                    h="40px"
-                    fontSize="sm"
-                    fontWeight="700"
-                  >
-                    {isSavingAnnouncement ? <Spinner size="xs" /> : "Publish Announcement"}
-                  </Button>
-                </HStack>
-              </Flex>
-            </VStack>
-
-            {/* Divider */}
-            <Box
-              borderTop="1px solid"
-              borderColor="border.subtle"
-              pt={5}
-              mt={2}
-            >
-              <Flex
-                gap={{ base: 4, md: 6 }}
-                flexDirection={{ base: "column", md: "row" }}
-              >
-                {/* Ticker Input Card */}
-                <VStack
-                  align="stretch"
-                  gap={3}
-                  flex={1}
-                  bg="color-mix(in srgb, var(--c-lagoon) 4%, transparent)"
-                  p={4}
-                  borderRadius="xl"
-                  border="1px solid"
-                  borderColor="border.subtle"
-                >
-                  <Flex align="center" gap={2}>
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="18px"
-                      color="var(--c-lagoon)"
-                    >
-                      breaking_news
-                    </Box>
-                    <Text
-                      fontWeight="700"
-                      color="var(--c-chocolate)"
-                      fontSize="sm"
-                    >
-                      Global Marquee Ticker
-                    </Text>
-                  </Flex>
-                  <Input
-                    placeholder="Enter scrolling ticker text for all clients..."
-                    value={tickerText}
-                    onChange={(e) => setTickerText(e.target.value)}
-                    h="44px"
+                  <Textarea
+                    placeholder="Type an announcement to display globally at the top header..."
+                    value={emergencyText}
+                    onChange={(e) => setEmergencyText(e.target.value)}
+                    h="80px"
                     borderRadius="xl"
                     border="1.5px solid var(--c-outline)"
-                    bg="var(--c-white)"
+                    bg="var(--c-ivory)"
+                    p={3}
                     fontSize="sm"
+                    outline="none"
+                    resize="none"
                     _focus={{
                       borderColor: "var(--c-lagoon)",
                       boxShadow: "0 0 0 2px var(--c-lagoon-light)",
                     }}
-                    disabled={isSavingTicker}
+                    disabled={isSavingAnnouncement}
                   />
+                </Box>
 
-                  {/* [ Live Preview Strip ] for Ticker */}
-                  <Box>
-                    <Flex align="center" gap={2} mb={2}>
+                {/* [ Live Preview Strip ] for Announcement */}
+                <Box mb={2}>
+                  <Flex align="center" gap={2} mb={2}>
+                    <Text
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                      textTransform="uppercase"
+                    >
+                      Live Preview
+                    </Text>
+                    <Badge
+                      variant="subtle"
+                      bg="orange.100"
+                      color="orange.800"
+                      fontSize="2xs"
+                    >
+                      [ Live Preview Strip ]
+                    </Badge>
+                  </Flex>
+                  {emergencyText.trim() ? (
+                    <Box
+                      className="announcement-banner-container"
+                      borderRadius="lg"
+                      overflow="hidden"
+                    >
+                      <Flex align="center" flex={1}>
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="18px"
+                          style={{ marginRight: "8px", flexShrink: 0 }}
+                        >
+                          info
+                        </Box>
+                        {(() => {
+                          const urlRegex = /(https?:\/\/[^\s]+)/g;
+                          const urlMatch = emergencyText.match(urlRegex);
+                          const url = urlMatch ? urlMatch[0] : null;
+                          const cleanText = url
+                            ? emergencyText.replace(urlRegex, "").trim()
+                            : emergencyText;
+                          return (
+                            <>
+                              <Text fontSize="xs" fontWeight="bold">
+                                {cleanText}
+                              </Text>
+                              {url && (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    backgroundColor: "#78350f",
+                                    color: "#fef3c7",
+                                    marginLeft: "12px",
+                                    height: "20px",
+                                    paddingLeft: "8px",
+                                    paddingRight: "8px",
+                                    borderRadius: "6px",
+                                    fontSize: "xs",
+                                    fontWeight: "700",
+                                    textDecoration: "none",
+                                    opacity: 0.9,
+                                  }}
+                                >
+                                  View Link
+                                </a>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </Flex>
+                      <Box
+                        className="material-symbols-outlined"
+                        fontSize="18px"
+                        opacity={0.7}
+                      >
+                        close
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box
+                      py={3}
+                      px={4}
+                      border="1px dashed var(--c-outline)"
+                      borderRadius="lg"
+                      bg="rgba(0,0,0,0.02)"
+                    >
                       <Text
                         fontSize="xs"
-                        fontWeight="700"
                         color="var(--c-muted)"
-                        textTransform="uppercase"
+                        fontStyle="italic"
                       >
-                        Live Preview
+                        Enter announcement text above to view live preview...
                       </Text>
-                      <Badge variant="subtle" bg="orange.100" color="orange.800" fontSize="2xs">
-                        [ Live Preview Strip ]
-                      </Badge>
-                    </Flex>
-                    {tickerText.trim() ? (
-                      <Box
-                        className="premium-ticker-container"
-                        borderRadius="lg"
-                        overflow="hidden"
-                        style={{
-                          WebkitMaskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                          maskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                        }}
-                      >
-                        <div className="premium-ticker-track">
-                          <span className="premium-ticker-item">{tickerText}</span>
-                          <span className="premium-ticker-item">{tickerText}</span>
-                          <span className="premium-ticker-item">{tickerText}</span>
-                        </div>
-                      </Box>
-                    ) : (
-                      <Box
-                        py={3}
-                        px={4}
-                        border="1px dashed var(--c-outline)"
-                        borderRadius="lg"
-                        bg="rgba(0,0,0,0.02)"
-                      >
-                        <Text fontSize="xs" color="var(--c-muted)" fontStyle="italic">
-                          Enter ticker text above to view live preview...
-                        </Text>
-                      </Box>
-                    )}
-                  </Box>
+                    </Box>
+                  )}
+                </Box>
 
-                  <HStack gap={2}>
+                <Flex align="center" justify="space-between">
+                  <HStack gap={3}>
+                    <Badge
+                      colorScheme={emergencyActive ? "green" : "red"}
+                      variant="surface"
+                      px={3}
+                      py={1.5}
+                      borderRadius="full"
+                      fontWeight="700"
+                      fontSize="xs"
+                    >
+                      {emergencyActive
+                        ? "● Live On Client Screens"
+                        : "○ Inactive"}
+                    </Badge>
+                  </HStack>
+                  <HStack gap={3}>
                     <Button
                       type="button"
                       variant="outline"
                       borderColor="red.300"
                       color="red.600"
                       _hover={{ bg: "red.50" }}
+                      onClick={handleClearEmergencyAnnouncement}
+                      disabled={isSavingAnnouncement || !emergencyActive}
+                      borderRadius="xl"
                       h="40px"
+                      py={1.5}
                       px={4}
-                      borderRadius="lg"
-                      cursor="pointer"
-                      fontSize="xs"
+                      fontSize="sm"
                       fontWeight="700"
-                      onClick={handleClearTicker}
-                      disabled={isSavingTicker || !tickerActive}
-                      flex={1}
                     >
-                      {isSavingTicker ? <Spinner size="xs" /> : "Kill Ticker"}
+                      {isSavingAnnouncement ? (
+                        <Spinner size="xs" />
+                      ) : (
+                        "Clear Announcement"
+                      )}
                     </Button>
                     <Button
-                      type="button"
-                      bg="var(--c-lagoon)"
+                      type="submit"
+                      bg="var(--c-chocolate)"
                       color="white"
-                      _hover={{ bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)" }}
+                      _hover={{
+                        bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                      }}
+                      disabled={isSavingAnnouncement || !emergencyText.trim()}
+                      py={1.5}
+                      px={6}
+                      borderRadius="xl"
                       h="40px"
-                      px={5}
-                      borderRadius="lg"
-                      cursor="pointer"
-                      fontSize="xs"
+                      fontSize="sm"
                       fontWeight="700"
-                      onClick={handlePublishTicker}
-                      disabled={isSavingTicker || !tickerText.trim()}
-                      flex={1}
                     >
-                      {isSavingTicker ? <Spinner size="xs" /> : "Publish Ticker"}
+                      {isSavingAnnouncement ? (
+                        <Spinner size="xs" />
+                      ) : (
+                        "Publish Announcement"
+                      )}
                     </Button>
                   </HStack>
-                </VStack>
+                </Flex>
+              </VStack>
 
-                {/* Panic Mute Card */}
-                <VStack
-                  align="stretch"
-                  gap={3}
-                  flex={1}
-                  bg={
-                    globalMuteActive
-                      ? "color-mix(in srgb, #c53030 6%, transparent)"
-                      : "color-mix(in srgb, var(--c-ivory) 80%, transparent)"
-                  }
-                  p={4}
-                  borderRadius="xl"
-                  border="1px solid"
-                  borderColor={globalMuteActive ? "red.200" : "border.subtle"}
-                  transition="all 0.3s ease"
-                >
-                  <Flex align="center" gap={2}>
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="18px"
-                      color={globalMuteActive ? "red.600" : "var(--c-muted)"}
-                    >
-                      {globalMuteActive ? "volume_off" : "volume_up"}
-                    </Box>
-                    <Text
-                      fontWeight="700"
-                      color="var(--c-chocolate)"
-                      fontSize="sm"
-                    >
-                      Instant Panic Mute
-                    </Text>
-                    {globalMuteActive && (
-                      <Badge
-                        colorPalette="red"
-                        fontSize="2xs"
-                        borderRadius="full"
-                        px={2}
-                      >
-                        ENGAGED
-                      </Badge>
-                    )}
-                  </Flex>
-                  <Text fontSize="2xs" color="fg.muted" lineHeight="tall">
-                    Immediately freezes ALL chat inputs across every connected
-                    client. Use in emergencies to silence the entire chat
-                    system.
-                  </Text>
-                  {!globalMuteActive ? (
-                    <Button
-                      type="button"
-                      bg="red.600"
-                      color="white"
-                      h="48px"
-                      borderRadius="xl"
-                      cursor="pointer"
-                      fontSize="sm"
-                      fontWeight="800"
-                      _hover={{ bg: "red.700", transform: "scale(1.01)" }}
-                      transition="all 0.2s ease"
-                      onClick={() => handlePanicMute(true)}
-                      w="100%"
-                    >
-                      <HStack gap={2}>
-                        <Box
-                          as="span"
-                          className="material-symbols-outlined"
-                          fontSize="20px"
-                        >
-                          emergency
-                        </Box>
-                        <Text>INSTANT GLOBAL MUTE</Text>
-                      </HStack>
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      bg="var(--c-lagoon)"
-                      color="white"
-                      h="48px"
-                      borderRadius="xl"
-                      cursor="pointer"
-                      fontSize="sm"
-                      fontWeight="800"
-                      _hover={{
-                        bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
-                      }}
-                      transition="all 0.2s ease"
-                      onClick={() => handlePanicMute(false)}
-                      w="100%"
-                    >
-                      <HStack gap={2}>
-                        <Box
-                          as="span"
-                          className="material-symbols-outlined"
-                          fontSize="20px"
-                        >
-                          check_circle
-                        </Box>
-                        <Text>LIFT MUTE — Restore Chat</Text>
-                      </HStack>
-                    </Button>
-                  )}
-                </VStack>
-              </Flex>
-            </Box>
-          </AccordionSection>
-
-          {/* Section B: Daily Vibe Mission Sequence Configurator */}
-          <AccordionSection
-            title="Daily Vibe Mission Sequence Configurator (Daily Mission Queue)"
-            isOpen={expandedSections.sectionB}
-            onToggle={() => toggleSection("sectionB")}
-          >
-            <VStack align="stretch" gap={6}>
-              {/* Mission list */}
+              {/* Divider */}
               <Box
-                border="1px solid"
-                borderColor="border.subtle"
-                borderRadius="xl"
-                overflow="hidden"
-              >
-                <Table.Root size="sm">
-                  <Table.Header bg="var(--c-ivory)">
-                    <Table.Row>
-                      <Table.ColumnHeader>Seq Order</Table.ColumnHeader>
-                      <Table.ColumnHeader>
-                        Target Position / Role
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader>
-                        Required Card Count
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">
-                        Actions
-                      </Table.ColumnHeader>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {missions.map((m) => (
-                      <Table.Row key={m.id}>
-                        <Table.Cell fontWeight="bold">
-                          Quest #{m.sequence_order}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge
-                            colorPalette="teal"
-                            px={2}
-                            py={0.5}
-                            borderRadius="md"
-                          >
-                            {m.target_role}
-                          </Badge>
-                          <Text
-                            as="span"
-                            fontSize="2xs"
-                            color="fg.subtle"
-                            ml={2}
-                          >
-                            ({staffCounts[m.target_role] || 0} active in system)
-                          </Text>
-                        </Table.Cell>
-                        <Table.Cell fontWeight="600">
-                          {m.required_count} cards
-                        </Table.Cell>
-                        <Table.Cell textAlign="right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            colorPalette="red"
-                            onClick={() =>
-                              handleRemoveMission(m.id, m.sequence_order)
-                            }
-                            cursor="pointer"
-                            h={{ base: "40px", md: "28px" }}
-                            px={{ base: 4, md: 3 }}
-                            fontSize="xs"
-                          >
-                            Delete
-                          </Button>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                    {missions.length === 0 && (
-                      <Table.Row>
-                        <Table.Cell
-                          colSpan={4}
-                          textAlign="center"
-                          py={4}
-                          color="fg.subtle"
-                          fontStyle="italic"
-                        >
-                          No missions configured in the system. Cards can be
-                          swiped without constraints.
-                        </Table.Cell>
-                      </Table.Row>
-                    )}
-                  </Table.Body>
-                </Table.Root>
-              </Box>
-
-              {/* Add Mission Form */}
-              <Flex
-                as="form"
-                onSubmit={handleAddMission}
-                gap={3}
-                flexWrap="wrap"
-                align="end"
-                bg="var(--c-ivory)"
-                p={4}
-                borderRadius="xl"
-              >
-                <VStack align="start" gap={1}>
-                  <Box
-                    fontSize="xs"
-                    fontWeight="700"
-                    color="var(--c-muted)"
-                    textTransform="uppercase"
-                  >
-                    <label htmlFor="add-mission-target">
-                      Target Staff Category
-                    </label>
-                  </Box>
-                  <select
-                    id="add-mission-target"
-                    value={newMissionTarget}
-                    onChange={(e) => setNewMissionTarget(e.target.value)}
-                    className="admin-select-white-sm custom-select"
-                    aria-label="Target Staff Category"
-                    title="Target Staff Category"
-                    required
-                  >
-                    <option value="">-- Choose Target --</option>
-                    {Object.keys(staffCounts).map((k) => (
-                      <option key={k} value={k}>
-                        {k} ({staffCounts[k]} staff)
-                      </option>
-                    ))}
-                    <option value="โสต">Media & Audio</option>
-                    <option value="สันทนาการ">Recreation</option>
-                    <option value="พี่กลุ่ม">Group Leader</option>
-                    <option value="staff">General Staff</option>
-                    <option value="media_admin">Media Admin</option>
-                  </select>
-                </VStack>
-                <VStack align="start" gap={1}>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
-                    Required Card Count
-                  </Text>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={newMissionCount}
-                    onChange={(e) =>
-                      setNewMissionCount(parseInt(e.target.value) || 1)
-                    }
-                    h="38px"
-                    bg="white"
-                    borderRadius="lg"
-                    border="1.5px solid var(--c-outline)"
-                    maxW="90px"
-                  />
-                </VStack>
-                <Button
-                  type="submit"
-                  bg="var(--c-chocolate)"
-                  color="white"
-                  h={{ base: "40px", md: "38px" }}
-                  px={4}
-                  borderRadius="lg"
-                  cursor="pointer"
-                >
-                  Append Quest
-                </Button>
-              </Flex>
-
-              {/* Penalty Lockout Variable Inputs */}
-              <VStack
-                as="form"
-                onSubmit={handleSaveGamePenalties}
-                align="stretch"
-                gap={4}
                 borderTop="1px solid"
                 borderColor="border.subtle"
-                pt={4}
+                pt={5}
+                mt={2}
               >
-                <Heading
-                  as="h3"
-                  fontSize="sm"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
+                <Flex
+                  gap={{ base: 4, md: 6 }}
+                  flexDirection={{ base: "column", md: "row" }}
                 >
-                  Swipe Penalty & Exponential Lockout Variables
-                </Heading>
+                  {/* Ticker Input Card */}
+                  <VStack
+                    align="stretch"
+                    gap={3}
+                    flex={1}
+                    bg="color-mix(in srgb, var(--c-lagoon) 4%, transparent)"
+                    p={4}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                  >
+                    <Flex align="center" gap={2}>
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="18px"
+                        color="var(--c-lagoon)"
+                      >
+                        breaking_news
+                      </Box>
+                      <Text
+                        fontWeight="700"
+                        color="var(--c-chocolate)"
+                        fontSize="sm"
+                      >
+                        Global Marquee Ticker
+                      </Text>
+                    </Flex>
+                    <Input
+                      placeholder="Enter scrolling ticker text for all clients..."
+                      value={tickerText}
+                      onChange={(e) => setTickerText(e.target.value)}
+                      h="44px"
+                      borderRadius="xl"
+                      border="1.5px solid var(--c-outline)"
+                      bg="var(--c-white)"
+                      fontSize="sm"
+                      _focus={{
+                        borderColor: "var(--c-lagoon)",
+                        boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                      }}
+                      disabled={isSavingTicker}
+                    />
+
+                    {/* [ Live Preview Strip ] for Ticker */}
+                    <Box>
+                      <Flex align="center" gap={2} mb={2}>
+                        <Text
+                          fontSize="xs"
+                          fontWeight="700"
+                          color="var(--c-muted)"
+                          textTransform="uppercase"
+                        >
+                          Live Preview
+                        </Text>
+                        <Badge
+                          variant="subtle"
+                          bg="orange.100"
+                          color="orange.800"
+                          fontSize="xs"
+                        >
+                          [ Live Preview Strip ]
+                        </Badge>
+                      </Flex>
+                      {tickerText.trim() ? (
+                        <Box
+                          className="premium-ticker-container"
+                          borderRadius="lg"
+                          overflow="hidden"
+                          style={{
+                            WebkitMaskImage:
+                              "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                            maskImage:
+                              "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
+                          }}
+                        >
+                          <div className="premium-ticker-track">
+                            <span className="premium-ticker-item">
+                              {tickerText}
+                            </span>
+                            <span className="premium-ticker-item">
+                              {tickerText}
+                            </span>
+                            <span className="premium-ticker-item">
+                              {tickerText}
+                            </span>
+                          </div>
+                        </Box>
+                      ) : (
+                        <Box
+                          py={3}
+                          px={4}
+                          border="1px dashed var(--c-outline)"
+                          borderRadius="lg"
+                          bg="rgba(0,0,0,0.02)"
+                        >
+                          <Text
+                            fontSize="xs"
+                            color="var(--c-muted)"
+                            fontStyle="italic"
+                          >
+                            Enter ticker text above to view live preview...
+                          </Text>
+                        </Box>
+                      )}
+                    </Box>
+
+                    <HStack gap={2}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        borderColor="red.300"
+                        color="red.600"
+                        _hover={{ bg: "red.50" }}
+                        h="40px"
+                        py={1.5}
+                        px={4}
+                        borderRadius="lg"
+                        cursor="pointer"
+                        fontSize="xs"
+                        fontWeight="700"
+                        onClick={handleClearTicker}
+                        disabled={isSavingTicker || !tickerActive}
+                        flex={1}
+                      >
+                        {isSavingTicker ? <Spinner size="xs" /> : "Kill Ticker"}
+                      </Button>
+                      <Button
+                        type="button"
+                        bg="var(--c-lagoon)"
+                        color="white"
+                        _hover={{
+                          bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                        }}
+                        h="40px"
+                        py={1.5}
+                        px={5}
+                        borderRadius="lg"
+                        cursor="pointer"
+                        fontSize="xs"
+                        fontWeight="700"
+                        onClick={handlePublishTicker}
+                        disabled={isSavingTicker || !tickerText.trim()}
+                        flex={1}
+                      >
+                        {isSavingTicker ? (
+                          <Spinner size="xs" />
+                        ) : (
+                          "Publish Ticker"
+                        )}
+                      </Button>
+                    </HStack>
+                  </VStack>
+
+                  {/* Panic Mute Card */}
+                  <VStack
+                    align="stretch"
+                    gap={3}
+                    flex={1}
+                    bg={
+                      globalMuteActive
+                        ? "color-mix(in srgb, #c53030 6%, transparent)"
+                        : "color-mix(in srgb, var(--c-ivory) 80%, transparent)"
+                    }
+                    p={4}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor={globalMuteActive ? "red.200" : "border.subtle"}
+                    transition="all 0.3s ease"
+                  >
+                    <Flex align="center" gap={2}>
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="18px"
+                        color={globalMuteActive ? "red.600" : "var(--c-muted)"}
+                      >
+                        {globalMuteActive ? "volume_off" : "volume_up"}
+                      </Box>
+                      <Text
+                        fontWeight="700"
+                        color="var(--c-chocolate)"
+                        fontSize="sm"
+                      >
+                        Instant Panic Mute
+                      </Text>
+                      {globalMuteActive && (
+                        <Badge
+                          colorPalette="red"
+                          fontSize="xs"
+                          borderRadius="full"
+                          px={2}
+                        >
+                          ENGAGED
+                        </Badge>
+                      )}
+                    </Flex>
+                    <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                      Immediately freezes ALL chat inputs across every connected
+                      client. Use in emergencies to silence the entire chat
+                      system.
+                    </Text>
+                    {!globalMuteActive ? (
+                      <Button
+                        type="button"
+                        bg="red.600"
+                        color="white"
+                        h="48px"
+                        py={2}
+                        borderRadius="xl"
+                        cursor="pointer"
+                        fontSize="sm"
+                        fontWeight="800"
+                        _hover={{ bg: "red.700", transform: "scale(1.01)" }}
+                        transition="all 0.2s ease"
+                        onClick={() => handlePanicMute(true)}
+                        w="100%"
+                      >
+                        <HStack gap={2}>
+                          <Box
+                            as="span"
+                            className="material-symbols-outlined"
+                            fontSize="20px"
+                          >
+                            emergency
+                          </Box>
+                          <Text>INSTANT GLOBAL MUTE</Text>
+                        </HStack>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        bg="var(--c-lagoon)"
+                        color="white"
+                        h="48px"
+                        py={2}
+                        borderRadius="xl"
+                        cursor="pointer"
+                        fontSize="sm"
+                        fontWeight="800"
+                        _hover={{
+                          bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                        }}
+                        transition="all 0.2s ease"
+                        onClick={() => handlePanicMute(false)}
+                        w="100%"
+                      >
+                        <HStack gap={2}>
+                          <Box
+                            as="span"
+                            className="material-symbols-outlined"
+                            fontSize="20px"
+                          >
+                            check_circle
+                          </Box>
+                          <Text>LIFT MUTE — Restore Chat</Text>
+                        </HStack>
+                      </Button>
+                    )}
+                  </VStack>
+                </Flex>
+              </Box>
+            </Box>
+
+            {/* 3. Countdown Timer */}
+            {/* Section F: Orientation Milestones Timer Setup */}
+            <Box
+              bg="var(--c-white)"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="xl"
+              boxShadow="sm"
+              p={6}
+            >
+              <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+                Countdown Timer
+              </Heading>
+              <VStack
+                as="form"
+                onSubmit={handleUpdateEvent}
+                gap={4}
+                align="stretch"
+              >
                 <Flex gap={4} flexWrap="wrap">
-                  <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text
-                      fontSize="2xs"
-                      fontWeight="700"
-                      color="var(--c-muted)"
-                    >
-                      Max Allowed Strikes
+                  <VStack align="start" gap={1} flex={1} minW="200px">
+                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                      Countdown Target Label
                     </Text>
                     <Input
-                      type="number"
-                      value={maxStrikes}
-                      onChange={(e) =>
-                        setMaxStrikes(parseInt(e.target.value) || 1)
-                      }
+                      placeholder="Event Title e.g. First Meet"
+                      value={eventTitle}
+                      onChange={(e) => setEventTitle(e.target.value)}
+                      h="44px"
                       bg="var(--c-ivory)"
-                      h="40px"
-                      borderRadius="lg"
+                      borderRadius="xl"
+                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      required
                     />
                   </VStack>
-                  <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text
-                      fontSize="2xs"
-                      fontWeight="700"
-                      color="var(--c-muted)"
-                    >
-                      Base Cooldown (minutes)
+                  <VStack align="start" gap={1} flex={1} minW="200px">
+                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                      Milestone Calendar Time
                     </Text>
                     <Input
-                      type="number"
-                      value={baseCooldown}
-                      onChange={(e) =>
-                        setBaseCooldown(parseInt(e.target.value) || 1)
-                      }
+                      type="datetime-local"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      h="44px"
                       bg="var(--c-ivory)"
-                      h="40px"
-                      borderRadius="lg"
-                    />
-                  </VStack>
-                  <VStack align="start" gap={1} flex={1} minW="140px">
-                    <Text
-                      fontSize="2xs"
-                      fontWeight="700"
-                      color="var(--c-muted)"
-                    >
-                      Max Cooldown ceiling (minutes)
-                    </Text>
-                    <Input
-                      type="number"
-                      value={maxCooldown}
-                      onChange={(e) =>
-                        setMaxCooldown(parseInt(e.target.value) || 1)
-                      }
-                      bg="var(--c-ivory)"
-                      h="40px"
-                      borderRadius="lg"
+                      borderRadius="xl"
+                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      required
                     />
                   </VStack>
                 </Flex>
                 <Button
                   type="submit"
-                  bg="var(--c-lagoon)"
+                  bg="var(--c-chocolate)"
                   color="white"
-                  h="40px"
-                  maxW="200px"
-                  borderRadius="lg"
-                  cursor="pointer"
-                >
-                  Save Rules Config
-                </Button>
-              </VStack>
-            </VStack>
-          </AccordionSection>
-
-          {/* Section C: Student Whitelist Matrix Table */}
-          <AccordionSection
-            title="Student Whitelist Matrix Table (Tab-based Record Filtering)"
-            isOpen={expandedSections.sectionC}
-            onToggle={() => toggleSection("sectionC")}
-          >
-            <Box>
-              <Flex
-                justify="space-between"
-                align="center"
-                mb={4}
-                flexWrap="wrap"
-                gap={3}
-              >
-                <Heading
-                  as="h3"
-                  fontSize="lg"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
-                  m={0}
-                >
-                  Student ID Whitelisting
-                </Heading>
-
-                {/* CSV Upload Inputs */}
-                <Box>
-                  <Input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCSVUpload}
-                    ref={fileInputRef}
-                    display="none"
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    bg="var(--c-chocolate)"
-                    color="white"
-                    h="44px"
-                    px={6}
-                    borderRadius="xl"
-                    cursor="pointer"
-                    _hover={{
-                      bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
-                    }}
-                  >
-                    Upload CSV
-                  </Button>
-                </Box>
-              </Flex>
-
-              <Flex
-                as="form"
-                onSubmit={handleAddWhitelist}
-                gap={3}
-                flexWrap="wrap"
-                align="end"
-                mb={6}
-              >
-                <VStack align="start" gap={1}>
-                  <Text
-                    fontSize="xs"
-                    fontWeight="700"
-                    color="var(--c-muted)"
-                    textTransform="uppercase"
-                  >
-                    Student ID
-                  </Text>
-                  <Input
-                    placeholder="e.g. 6688225"
-                    value={newStudentId}
-                    onChange={(e) =>
-                      setNewStudentId(e.target.value.replace(/\D/g, ""))
-                    }
-                    h="44px"
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="var(--c-ivory)"
-                    maxW="200px"
-                    required
-                  />
-                </VStack>
-                <VStack align="start" gap={1}>
-                  <Box
-                    fontSize="xs"
-                    fontWeight="700"
-                    color="var(--c-muted)"
-                    textTransform="uppercase"
-                  >
-                    <label htmlFor="add-user-role">Role Assignment</label>
-                  </Box>
-                  <Tooltip label={getRoleDescription(newRole)}>
-                    <select
-                      id="add-user-role"
-                      value={newRole}
-                      onChange={(e) => setNewRole(e.target.value)}
-                      className="admin-select-lg custom-select"
-                      aria-label="Role Assignment"
-                      title="Role Assignment"
-                    >
-                      <option value="student">Student (Freshman)</option>
-                      <option value="staff">Staff (Orientation Staff)</option>
-                      <option value="media_admin">
-                        Media Admin (AV Control)
-                      </option>
-                      <option value="moderator">Moderator</option>
-                    </select>
-                  </Tooltip>
-                </VStack>
-                <Button
-                  type="submit"
-                  bg="var(--c-lagoon)"
-                  color="white"
+                  loading={updatingEvent}
                   h="44px"
-                  px={6}
+                  py={2}
+                  maxW="200px"
                   borderRadius="xl"
                   cursor="pointer"
-                  _hover={{
-                    bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
-                  }}
                 >
-                  Whitelist ID
+                  Configure Timer
                 </Button>
-              </Flex>
+              </VStack>
+            </Box>
 
-              {/* Whitelist tab filters */}
-              <Tabs.Root
-                defaultValue="student"
-                value={whitelistRoleTab}
-                onValueChange={(details) =>
-                  setWhitelistRoleTab(details.value as "student" | "staff")
-                }
-                variant="line"
-                mb={4}
-              >
-                <Tabs.List borderColor="border.subtle">
-                  <Tabs.Trigger
-                    value="student"
-                    cursor="pointer"
-                    fontSize="xs"
-                    fontWeight="700"
-                    px={4}
-                    py={2}
-                    h={{ base: "40px", md: "auto" }}
-                  >
-                    Freshmen Only (
-                    {
-                      whitelistedUsers.filter((u) => u.role === "student")
-                        .length
-                    }
-                    )
-                  </Tabs.Trigger>
-                  <Tabs.Trigger
-                    value="staff"
-                    cursor="pointer"
-                    fontSize="xs"
-                    fontWeight="700"
-                    px={4}
-                    py={2}
-                    h={{ base: "40px", md: "auto" }}
-                  >
-                    Staff & Moderators (
-                    {
-                      whitelistedUsers.filter((u) => u.role !== "student")
-                        .length
-                    }
-                    )
-                  </Tabs.Trigger>
-                </Tabs.List>
-              </Tabs.Root>
-
-              {/* Search / Filter Bar */}
-              <Flex align="center" gap={3} mb={4}>
-                <Box position="relative" flex={1}>
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    position="absolute"
-                    left="12px"
-                    top="50%"
-                    transform="translateY(-50%)"
-                    fontSize="18px"
-                    color="var(--c-muted)"
-                    pointerEvents="none"
-                  >
-                    search
-                  </Box>
-                  <Input
-                    placeholder="Search by ID, Nickname, or Faculty..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    h="40px"
-                    pl="38px"
-                    borderRadius="lg"
-                    border="1.5px solid var(--c-outline)"
-                    bg="var(--c-white)"
-                    fontSize="xs"
-                    _focus={{
-                      borderColor: "var(--c-lagoon)",
-                      boxShadow: "0 0 0 2px var(--c-lagoon-light)",
-                    }}
-                  />
-                </Box>
-                <Text
-                  fontSize="2xs"
-                  color="fg.muted"
-                  whiteSpace="nowrap"
-                  fontWeight="600"
+            {/* 4. Daily Vibe Mission */}
+            {/* Section B: Daily Vibe Mission Sequence Configurator */}
+            <Box
+              bg="var(--c-white)"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="xl"
+              boxShadow="sm"
+              p={6}
+            >
+              <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+                Daily Vibe Mission
+              </Heading>
+              <VStack align="stretch" gap={6}>
+                {/* Mission list */}
+                <Box
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  borderRadius="xl"
+                  overflow="hidden"
+                  p={3}
                 >
-                  {filteredWhitelistedUsers.length} results
-                </Text>
-              </Flex>
-
-              {/* Whitelisted Users Table */}
-              <Box overflowX="auto" maxH="350px" overflowY="auto">
-                <Table.Root size="sm" variant="line">
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.ColumnHeader width="40px" textAlign="center">
-                        <label
-                          htmlFor="select-all-checkbox"
-                          className="checkbox-label-wrapper"
-                        >
-                          <input
-                            id="select-all-checkbox"
-                            type="checkbox"
-                            checked={isAllSelected}
-                            onChange={(e) => handleSelectAll(e.target.checked)}
-                            style={{
-                              width: "20px",
-                              height: "20px",
-                              accentColor: "var(--c-lagoon)",
-                              cursor: "pointer",
-                            }}
-                            aria-label="Select all students on page"
-                            title="Select all students on page"
-                          />
-                        </label>
-                      </Table.ColumnHeader>
-                      <Table.ColumnHeader>Student ID</Table.ColumnHeader>
-                      <Table.ColumnHeader>Nickname</Table.ColumnHeader>
-                      <Table.ColumnHeader>Faculty</Table.ColumnHeader>
-                      <Table.ColumnHeader>Role</Table.ColumnHeader>
-                      <Table.ColumnHeader>Status</Table.ColumnHeader>
-                      <Table.ColumnHeader textAlign="right">
-                        Actions
-                      </Table.ColumnHeader>
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {filteredWhitelistedUsers.map((u) => (
-                      <Table.Row 
-                        key={u.student_id}
-                        bg={lastUpdatedStudentId === u.student_id ? "rgba(235, 126, 61, 0.25)" : "transparent"}
-                        transition="background-color 0.8s ease-out"
-                      >
-                        <Table.Cell textAlign="center" py={3}>
-                          <label
-                            htmlFor={`select-user-${u.student_id}`}
-                            className="checkbox-label-wrapper"
-                          >
-                            <input
-                              id={`select-user-${u.student_id}`}
-                              type="checkbox"
-                              checked={selectedStudentIds.includes(
-                                u.student_id,
-                              )}
-                              onChange={(e) =>
-                                handleSelectUser(u.student_id, e.target.checked)
-                              }
-                              style={{
-                                width: "20px",
-                                height: "20px",
-                                accentColor: "var(--c-lagoon)",
-                                cursor: "pointer",
-                              }}
-                              aria-label={`Select student ID ${u.student_id}`}
-                              title={`Select student ID ${u.student_id}`}
-                            />
-                          </label>
-                        </Table.Cell>
-                        <Table.Cell fontWeight="600">{u.student_id}</Table.Cell>
-                        <Table.Cell>
-                          {u.nickname || (
+                  <Table.Root size="sm">
+                    <Table.Header bg="var(--c-ivory)">
+                      <Table.Row>
+                        <Table.ColumnHeader fontFamily="heading">Seq Order</Table.ColumnHeader>
+                        <Table.ColumnHeader fontFamily="heading">
+                          Target Position / Role
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader fontFamily="heading">
+                          Required Card Count
+                        </Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" fontFamily="heading">
+                          Actions
+                        </Table.ColumnHeader>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {missions.map((m) => (
+                        <Table.Row key={m.id}>
+                          <Table.Cell fontWeight="bold">
+                            Quest #{m.sequence_order}
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Badge
+                              colorPalette="teal"
+                              px={2}
+                              py={0.5}
+                              borderRadius="md"
+                            >
+                              {m.target_role}
+                            </Badge>
                             <Text
                               as="span"
+                              fontSize="xs"
                               color="fg.subtle"
-                              fontStyle="italic"
+                              ml={2}
                             >
-                              Pending Onboarding
+                              ({staffCounts[m.target_role] || 0} active in
+                              system)
                             </Text>
-                          )}
-                        </Table.Cell>
-                        <Table.Cell>{u.faculty || "-"}</Table.Cell>
-                        <Table.Cell>
-                          <select
-                            value={u.role}
-                            onChange={(e) =>
-                              handleInlineRoleChange(
-                                u.student_id,
-                                e.target.value,
-                                u.role,
-                              )
-                            }
-                            className="admin-select-white-sm custom-select"
-                            aria-label={`Change role for ${u.student_id}`}
-                            title={`Change role for ${u.student_id}`}
-                            style={{
-                              minWidth: "100px",
-                              fontSize: "11px",
-                              height: "32px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <option value="student">student</option>
-                            <option value="staff">staff</option>
-                            <option value="media_admin">media_admin</option>
-                            <option value="moderator">moderator</option>
-                          </select>
-                        </Table.Cell>
-                        <Table.Cell>
-                          {u.nickname ? (
-                            <Badge colorPalette="green">Registered</Badge>
-                          ) : (
-                            <Badge colorPalette="yellow">Whitelisted</Badge>
-                          )}
-                        </Table.Cell>
-                        <Table.Cell textAlign="right">
-                          <HStack gap={2} justify="end">
+                          </Table.Cell>
+                          <Table.Cell fontWeight="600">
+                            {m.required_count} cards
+                          </Table.Cell>
+                          <Table.Cell textAlign="right">
                             <Button
-                              size="sm"
-                              h="40px"
-                              px={4}
-                              variant="outline"
-                              onClick={() => handleInspectUser(u)}
-                              cursor="pointer"
-                              aria-label={`Inspect details for student ID ${u.student_id}`}
-                              title={`Inspect details for student ID ${u.student_id}`}
-                            >
-                              Inspect
-                            </Button>
-                            <Button
-                              size="sm"
-                              h="40px"
-                              px={4}
+                              type="button"
                               variant="ghost"
                               colorPalette="red"
-                              onClick={() => setUserToDelete(u.student_id)}
+                              onClick={() =>
+                                handleRemoveMission(m.id, m.sequence_order)
+                              }
                               cursor="pointer"
-                              aria-label={`Remove student ID ${u.student_id} from whitelist`}
-                              title={`Remove student ID ${u.student_id} from whitelist`}
+                              h={{ base: "40px", md: "28px" }}
+                              py={1}
+                              px={{ base: 4, md: 3 }}
+                              fontSize="xs"
                             >
-                              Remove
+                              Delete
                             </Button>
-                          </HStack>
-                        </Table.Cell>
-                      </Table.Row>
-                    ))}
-                  </Table.Body>
-                </Table.Root>
-              </Box>
-            </Box>
-          </AccordionSection>
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                      {missions.length === 0 && (
+                        <Table.Row>
+                          <Table.Cell
+                            colSpan={4}
+                            textAlign="center"
+                            py={4}
+                            color="fg.subtle"
+                            fontStyle="italic"
+                          >
+                            No missions configured in the system. Cards can be
+                            swiped without constraints.
+                          </Table.Cell>
+                        </Table.Row>
+                      )}
+                    </Table.Body>
+                  </Table.Root>
+                </Box>
 
+                {/* Add Mission Form */}
+                <Flex
+                  as="form"
+                  onSubmit={handleAddMission}
+                  gap={3}
+                  flexWrap="wrap"
+                  align="end"
+                  bg="var(--c-ivory)"
+                  p={4}
+                  borderRadius="xl"
+                >
+                  <VStack align="start" gap={1}>
+                    <Box
+                      fontSize="xs"
+                      fontWeight="700"
+                      color="var(--c-muted)"
+                      textTransform="uppercase"
+                    >
+                      <label htmlFor="add-mission-target">
+                        Target Staff Category
+                      </label>
+                    </Box>
+                    <SearchableSelect
+                      value={newMissionTarget}
+                      onChange={(val) => setNewMissionTarget(val)}
+                      options={[
+                        ...Object.keys(staffCounts).map((k) => ({
+                          value: k,
+                          primaryText: `${k} (${staffCounts[k]} staff)`,
+                        })),
+                        { value: "โสต", primaryText: "Media & Audio", secondaryText: "โสต" },
+                        { value: "สันทนาการ", primaryText: "Recreation", secondaryText: "สันทนาการ" },
+                        { value: "พี่กลุ่ม", primaryText: "Group Leader", secondaryText: "พี่กลุ่ม" },
+                        { value: "staff", primaryText: "General Staff", secondaryText: "staff" },
+                        { value: "media_admin", primaryText: "Media Admin", secondaryText: "media_admin" },
+                      ]}
+                      placeholder="-- Choose Target --"
+                      searchPlaceholder="ค้นหาเป้าหมาย / Search target..."
+                    />
+                  </VStack>
+                  <VStack align="start" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                      Required Card Count
+                    </Text>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={newMissionCount}
+                      onChange={(e) =>
+                        setNewMissionCount(parseInt(e.target.value) || 1)
+                      }
+                      h="38px"
+                      bg="white"
+                      borderRadius="lg"
+                      border="1.5px solid var(--c-outline)"
+                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      maxW="90px"
+                    />
+                  </VStack>
+                  <Button
+                    type="submit"
+                    bg="var(--c-chocolate)"
+                    color="white"
+                    h={{ base: "40px", md: "38px" }}
+                    py={1.5}
+                    px={4}
+                    borderRadius="lg"
+                    cursor="pointer"
+                  >
+                    Append Quest
+                  </Button>
+                </Flex>
+
+                {/* Penalty Lockout Variable Inputs */}
+                <VStack
+                  as="form"
+                  onSubmit={handleSaveGamePenalties}
+                  align="stretch"
+                  gap={4}
+                  borderTop="1px solid"
+                  borderColor="border.subtle"
+                  pt={4}
+                >
+                  <Heading
+                    as="h3"
+                    fontSize="sm"
+                    fontWeight="700"
+                    fontFamily="heading"
+                    color="var(--c-chocolate)"
+                  >
+                    Swipe Penalty & Exponential Lockout Variables
+                  </Heading>
+                  <Flex gap={4} flexWrap="wrap">
+                    <VStack align="start" gap={1} flex={1} minW="140px">
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                      >
+                        Max Allowed Strikes
+                      </Text>
+                      <Input
+                        type="number"
+                        value={maxStrikes}
+                        onChange={(e) =>
+                          setMaxStrikes(parseInt(e.target.value) || 1)
+                        }
+                        bg="var(--c-ivory)"
+                        h="40px"
+                        borderRadius="lg"
+                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      />
+                    </VStack>
+                    <VStack align="start" gap={1} flex={1} minW="140px">
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                      >
+                        Base Cooldown (minutes)
+                      </Text>
+                      <Input
+                        type="number"
+                        value={baseCooldown}
+                        onChange={(e) =>
+                          setBaseCooldown(parseInt(e.target.value) || 1)
+                        }
+                        bg="var(--c-ivory)"
+                        h="40px"
+                        borderRadius="lg"
+                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      />
+                    </VStack>
+                    <VStack align="start" gap={1} flex={1} minW="140px">
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                      >
+                        Max Cooldown ceiling (minutes)
+                      </Text>
+                      <Input
+                        type="number"
+                        value={maxCooldown}
+                        onChange={(e) =>
+                          setMaxCooldown(parseInt(e.target.value) || 1)
+                        }
+                        bg="var(--c-ivory)"
+                        h="40px"
+                        borderRadius="lg"
+                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      />
+                    </VStack>
+                  </Flex>
+                  <Button
+                    type="submit"
+                    bg="var(--c-lagoon)"
+                    color="white"
+                    h="40px"
+                    py={1.5}
+                    maxW="200px"
+                    borderRadius="lg"
+                    cursor="pointer"
+                  >
+                    Save Rules Config
+                  </Button>
+                </VStack>
+              </VStack>
+            </Box>
+          </SimpleGrid>
+
+          {/* 5. Student Whitelist */}
+          {/* Section C: Student Whitelist Matrix Table */}
+          <WhitelistTable
+            whitelistedUsers={whitelistedUsers}
+            selectedStudentIds={selectedStudentIds}
+            lastUpdatedStudentId={lastUpdatedStudentId}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            whitelistRoleTab={whitelistRoleTab}
+            setWhitelistRoleTab={setWhitelistRoleTab}
+            newStudentId={newStudentId}
+            setNewStudentId={setNewStudentId}
+            newRole={newRole}
+            setNewRole={setNewRole}
+            isAllSelected={isAllSelected}
+            handleSelectAll={handleSelectAll}
+            handleSelectUser={handleSelectUser}
+            handleInlineRoleChange={handleInlineRoleChange}
+            handleInspectUser={handleInspectUser}
+            setUserToDelete={setUserToDelete}
+            handleAddWhitelist={handleAddWhitelist}
+            handleCSVUpload={handleCSVUpload}
+            getRoleDescription={getRoleDescription}
+          />
+
+          {/* 6. System Audit Logs */}
           {/* Section D: Historical Administrative Audit Logs Timeline */}
-          <AccordionSection
-            title="Historical Administrative Audit Logs Timeline (System Audit Logs)"
-            isOpen={expandedSections.sectionD}
-            onToggle={() => toggleSection("sectionD")}
+          <Box
+            bg="var(--c-white)"
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="xl"
+            boxShadow="sm"
+            p={6}
           >
+            <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+              System Audit Logs
+            </Heading>
             <Flex justify="flex-end" mb={3}>
               <Button
                 type="button"
@@ -2743,6 +2945,7 @@ export function AdminDashboardPage() {
                 onClick={() => triggerRefresh()}
                 cursor="pointer"
                 h="32px"
+                py={1}
                 px={3}
                 fontSize="xs"
                 fontWeight="600"
@@ -2766,373 +2969,117 @@ export function AdminDashboardPage() {
               border="1px solid"
               borderColor="border.subtle"
               borderRadius="xl"
+              p={3}
             >
-              <Table.Root size="sm" variant="line">
-                <Table.Header bg="var(--c-ivory)">
-                  <Table.Row>
-                    <Table.ColumnHeader>Timestamp</Table.ColumnHeader>
-                    <Table.ColumnHeader>Moderator</Table.ColumnHeader>
-                    <Table.ColumnHeader>Action</Table.ColumnHeader>
-                    <Table.ColumnHeader>Target</Table.ColumnHeader>
-                    <Table.ColumnHeader>Details</Table.ColumnHeader>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
-                  {auditLogs.map((log, idx) => {
-                    // Enhanced color coding for action types
-                    const getActionColor = (type: string) => {
-                      if (
-                        type.includes("remove") ||
-                        type.includes("delete") ||
-                        type === "panic_mute"
-                      )
-                        return "red";
-                      if (type.includes("add") || type.includes("csv"))
-                        return "green";
-                      if (type === "role_mutation") return "orange";
-                      if (type.includes("toggle") || type.includes("hype_mode"))
-                        return "blue";
-                      if (type.includes("ticker")) return "teal";
-                      if (type.includes("emergency")) return "red";
-                      if (type.includes("mission")) return "cyan";
-                      if (type.includes("user_update")) return "blue";
-                      return "gray";
-                    };
-                    return (
-                      <Table.Row
-                        key={log.id}
-                        className={idx < 3 ? "chat-message-enter" : undefined}
-                      >
-                        <Table.Cell
-                          fontSize="2xs"
-                          color="fg.subtle"
-                          whiteSpace="nowrap"
+              <TableScrollArea
+                bg="white"
+                borderRadius="xl"
+                borderWidth="1px"
+                overflow="hidden"
+              >
+                <Table.Root size="sm" variant="line">
+                  <Table.Header bg="var(--c-ivory)">
+                    <Table.Row>
+                      <Table.ColumnHeader fontFamily="heading">Timestamp</Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">Moderator</Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">Action</Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">Target</Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">Details</Table.ColumnHeader>
+                    </Table.Row>
+                  </Table.Header>
+                  <Table.Body>
+                    {auditLogs.map((log, idx) => {
+                      // Enhanced color coding for action types
+                      const getActionColor = (type: string) => {
+                        if (
+                          type.includes("remove") ||
+                          type.includes("delete") ||
+                          type === "panic_mute"
+                        )
+                          return "red";
+                        if (type.includes("add") || type.includes("csv"))
+                          return "green";
+                        if (type === "role_mutation") return "orange";
+                        if (
+                          type.includes("toggle") ||
+                          type.includes("hype_mode")
+                        )
+                          return "teal";
+                        if (type.includes("ticker")) return "teal";
+                        if (type.includes("emergency")) return "red";
+                        if (type.includes("mission")) return "orange";
+                        if (type.includes("user_update")) return "teal";
+                        return "gray";
+                      };
+                      return (
+                        <Table.Row
+                          key={log.id}
+                          className={idx < 3 ? "chat-message-enter" : undefined}
                         >
-                          {new Date(log.created_at).toLocaleString()}
-                        </Table.Cell>
-                        <Table.Cell fontWeight="600" fontSize="xs">
-                          {log.users?.nickname || `ID: ${log.moderator_id}`}
-                        </Table.Cell>
-                        <Table.Cell>
-                          <Badge
-                            colorPalette={getActionColor(log.action_type)}
-                            fontSize="2xs"
-                            px={2}
-                            py={0.5}
-                            borderRadius="md"
-                            textTransform="uppercase"
-                            letterSpacing="wider"
+                          <Table.Cell
+                            fontSize="xs"
+                            color="fg.subtle"
+                            whiteSpace="nowrap"
                           >
-                            {log.action_type.includes("panic_mute") && "🚨 "}
-                            {log.action_type}
-                          </Badge>
-                        </Table.Cell>
+                            {new Date(log.created_at).toLocaleString()}
+                          </Table.Cell>
+                          <Table.Cell fontWeight="600" fontSize="xs">
+                            {log.users?.nickname || `ID: ${log.moderator_id}`}
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Badge
+                              colorPalette={getActionColor(log.action_type)}
+                              fontSize="xs"
+                              px={2}
+                              py={0.5}
+                              borderRadius="md"
+                              textTransform="uppercase"
+                              letterSpacing="wider"
+                            >
+                              {log.action_type.includes("panic_mute") && (
+                                <Box as={FiAlertTriangle} display="inline-block" mr={1} verticalAlign="middle" />
+                              )}
+                              {log.action_type}
+                            </Badge>
+                          </Table.Cell>
+                          <Table.Cell
+                            fontSize="xs"
+                            fontFamily="monospace"
+                            color="fg.subtle"
+                          >
+                            {log.target_id || "-"}
+                          </Table.Cell>
+                          <Table.Cell
+                            fontSize="xs"
+                            maxW="240px"
+                            overflow="hidden"
+                            textOverflow="ellipsis"
+                          >
+                            {log.details}
+                          </Table.Cell>
+                        </Table.Row>
+                      );
+                    })}
+                    {auditLogs.length === 0 && (
+                      <Table.Row>
                         <Table.Cell
-                          fontSize="2xs"
-                          fontFamily="monospace"
+                          colSpan={5}
+                          textAlign="center"
+                          py={4}
                           color="fg.subtle"
+                          fontStyle="italic"
                         >
-                          {log.target_id || "-"}
-                        </Table.Cell>
-                        <Table.Cell
-                          fontSize="2xs"
-                          maxW="240px"
-                          overflow="hidden"
-                          textOverflow="ellipsis"
-                        >
-                          {log.details}
+                          No audit events recorded yet.
                         </Table.Cell>
                       </Table.Row>
-                    );
-                  })}
-                  {auditLogs.length === 0 && (
-                    <Table.Row>
-                      <Table.Cell
-                        colSpan={5}
-                        textAlign="center"
-                        py={4}
-                        color="fg.subtle"
-                        fontStyle="italic"
-                      >
-                        No audit events recorded yet.
-                      </Table.Cell>
-                    </Table.Row>
-                  )}
-                </Table.Body>
-              </Table.Root>
+                    )}
+                  </Table.Body>
+                </Table.Root>
+              </TableScrollArea>
             </Box>
-          </AccordionSection>
-
-          {/* Section E: Portal Master Switches */}
-          <AccordionSection
-            title="Portal Master Switches (System Control)"
-            isOpen={expandedSections.sectionE}
-            onToggle={() => toggleSection("sectionE")}
-          >
-            <VStack gap={6} align="stretch">
-              {/* Hype Board Mode — Tri-State Segmented Control */}
-              <Box
-                p={4}
-                bg="var(--c-ivory)"
-                borderRadius="xl"
-                border="1px solid"
-                borderColor="border.subtle"
-              >
-                <Flex align="center" justify="space-between" mb={3}>
-                  <Box>
-                    <Text
-                      fontWeight="700"
-                      color="var(--c-chocolate)"
-                      fontSize="sm"
-                    >
-                      Hype Board Mode
-                    </Text>
-                    <Text fontSize="2xs" color="fg.muted">
-                      Controls the live chat stream behavior for all connected
-                      clients.
-                    </Text>
-                  </Box>
-                  <Badge
-                    colorPalette={
-                      hypeBoardMode === "active"
-                        ? "green"
-                        : hypeBoardMode === "slow_3s"
-                          ? "yellow"
-                          : "red"
-                    }
-                    fontSize="2xs"
-                    px={2}
-                    py={0.5}
-                    borderRadius="full"
-                  >
-                    {hypeBoardMode === "active"
-                      ? "● LIVE"
-                      : hypeBoardMode === "slow_3s"
-                        ? "◐ SLOW"
-                        : "○ LOCKED"}
-                  </Badge>
-                </Flex>
-                <Flex
-                  gap={2}
-                  bg="var(--c-white)"
-                  p={1}
-                  borderRadius="xl"
-                  border="1px solid"
-                  borderColor="border.subtle"
-                  flexDirection={{ base: "column", md: "row" }}
-                >
-                  {[
-                    {
-                      mode: "active" as const,
-                      label: "ACTIVE",
-                      icon: "stream",
-                      color: "var(--c-lagoon)",
-                      desc: "Normal streaming",
-                    },
-                    {
-                      mode: "slow_3s" as const,
-                      label: "SLOW MODE (3s)",
-                      icon: "speed",
-                      color: "#d4a017",
-                      desc: "3s throttle",
-                    },
-                    {
-                      mode: "read_only" as const,
-                      label: "READ ONLY",
-                      icon: "lock",
-                      color: "#c53030",
-                      desc: "No input",
-                    },
-                  ].map((opt) => (
-                    <Button
-                      key={opt.mode}
-                      type="button"
-                      flex={1}
-                      h={{ base: "44px", md: "42px" }}
-                      borderRadius="lg"
-                      cursor="pointer"
-                      bg={
-                        hypeBoardMode === opt.mode ? opt.color : "transparent"
-                      }
-                      color={
-                        hypeBoardMode === opt.mode ? "white" : "var(--c-muted)"
-                      }
-                      border={
-                        hypeBoardMode === opt.mode
-                          ? "none"
-                          : "1px solid transparent"
-                      }
-                      fontWeight="700"
-                      fontSize="xs"
-                      _hover={{
-                        bg:
-                          hypeBoardMode === opt.mode
-                            ? opt.color
-                            : "color-mix(in srgb, var(--c-ivory) 80%, var(--c-outline))",
-                      }}
-                      onClick={() => handleSetHypeMode(opt.mode)}
-                      transition="all 0.2s ease"
-                    >
-                      <HStack gap={1.5}>
-                        <Box
-                          as="span"
-                          className="material-symbols-outlined"
-                          fontSize="16px"
-                        >
-                          {opt.icon}
-                        </Box>
-                        <Text
-                          as="span"
-                          display={{ base: "inline", md: "inline" }}
-                        >
-                          {opt.label}
-                        </Text>
-                      </HStack>
-                    </Button>
-                  ))}
-                </Flex>
-              </Box>
-
-              {/* Memory Board Toggle — Binary Switch */}
-              <Flex
-                align="center"
-                justify="space-between"
-                p={4}
-                bg="var(--c-ivory)"
-                borderRadius="xl"
-                border="1px solid"
-                borderColor="border.subtle"
-              >
-                <Box>
-                  <Text
-                    fontWeight="700"
-                    color="var(--c-chocolate)"
-                    fontSize="sm"
-                  >
-                    Memory Board
-                  </Text>
-                  <Text fontSize="2xs" color="fg.muted">
-                    Shared orientation photo posting canvas. When disabled,
-                    students are locked out (staff bypass).
-                  </Text>
-                </Box>
-                <Button
-                  type="button"
-                  bg={
-                    enableMemoryBoard ? "var(--c-lagoon)" : "var(--c-outline)"
-                  }
-                  color="white"
-                  onClick={() =>
-                    handleToggleConfig("enable_memory_board", enableMemoryBoard)
-                  }
-                  cursor="pointer"
-                  h={{ base: "44px", md: "40px" }}
-                  px={5}
-                  borderRadius="lg"
-                  fontWeight="700"
-                  fontSize="xs"
-                  transition="all 0.2s ease"
-                >
-                  <HStack gap={1.5}>
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="16px"
-                    >
-                      {enableMemoryBoard ? "visibility" : "visibility_off"}
-                    </Box>
-                    {enableMemoryBoard ? "ACTIVE" : "DISABLED"}
-                  </HStack>
-                </Button>
-              </Flex>
-
-              {/* Global Mute Status Indicator */}
-              {globalMuteActive && (
-                <Flex
-                  align="center"
-                  gap={2}
-                  p={3}
-                  bg="color-mix(in srgb, #c53030 8%, transparent)"
-                  border="1px solid"
-                  borderColor="red.200"
-                  borderRadius="xl"
-                >
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    fontSize="18px"
-                    color="red.600"
-                  >
-                    volume_off
-                  </Box>
-                  <Text fontSize="xs" fontWeight="700" color="red.700">
-                    GLOBAL MUTE IS ACTIVE — All chat inputs are frozen across
-                    all clients.
-                  </Text>
-                </Flex>
-              )}
-            </VStack>
-          </AccordionSection>
-
-          {/* Section F: Orientation Milestones Timer Setup */}
-          <AccordionSection
-            title="Orientation Milestones Timer Setup (Countdown Timer)"
-            isOpen={expandedSections.sectionF}
-            onToggle={() => toggleSection("sectionF")}
-          >
-            <VStack
-              as="form"
-              onSubmit={handleUpdateEvent}
-              gap={4}
-              align="stretch"
-            >
-              <Flex gap={4} flexWrap="wrap">
-                <VStack align="start" gap={1} flex={1} minW="200px">
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
-                    Countdown Target Label
-                  </Text>
-                  <Input
-                    placeholder="Event Title e.g. First Meet"
-                    value={eventTitle}
-                    onChange={(e) => setEventTitle(e.target.value)}
-                    h="44px"
-                    bg="var(--c-ivory)"
-                    borderRadius="xl"
-                    required
-                  />
-                </VStack>
-                <VStack align="start" gap={1} flex={1} minW="200px">
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
-                    Milestone Calendar Time
-                  </Text>
-                  <Input
-                    type="datetime-local"
-                    value={eventTime}
-                    onChange={(e) => setEventTime(e.target.value)}
-                    h="44px"
-                    bg="var(--c-ivory)"
-                    borderRadius="xl"
-                    required
-                  />
-                </VStack>
-              </Flex>
-              <Button
-                type="submit"
-                bg="var(--c-chocolate)"
-                color="white"
-                loading={updatingEvent}
-                h="44px"
-                maxW="200px"
-                borderRadius="xl"
-                cursor="pointer"
-              >
-                Configure Timer
-              </Button>
-            </VStack>
-          </AccordionSection>
+          </Box>
         </VStack>
       )}
-
       {/* TIER 2: Media Admin Panel */}
       {activeTab === "media" &&
         (user?.role === "moderator" || user?.role === "media_admin") && (
@@ -3149,6 +3096,7 @@ export function AdminDashboardPage() {
                 as="h2"
                 fontSize="lg"
                 fontWeight="700"
+                fontFamily="heading"
                 color="var(--c-chocolate)"
                 mb={4}
               >
@@ -3209,6 +3157,7 @@ export function AdminDashboardPage() {
                 as="h3"
                 fontSize="sm"
                 fontWeight="700"
+                fontFamily="heading"
                 color="var(--c-chocolate)"
                 mb={2}
               >
@@ -3240,6 +3189,425 @@ export function AdminDashboardPage() {
                 </Text>
               </Box>
             </Box>
+          </VStack>
+        )}
+
+      {/* TIER 3: Staff Moderation Panel */}
+      {activeTab === "staff" &&
+        (user?.role === "moderator" || user?.role === "staff") && (
+          <VStack align="stretch" gap={6}>
+            {staffLoading ? (
+              <Flex minH="40vh" align="center" justify="center">
+                <Spinner size="xl" color="var(--c-chocolate)" />
+              </Flex>
+            ) : (
+              <>
+                {/* VibeCheck Setup Card */}
+                <Box
+                  bg="var(--c-white)"
+                  p={6}
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  borderRadius="xl"
+                  boxShadow="sm"
+                >
+                  <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+                    My VibeCheck Profile (Staff Card)
+                  </Heading>
+
+                  {!vibecheckEnabled && (
+                    <Alert.Root
+                      status="warning"
+                      mb={4}
+                      borderRadius="xl"
+                      bg="color-mix(in srgb, #D69E2E 8%, transparent)"
+                      border="1px solid"
+                      borderColor="yellow.200"
+                    >
+                      <Alert.Indicator color="yellow.600" />
+                      <Alert.Content>
+                        <Alert.Title
+                          fontSize="xs"
+                          fontWeight="700"
+                          color="yellow.800"
+                        >
+                          ระบบ Vibe Check ถูกปิดใช้งานชั่วคราวโดยผู้ดูแลระบบ
+                          (ฟีเจอร์การอัปโหลดรูปและประวัติถูกระงับชั่วคราว)
+                        </Alert.Title>
+                      </Alert.Content>
+                    </Alert.Root>
+                  )}
+
+                  <VStack
+                    as="form"
+                    onSubmit={handleSaveProfile}
+                    align="stretch"
+                    gap={5}
+                    opacity={!vibecheckEnabled ? 0.6 : 1}
+                    pointerEvents={!vibecheckEnabled ? "none" : "auto"}
+                  >
+                    <VStack align="stretch" gap={1.5}>
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                        textTransform="uppercase"
+                      >
+                        Bio / Intro Phrase (Staff Intro)
+                      </Text>
+                      <Input
+                        placeholder="e.g. Apple, Recreation Staff of Baan 7, nice to meet you all! 🧡"
+                        aria-label="Bio / Intro Phrase (Staff Intro)"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        h="44px"
+                        borderRadius="xl"
+                        border="1.5px solid var(--c-outline)"
+                        bg="var(--c-ivory)"
+                        disabled={!vibecheckEnabled || savingProfile}
+                      />
+                    </VStack>
+
+                    <VStack align="stretch" gap={3}>
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                        textTransform="uppercase"
+                      >
+                        Vibe Check Photos (Max exactly 3 photos)
+                      </Text>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        aria-label="Upload photo"
+                        onChange={handlePhotoUpload}
+                        ref={staffPhotoInputRef}
+                        display="none"
+                      />
+                      <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+                        {[0, 1, 2].map((idx) => {
+                          const url = photos[idx] || "";
+                          const isUploading = uploadingIdx === idx;
+
+                          return (
+                            <Box
+                              key={idx}
+                              p={4}
+                              bg="bg.hero"
+                              border="1px dashed"
+                              borderColor="border.subtle"
+                              borderRadius="xl"
+                              display="flex"
+                              flexDirection="column"
+                              alignItems="center"
+                              justifyContent="center"
+                              minH="180px"
+                              opacity={!vibecheckEnabled ? 0.6 : 1}
+                            >
+                              {url ? (
+                                <VStack gap={2} w="100%">
+                                  <Box
+                                    h="100px"
+                                    w="100%"
+                                    borderRadius="lg"
+                                    overflow="hidden"
+                                  >
+                                    <Image
+                                      src={url}
+                                      alt={`Uploaded staff orientation activity photo preview ${idx + 1}`}
+                                      w="100%"
+                                      h="100%"
+                                      objectFit="cover"
+                                    />
+                                  </Box>
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="outline"
+                                    colorPalette="red"
+                                    onClick={() => removePhoto(idx)}
+                                    w="100%"
+                                    minH="32px"
+                                    py={1}
+                                    cursor="pointer"
+                                    disabled={!vibecheckEnabled}
+                                  >
+                                    Remove
+                                  </Button>
+                                </VStack>
+                              ) : (
+                                <VStack gap={2}>
+                                  <Text fontSize="xs" color="fg.subtle">
+                                    Slot {idx + 1} (Empty)
+                                  </Text>
+                                  {isUploading ? (
+                                    <Spinner
+                                      size="xs"
+                                      color="var(--c-lagoon)"
+                                    />
+                                  ) : (
+                                    <Flex gap={2}>
+                                      <Button
+                                        type="button"
+                                        size="xs"
+                                        onClick={() => triggerUploadClick(idx)}
+                                        minH="44px"
+                                        py={1.5}
+                                        cursor="pointer"
+                                        disabled={!vibecheckEnabled}
+                                      >
+                                        Upload
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="xs"
+                                        variant="outline"
+                                        onClick={() => triggerUrlPrompt(idx)}
+                                        minH="44px"
+                                        py={1.5}
+                                        cursor="pointer"
+                                        disabled={!vibecheckEnabled}
+                                      >
+                                        URL
+                                      </Button>
+                                    </Flex>
+                                  )}
+                                </VStack>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </SimpleGrid>
+                    </VStack>
+
+                    <Button
+                      type="submit"
+                      bg="var(--c-chocolate)"
+                      color="white"
+                      h="44px"
+                      py={2}
+                      borderRadius="xl"
+                      cursor="pointer"
+                      _hover={{ bg: "chocolate.600" }}
+                      loading={savingProfile}
+                      disabled={!vibecheckEnabled}
+                    >
+                      Save Vibe Profile
+                    </Button>
+                  </VStack>
+                </Box>
+
+                {/* Hype & Memory Board Moderation Card */}
+                <Box
+                  bg="var(--c-white)"
+                  p={6}
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  borderRadius="xl"
+                  boxShadow="sm"
+                >
+                  <Heading size="md" color="gray.700" fontFamily="heading" mb={2}>
+                    Live Hype & Memory Board Moderation Tracker
+                  </Heading>
+                  <Text fontSize="xs" color="fg.muted" mb={4}>
+                    Under standard privacy policies, anonymous authors are
+                    masked for general Staff. Action buttons execute database
+                    permissions contexts directly.
+                  </Text>
+
+                  <Box
+                    overflowY="auto"
+                    maxH="400px"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                    borderRadius="xl"
+                    p={3}
+                  >
+                    <TableScrollArea
+                      bg="white"
+                      borderRadius="xl"
+                      borderWidth="1px"
+                      overflow="hidden"
+                    >
+                      <Table.Root size="sm" variant="line">
+                        <Table.Header bg="var(--c-ivory)">
+                          <Table.Row>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Post Details & Comments
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">Author</Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">Type</Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">Actions</Table.ColumnHeader>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {posts.map((p) => {
+                            const comments = commentsMap[p.id] || [];
+                            return (
+                              <Table.Row
+                                key={p.id}
+                                bg={
+                                  p.is_hidden
+                                    ? "rgba(186, 26, 26, 0.05)"
+                                    : "transparent"
+                                }
+                                _hover={{ bg: "gray.50" }}
+                                transition="background 0.2s"
+                              >
+                                <Table.Cell maxW="400px">
+                                  <VStack align="stretch" gap={3}>
+                                    <Box>
+                                      <Text
+                                        fontWeight={
+                                          p.is_hidden ? "normal" : "600"
+                                        }
+                                        fontStyle={
+                                          p.is_hidden ? "italic" : "normal"
+                                        }
+                                        color={
+                                          p.is_hidden
+                                            ? "fg.muted"
+                                            : "fg.default"
+                                        }
+                                      >
+                                        {p.content}
+                                      </Text>
+                                      <Text
+                                        fontSize="3xs"
+                                        color="fg.subtle"
+                                        mt={1}
+                                      >
+                                        Tags: {p.tags?.join(", ") || "None"} |
+                                        Created:{" "}
+                                        {new Date(
+                                          p.created_at,
+                                        ).toLocaleString()}
+                                      </Text>
+                                    </Box>
+
+                                    {/* Nested Comments Table for Moderation */}
+                                    {comments.length > 0 && (
+                                      <Box
+                                        pl={4}
+                                        borderLeft="2px solid"
+                                        borderColor="border.subtle"
+                                      >
+                                        <Text
+                                          fontSize="xs"
+                                          fontWeight="700"
+                                          color="fg.muted"
+                                          mb={2}
+                                        >
+                                          Comments ({comments.length}):
+                                        </Text>
+                                        <VStack align="stretch" gap={2}>
+                                          {comments.map((comment) => (
+                                            <Flex
+                                              key={comment.id}
+                                              justify="space-between"
+                                              bg="bg.hero"
+                                              p={2}
+                                              borderRadius="md"
+                                              align="center"
+                                            >
+                                              <Box>
+                                                <Text
+                                                  fontSize="xs"
+                                                  color="fg.default"
+                                                >
+                                                  {comment.content}
+                                                </Text>
+                                                <Text
+                                                  fontSize="3xs"
+                                                  color="fg.subtle"
+                                                >
+                                                  By{" "}
+                                                  {comment.author?.nickname ||
+                                                    "Student"}{" "}
+                                                  ({comment.author?.role})
+                                                </Text>
+                                              </Box>
+                                              <Button
+                                                size="2xs"
+                                                variant="ghost"
+                                                colorPalette="red"
+                                                onClick={() =>
+                                                  handleDeleteComment(
+                                                    comment.id,
+                                                    p.id,
+                                                  )
+                                                }
+                                                minH="32px"
+                                                py={1}
+                                                cursor="pointer"
+                                              >
+                                                Delete
+                                              </Button>
+                                            </Flex>
+                                          ))}
+                                        </VStack>
+                                      </Box>
+                                    )}
+                                  </VStack>
+                                </Table.Cell>
+                                <Table.Cell>
+                                  {p.is_anonymous ? (
+                                    <Badge colorPalette="orange">
+                                      Anonymous
+                                    </Badge>
+                                  ) : (
+                                    <Text fontSize="xs" fontWeight="700">
+                                      {p.author?.nickname || "Guest Whitelist"}
+                                    </Text>
+                                  )}
+                                </Table.Cell>
+                                <Table.Cell>
+                                  <Badge
+                                    colorPalette={
+                                      p.type === "hype" ? "orange" : "teal"
+                                    }
+                                  >
+                                    {p.type}
+                                  </Badge>
+                                </Table.Cell>
+                                <Table.Cell>
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="outline"
+                                    colorPalette="red"
+                                    cursor="pointer"
+                                    onClick={() => handleDeletePost(p.id)}
+                                    minH="40px"
+                                    py={1.5}
+                                  >
+                                    Delete Post
+                                  </Button>
+                                </Table.Cell>
+                              </Table.Row>
+                            );
+                          })}
+                          {posts.length === 0 && (
+                            <Table.Row>
+                              <Table.Cell
+                                colSpan={4}
+                                textAlign="center"
+                                py={4}
+                                color="fg.subtle"
+                                fontStyle="italic"
+                              >
+                                No posts recorded yet.
+                              </Table.Cell>
+                            </Table.Row>
+                          )}
+                        </Table.Body>
+                      </Table.Root>
+                    </TableScrollArea>
+                  </Box>
+                </Box>
+              </>
+            )}
           </VStack>
         )}
 
@@ -3284,6 +3652,7 @@ export function AdminDashboardPage() {
                     fontSize="xl"
                     fontWeight="bold"
                     color="var(--c-chocolate)"
+                    fontFamily="heading"
                   >
                     CSV Upload Preview & Duplicate Validation
                   </Dialog.Title>
@@ -3308,15 +3677,16 @@ export function AdminDashboardPage() {
                     border="1px solid"
                     borderColor="border.subtle"
                     borderRadius="xl"
+                    p={3}
                   >
                     <Table.Root size="sm" variant="line">
                       <Table.Header>
                         <Table.Row>
-                          <Table.ColumnHeader>Student ID</Table.ColumnHeader>
-                          <Table.ColumnHeader>Nickname</Table.ColumnHeader>
-                          <Table.ColumnHeader>Faculty</Table.ColumnHeader>
-                          <Table.ColumnHeader>Role</Table.ColumnHeader>
-                          <Table.ColumnHeader>Validation</Table.ColumnHeader>
+                          <Table.ColumnHeader fontFamily="heading">Student ID</Table.ColumnHeader>
+                          <Table.ColumnHeader fontFamily="heading">Nickname</Table.ColumnHeader>
+                          <Table.ColumnHeader fontFamily="heading">Faculty</Table.ColumnHeader>
+                          <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
+                          <Table.ColumnHeader fontFamily="heading">Validation</Table.ColumnHeader>
                         </Table.Row>
                       </Table.Header>
                       <Table.Body>
@@ -3359,6 +3729,7 @@ export function AdminDashboardPage() {
                     <Button
                       variant="outline"
                       h="44px"
+                      py={2}
                       borderRadius="xl"
                       cursor="pointer"
                     >
@@ -3371,6 +3742,7 @@ export function AdminDashboardPage() {
                     color="white"
                     loading={upserting}
                     h="44px"
+                    py={2}
                     px={6}
                     borderRadius="xl"
                     cursor="pointer"
@@ -3417,577 +3789,24 @@ export function AdminDashboardPage() {
 
       {/* User Inspector Dialog */}
       {inspectUser && (
-        <Dialog.Root
-          open={!!inspectUser}
-          onOpenChange={() => setInspectUser(null)}
-          placement={{ base: "bottom", md: "center" }}
-        >
-          <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
-            backdropFilter="blur(4px)"
-          />
-          <Dialog.Positioner zIndex={2200} px={4}>
-            <Dialog.Content
-              bg="var(--c-ivory)"
-              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
-              color="var(--c-ink)"
-              borderRadius={{ base: "t-3xl", md: "2xl" }}
-              width={{ base: "100%", md: "560px" }}
-              maxH={{ base: "92vh", md: "80vh" }}
-              p={6}
-              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
-              display="flex"
-              flexDirection="column"
-              position="relative"
-            >
-              <Dialog.Header p={0} mb={3}>
-                <Dialog.Title
-                  fontSize="md"
-                  color="var(--c-chocolate)"
-                  fontWeight="700"
-                >
-                  User Audit & Inspector
-                </Dialog.Title>
-              </Dialog.Header>
-
-              <Dialog.Body
-                p={0}
-                flex={1}
-                overflowY="auto"
-                display="flex"
-                flexDirection="column"
-                gap={4}
-              >
-                <VStack align="stretch" gap={5}>
-                  {/* Profile Header Block */}
-                  <Flex
-                    bg="var(--c-ivory)"
-                    p={4}
-                    borderRadius="xl"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                    gap={4}
-                    align="center"
-                  >
-                    <Box
-                      w="64px"
-                      h="64px"
-                      borderRadius="full"
-                      bg={
-                        inspectUser.profile_pic_url
-                          ? "transparent"
-                          : inspectUser.avatar_color || "var(--c-lagoon)"
-                      }
-                      overflow="hidden"
-                      flexShrink={0}
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      {inspectUser.profile_pic_url ? (
-                        <Image
-                          src={inspectUser.profile_pic_url}
-                          alt={`${inspectUser.nickname || "User"}'s profile picture`}
-                          w="100%"
-                          h="100%"
-                          objectFit="cover"
-                        />
-                      ) : (
-                        <Text color="white" fontWeight="800" fontSize="lg">
-                          {(inspectUser.nickname || "NN")
-                            .substring(0, 2)
-                            .toUpperCase()}
-                        </Text>
-                      )}
-                    </Box>
-                    <VStack align="start" gap={0} flex={1}>
-                      <HStack gap={2}>
-                        <Heading
-                          as="h3"
-                          fontSize="sm"
-                          fontWeight="700"
-                          color="var(--c-chocolate)"
-                        >
-                          {inspectUser.nickname || "No Nickname"}
-                        </Heading>
-                        <Badge
-                          colorPalette={
-                            inspectUser.role === "moderator"
-                              ? "red"
-                              : inspectUser.role === "staff"
-                                ? "orange"
-                                : inspectUser.role === "media_admin"
-                                  ? "blue"
-                                  : "gray"
-                          }
-                        >
-                          {inspectUser.role}
-                        </Badge>
-                      </HStack>
-                      <Text fontSize="xs" color="fg.muted">
-                        ID: {inspectUser.student_id}
-                      </Text>
-                      {inspectUser.ig && (
-                        <Text
-                          fontSize="2xs"
-                          color="var(--c-lagoon)"
-                          fontWeight="600"
-                          mt={0.5}
-                        >
-                          IG: {inspectUser.ig}
-                        </Text>
-                      )}
-                    </VStack>
-                  </Flex>
-
-                  {inspectUser.bio && (
-                    <Box px={2}>
-                      <Text fontSize="xs" fontStyle="italic" color="fg.subtle">
-                        "{inspectUser.bio}"
-                      </Text>
-                    </Box>
-                  )}
-
-                  {/* Vibe Stats Block */}
-                  <VStack
-                    align="stretch"
-                    gap={2}
-                    bg="color-mix(in srgb, var(--c-lagoon) 5%, transparent)"
-                    p={4}
-                    borderRadius="xl"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                  >
-                    <Heading
-                      as="h4"
-                      fontSize="xs"
-                      fontWeight="700"
-                      color="var(--c-lagoon)"
-                      textTransform="uppercase"
-                      mb={1}
-                    >
-                      Vibe Check Statistics
-                    </Heading>
-                    {inspectUserStats ? (
-                      <>
-                        <Flex flexWrap="wrap" gap={4}>
-                          <Box flex={1} minW="140px">
-                            <Text
-                              fontSize="2xs"
-                              color="fg.muted"
-                              fontWeight="600"
-                            >
-                              Cards Collected
-                            </Text>
-                            <Text
-                              fontSize="sm"
-                              fontWeight="800"
-                              color="var(--c-ink)"
-                            >
-                              {inspectUserStats.collectedCount}
-                            </Text>
-                          </Box>
-                          {inspectUser.role !== "student" && (
-                            <Box flex={1} minW="140px">
-                              <Text
-                                fontSize="2xs"
-                                color="fg.muted"
-                                fontWeight="600"
-                              >
-                                Collected By
-                              </Text>
-                              <Text
-                                fontSize="sm"
-                                fontWeight="800"
-                                color="var(--c-ink)"
-                              >
-                                {inspectUserStats.collectedFromCount} students
-                              </Text>
-                            </Box>
-                          )}
-                          <Box flex={1} minW="140px">
-                            <Text
-                              fontSize="2xs"
-                              color="fg.muted"
-                              fontWeight="600"
-                            >
-                              Mistakes/Strikes
-                            </Text>
-                            <HStack gap={1}>
-                              <Text
-                                fontSize="sm"
-                                fontWeight="800"
-                                color={
-                                  (inspectUserStats.vibeStatus?.strike_count ||
-                                    0) > 3
-                                    ? "red.600"
-                                    : "var(--c-ink)"
-                                }
-                              >
-                                {inspectUserStats.vibeStatus?.strike_count || 0}{" "}
-                                / 5
-                              </Text>
-                              {(inspectUserStats.vibeStatus?.strike_count ||
-                                0) > 0 && (
-                                <Box
-                                  as="span"
-                                  className="material-symbols-outlined"
-                                  fontSize="14px"
-                                  color="red.500"
-                                >
-                                  warning
-                                </Box>
-                              )}
-                            </HStack>
-                          </Box>
-                          {inspectUserStats.vibeStatus?.locked_until &&
-                            inspectUserStats.isLocked && (
-                              <Box
-                                w="100%"
-                                bg="red.50"
-                                p={2}
-                                borderRadius="md"
-                                border="1px solid"
-                                borderColor="red.200"
-                              >
-                                <Text
-                                  fontSize="xs"
-                                  fontWeight="700"
-                                  color="red.700"
-                                  display="flex"
-                                  alignItems="center"
-                                  gap={1}
-                                >
-                                  <Box
-                                    as="span"
-                                    className="material-symbols-outlined"
-                                    fontSize="14px"
-                                  >
-                                    lock_clock
-                                  </Box>
-                                  Locked until:{" "}
-                                  {new Date(
-                                    inspectUserStats.vibeStatus.locked_until,
-                                  ).toLocaleTimeString()}
-                                </Text>
-                              </Box>
-                            )}
-                        </Flex>
-                        {inspectUserStats.unlockedStaff &&
-                          inspectUserStats.unlockedStaff.length > 0 && (
-                            <Box
-                              mt={2}
-                              pt={2}
-                              borderTop="1px solid"
-                              borderColor="border.subtle"
-                            >
-                              <Text
-                                fontSize="2xs"
-                                color="fg.muted"
-                                fontWeight="600"
-                                mb={2}
-                              >
-                                Unlocked Staff Vibes
-                              </Text>
-                              <Flex flexWrap="wrap" gap={2}>
-                                {inspectUserStats.unlockedStaff.map((staff) => (
-                                  <Flex
-                                    key={staff.staff_id}
-                                    align="center"
-                                    gap={2}
-                                    bg="var(--c-white)"
-                                    p={1}
-                                    pr={3}
-                                    borderRadius="full"
-                                    border="1px solid"
-                                    borderColor="border.subtle"
-                                    boxShadow="sm"
-                                  >
-                                    {staff.profile_pic_url ? (
-                                      <Image
-                                        src={staff.profile_pic_url}
-                                        alt={`${staff.nickname}'s profile picture`}
-                                        w="24px"
-                                        h="24px"
-                                        borderRadius="full"
-                                        objectFit="cover"
-                                      />
-                                    ) : (
-                                      <Flex
-                                        w="24px"
-                                        h="24px"
-                                        borderRadius="full"
-                                        bg={staff.avatar_color}
-                                        color="white"
-                                        align="center"
-                                        justify="center"
-                                        fontSize="10px"
-                                        fontWeight="700"
-                                      >
-                                        {staff.nickname
-                                          .substring(0, 2)
-                                          .toUpperCase()}
-                                      </Flex>
-                                    )}
-                                    <Text
-                                      fontSize="xs"
-                                      fontWeight="600"
-                                      color="var(--c-ink)"
-                                    >
-                                      {staff.nickname}
-                                    </Text>
-                                  </Flex>
-                                ))}
-                              </Flex>
-                            </Box>
-                          )}
-                      </>
-                    ) : (
-                      <Spinner size="xs" color="var(--c-lagoon)" />
-                    )}
-                  </VStack>
-
-                  <VStack
-                    as="form"
-                    onSubmit={handleEditUser}
-                    gap={4}
-                    align="stretch"
-                  >
-                    <Heading
-                      as="h4"
-                      fontSize="xs"
-                      fontWeight="700"
-                      color="var(--c-muted)"
-                      textTransform="uppercase"
-                    >
-                      Manual Record Editor
-                    </Heading>
-                    <Box>
-                      <Box
-                        display="block"
-                        fontSize="2xs"
-                        fontWeight="700"
-                        color="fg.subtle"
-                        mb={1}
-                      >
-                        <label htmlFor="inspect-nickname">Nickname</label>
-                      </Box>
-                      <Input
-                        id="inspect-nickname"
-                        value={editNickname}
-                        onChange={(e) => setEditNickname(e.target.value)}
-                        bg="var(--c-ivory)"
-                        h="38px"
-                      />
-                    </Box>
-                    <Box>
-                      <Box
-                        display="block"
-                        fontSize="2xs"
-                        fontWeight="700"
-                        color="fg.subtle"
-                        mb={1}
-                      >
-                        <label htmlFor="inspect-faculty">Faculty</label>
-                      </Box>
-                      <NativeSelect.Root width="100%">
-                        <NativeSelect.Field
-                          id="inspect-faculty"
-                          aria-label="Faculty"
-                          title="Faculty"
-                          value={editFaculty}
-                          onChange={(e) =>
-                            setEditFaculty(e.currentTarget.value)
-                          }
-                          bg="var(--c-ivory)"
-                          h="38px"
-                          borderRadius="md"
-                          border="1px solid"
-                          borderColor="border.subtle"
-                          px={3}
-                          _focus={{ borderColor: "accent.solid" }}
-                        >
-                          <option value="">Select Faculty...</option>
-                          {THAI_FACULTIES.map((fac) => {
-                            const cleanVal = fac.split(" (")[0];
-                            return (
-                              <option key={fac} value={cleanVal}>
-                                {fac}
-                              </option>
-                            );
-                          })}
-                        </NativeSelect.Field>
-                        <NativeSelect.Indicator />
-                      </NativeSelect.Root>
-                    </Box>
-                    <Box>
-                      <Box
-                        display="block"
-                        fontSize="2xs"
-                        fontWeight="700"
-                        color="fg.subtle"
-                        mb={1}
-                      >
-                        <label htmlFor="inspect-major">
-                          Major (Field of Study)
-                        </label>
-                      </Box>
-                      <Input
-                        id="inspect-major"
-                        value={editMajor}
-                        onChange={(e) => setEditMajor(e.target.value)}
-                        bg="var(--c-ivory)"
-                        h="38px"
-                      />
-                    </Box>
-                    {editRole !== "student" && (
-                      <Box>
-                        <Box
-                          display="block"
-                          fontSize="2xs"
-                          fontWeight="700"
-                          color="fg.subtle"
-                          mb={1}
-                        >
-                          <label htmlFor="inspect-house-position">
-                            House Position (Staff Assignment)
-                          </label>
-                        </Box>
-                        <select
-                          id="inspect-house-position"
-                          value={editHousePosition}
-                          onChange={(e) => setEditHousePosition(e.target.value)}
-                          className="admin-select-sm custom-select"
-                          aria-label="House Position"
-                          title="House Position"
-                        >
-                          <option value="">None / Unknown</option>
-                          {STAFF_ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
-                      </Box>
-                    )}
-                    <Box>
-                      <Box
-                        display="block"
-                        fontSize="2xs"
-                        fontWeight="700"
-                        color="fg.subtle"
-                        mb={1}
-                      >
-                        <label htmlFor="inspect-role">System Role</label>
-                      </Box>
-                      <Tooltip label={getRoleDescription(editRole)}>
-                        <select
-                          id="inspect-role"
-                          value={editRole}
-                          onChange={(e) => setEditRole(e.target.value)}
-                          className="admin-select-sm custom-select"
-                          aria-label="System Role"
-                          title="System Role"
-                        >
-                          <option value="student">student</option>
-                          <option value="staff">staff</option>
-                          <option value="media_admin">media_admin</option>
-                          <option value="moderator">moderator</option>
-                        </select>
-                      </Tooltip>
-                    </Box>
-                    <Button
-                      type="submit"
-                      bg="var(--c-chocolate)"
-                      color="white"
-                      h="40px"
-                      borderRadius="lg"
-                      cursor="pointer"
-                    >
-                      Save Changes
-                    </Button>
-                  </VStack>
-
-                  {/* Inspector local audit logs */}
-                  <VStack align="stretch" gap={2} mt={2}>
-                    <Heading
-                      as="h4"
-                      fontSize="xs"
-                      fontWeight="700"
-                      color="var(--c-muted)"
-                      textTransform="uppercase"
-                    >
-                      Recent User Logs
-                    </Heading>
-                    <Box
-                      maxH="120px"
-                      overflowY="auto"
-                      border="1px solid"
-                      borderColor="border.subtle"
-                      borderRadius="lg"
-                      p={2}
-                    >
-                      {inspectUserLogs.map((log) => (
-                        <Box
-                          key={log.id}
-                          fontSize="3xs"
-                          borderBottom="1px solid"
-                          borderColor="border.subtle"
-                          py={1.5}
-                        >
-                          <Text color="fg.subtle">
-                            {new Date(log.created_at).toLocaleString()} -{" "}
-                            <strong>{log.action_type}</strong>
-                          </Text>
-                          <Text>{log.details}</Text>
-                        </Box>
-                      ))}
-                      {inspectUserLogs.length === 0 && (
-                        <Text
-                          fontSize="2xs"
-                          fontStyle="italic"
-                          color="fg.subtle"
-                        >
-                          No recent logs found for this user.
-                        </Text>
-                      )}
-                    </Box>
-                  </VStack>
-                </VStack>
-              </Dialog.Body>
-
-              <Dialog.CloseTrigger
-                position="absolute"
-                top={4}
-                right={4}
-                asChild
-              >
-                <Button
-                  variant="ghost"
-                  w="44px"
-                  h="44px"
-                  minW="44px"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  color="var(--c-muted)"
-                  p={0}
-                  onClick={() => setInspectUser(null)}
-                >
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    fontSize="20px"
-                  >
-                    close
-                  </Box>
-                </Button>
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Dialog.Root>
+        <UserInspectModal
+          inspectUser={inspectUser}
+          onClose={() => setInspectUser(null)}
+          inspectUserStats={inspectUserStats}
+          inspectUserLogs={inspectUserLogs}
+          editNickname={editNickname}
+          setEditNickname={setEditNickname}
+          editFaculty={editFaculty}
+          setEditFaculty={setEditFaculty}
+          editMajor={editMajor}
+          setEditMajor={setEditMajor}
+          editHousePosition={editHousePosition}
+          setEditHousePosition={setEditHousePosition}
+          editRole={editRole}
+          setEditRole={setEditRole}
+          handleEditUser={handleEditUser}
+          getRoleDescription={getRoleDescription}
+        />
       )}
 
       {/* Whitelist Remove Confirmation Dialog */}
@@ -4037,6 +3856,7 @@ export function AdminDashboardPage() {
                     display="flex"
                     alignItems="center"
                     gap={2}
+                    fontFamily="heading"
                   >
                     <Box
                       as="span"
@@ -4065,6 +3885,7 @@ export function AdminDashboardPage() {
                       cursor="pointer"
                       h="40px"
                       px={4}
+                      py={1.5}
                     >
                       Cancel
                     </Button>
@@ -4079,6 +3900,7 @@ export function AdminDashboardPage() {
                     cursor="pointer"
                     h="40px"
                     px={4}
+                    py={1.5}
                   >
                     Confirm Delete
                   </Button>
@@ -4160,6 +3982,7 @@ export function AdminDashboardPage() {
               fontSize="xs"
               h={{ base: "40px", md: "36px" }}
               px={4}
+              py={1.5}
             >
               Remove Selected (ลบรายชื่อที่เลือก)
             </Button>
@@ -4214,6 +4037,7 @@ export function AdminDashboardPage() {
                     display="flex"
                     alignItems="center"
                     gap={2}
+                    fontFamily="heading"
                   >
                     <Box
                       as="span"
@@ -4245,6 +4069,7 @@ export function AdminDashboardPage() {
                       cursor="pointer"
                       h="40px"
                       px={4}
+                      py={1.5}
                     >
                       Cancel
                     </Button>
@@ -4261,6 +4086,7 @@ export function AdminDashboardPage() {
                     cursor="pointer"
                     h="40px"
                     px={4}
+                    py={1.5}
                   >
                     Confirm Bulk Delete
                   </Button>

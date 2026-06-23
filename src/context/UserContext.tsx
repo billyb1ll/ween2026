@@ -20,6 +20,7 @@ export interface User {
   house_position: string | null;
   immich_asset_id: string | null;
   full_name?: string | null;
+  has_accepted_tos: boolean;
   created_at: string;
 }
 
@@ -43,6 +44,7 @@ interface UserContextType {
     housePosition?: string;
     immichAssetId?: string | null;
   }) => Promise<boolean>;
+  acceptTos: () => Promise<boolean>;
   logout: () => void;
 }
 
@@ -261,6 +263,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const acceptTos = async (): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .update({ has_accepted_tos: true })
+        .eq("student_id", user.student_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) return false;
+
+      setUser(data as User);
+      return true;
+    } catch (err) {
+      console.error("Accept ToS error:", err);
+      return false;
+    }
+  };
+
   const logout = async () => {
     const savedToken = localStorage.getItem("baan7_session_token");
     if (savedToken) {
@@ -288,6 +311,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         login,
         registerPin,
         updateProfile,
+        acceptTos,
         logout,
       }}
     >

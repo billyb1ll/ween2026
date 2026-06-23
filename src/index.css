@@ -6,7 +6,7 @@
   --c-lagoon: #496268;
   --c-lagoon-light: #c5e0e6;
   --c-chocolate: #7c563f;
-  --c-chocolate-light: #fdcaad;
+  --c-chocolate-light: #ffe2d2;
   --c-ivory: #fcf9f8;
   --c-ivory-rgb: 252, 249, 248;
   --c-white: #ffffff;
@@ -24,7 +24,7 @@
   --c-state-star: #496268;
   --c-state-star-bg: #c5e0e6;
   --c-state-boost: #7c563f;
-  --c-state-boost-bg: #fdcaad;
+  --c-state-boost-bg: #ffe2d2;
   --c-state-pin-a: #c0392b;
   --c-state-pin-b: #c49070;
 
@@ -74,17 +74,17 @@ body {
 }
 
 /* Focus visible — global convention */
-:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+*:focus-visible {
+  outline: 2px solid var(--c-ink) !important;
+  box-shadow: none !important;
 }
 
 button:focus-visible,
 a:focus-visible,
 [role="button"]:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  border-radius: 8px;
+  outline: 2px solid var(--c-ink) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
 }
 
 /* Animations */
@@ -185,6 +185,23 @@ a:focus-visible,
 ::-webkit-scrollbar-track {
   background: var(--c-ivory);
 }
+
+.tos-checkbox .chakra-checkbox__control {
+  background: white;
+  border-color: var(--c-border);
+}
+.tos-checkbox .chakra-checkbox__control[data-checked] {
+  background: var(--c-lagoon);
+  border-color: var(--c-lagoon);
+}
+
+.feature-card-large,
+.feature-card-wide,
+.feature-card-small {
+  display: block;
+  height: 100%;
+}
+
 ::-webkit-scrollbar-thumb {
   background: var(--c-outline);
   border-radius: 3px;

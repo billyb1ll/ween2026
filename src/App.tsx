@@ -6,6 +6,7 @@ import { Footer } from './components/Footer'
 import { UserProvider, useUser } from './context/UserContext'
 import { Toaster } from './components/ui/toaster'
 import { LoadingFallback } from './components/LoadingFallback'
+import { TermsOfUseModal } from './components/TermsOfUseModal'
 
 // Dynamic Route Splitting for Named Exports
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
@@ -14,9 +15,8 @@ const BoardPage = lazy(() => import('./pages/BoardPage').then((module) => ({ def
 const GalleryPage = lazy(() => import('./pages/GalleryPage').then((module) => ({ default: module.GalleryPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((module) => ({ default: module.ProfileEditPage })))
-const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
 const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
-const StaffDashboardPage = lazy(() => import('./pages/StaffDashboardPage').then((module) => ({ default: module.StaffDashboardPage })))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
 
 // Route Interceptor for Complete Profiles
 function RequireCompleteProfile({ children }: { children: React.ReactNode }) {
@@ -58,6 +58,7 @@ function AppContent() {
         Skip to content
       </a>
       <Toaster />
+      <TermsOfUseModal />
       <Navbar />
       <Box
         as="main"
@@ -80,7 +81,7 @@ function AppContent() {
             <Route path="/gallery" element={<RequireCompleteProfile><GalleryPage /></RequireCompleteProfile>} />
 
 
-            {/* Administrative Dashboard Route */}
+            {/* Administrative Dashboard Route (Unified) */}
             <Route
               path="/admin"
               element={
@@ -97,18 +98,6 @@ function AppContent() {
                 <RequireAdmin>
                   <RequireCompleteProfile>
                     <AdminKpiPage />
-                  </RequireCompleteProfile>
-                </RequireAdmin>
-              }
-            />
-
-            {/* Staff Moderation Dashboard Route */}
-            <Route
-              path="/staff"
-              element={
-                <RequireAdmin>
-                  <RequireCompleteProfile>
-                    <StaffDashboardPage />
                   </RequireCompleteProfile>
                 </RequireAdmin>
               }

@@ -20,7 +20,7 @@ const config = defineConfig({
         chocolate: {
           50: { value: "#fdf6f2" },
           100: { value: "#fae8db" },
-          200: { value: "#fdcaad" },
+          200: { value: "#ffe2d2" },
           300: { value: "#eebca0" },
           400: { value: "#c49070" },
           500: { value: "#7c563f" },
@@ -39,7 +39,7 @@ const config = defineConfig({
           500: { value: "#e4e2e1" },
           600: { value: "#dcd9d9" },
           700: { value: "#c2c7c9" },
-          800: { value: "#72787a" },
+          800: { value: "var(--c-ink)" },
           900: { value: "#424849" },
           950: { value: "#1b1c1c" },
         },
@@ -50,7 +50,7 @@ const config = defineConfig({
           star: { value: "#496268" },
           starBg: { value: "#c5e0e6" },
           boost: { value: "#7c563f" },
-          boostBg: { value: "#fdcaad" },
+          boostBg: { value: "#ffe2d2" },
         },
       },
       fonts: {

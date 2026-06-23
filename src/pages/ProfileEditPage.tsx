@@ -11,21 +11,22 @@ import {
   HStack,
   Flex,
   Image,
-  NativeSelect,
   Textarea,
 } from "@chakra-ui/react";
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
-import { THAI_FACULTIES, STAFF_ROLES } from "../lib/constants";
+import { STAFF_ROLES } from "../lib/constants";
+import { FacultySelect } from "../components/FacultySelect";
+import { SearchableSelect } from "../components/SearchableSelect";
 
 const PRESET_COLORS = [
-  "#496268", // Lagoon
-  "#7c563f", // Chocolate
-  "#8c7b74", // Warm Muted Brown
-  "#9d806c", // Light Cocoa
-  "#5b6c6b", // Sage Slate
-  "#a38c75", // Warm Ochre
+  "var(--c-lagoon)",
+  "var(--c-chocolate)",
+  "var(--c-warm-muted)",
+  "var(--c-light-cocoa)",
+  "var(--c-sage-slate)",
+  "var(--c-warm-ochre)",
 ];
 
 const getInitials = (name: string) => {
@@ -350,6 +351,7 @@ export function ProfileEditPage() {
             <VStack align="center" textAlign="center" gap={1}>
               <Heading
                 as="h1"
+                fontFamily="'Playfair Display', serif"
                 fontSize="2xl"
                 color="accent.solid"
                 fontWeight="700"
@@ -547,33 +549,10 @@ export function ProfileEditPage() {
                     </Box>
                   </label>
                 </Box>
-                <NativeSelect.Root width="100%">
-                  <NativeSelect.Field
-                    id="edit-faculty"
-                    aria-label="Faculty"
-                    title="Faculty"
-                    value={faculty}
-                    onChange={(e) => setFaculty(e.currentTarget.value)}
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="bg.hero"
-                    px={4}
-                    _focus={{
-                      borderColor: "accent.solid",
-                    }}
-                  >
-                    <option value="">Select Faculty...</option>
-                    {THAI_FACULTIES.map((fac) => {
-                      const cleanVal = fac.split(" (")[0];
-                      return (
-                        <option key={fac} value={cleanVal}>
-                          {fac}
-                        </option>
-                      );
-                    })}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
+                <FacultySelect
+                  value={faculty}
+                  onChange={(val) => setFaculty(val)}
+                />
               </VStack>
 
               {/* Major (Academic Major) */}
@@ -631,39 +610,23 @@ export function ProfileEditPage() {
                       </Text>
                     </label>
                   </Box>
-                  <NativeSelect.Root width="100%">
-                    <NativeSelect.Field
-                      id="edit-house-position"
-                      aria-label="House Position"
-                      title="House Position"
-                      value={selectedSelectRole}
-                      onChange={(e) => {
-                        const val = e.currentTarget.value;
-                        setSelectedSelectRole(val);
-                        if (val === "Other") {
-                          setHousePosition(customPositionText);
-                        } else {
-                          setHousePosition(val);
-                        }
-                      }}
-                      borderRadius="xl"
-                      border="1.5px solid var(--c-outline)"
-                      bg="bg.hero"
-                      _focus={{ borderColor: "accent.solid" }}
-                      h="48px"
-                      fontSize="sm"
-                      px={4}
-                    >
-                      <option value="">Select Position...</option>
-                      {STAFF_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                      <option value="Other">Other...</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
+                  <SearchableSelect
+                    value={selectedSelectRole}
+                    onChange={(val) => {
+                      setSelectedSelectRole(val);
+                      if (val === "Other") {
+                        setHousePosition(customPositionText);
+                      } else {
+                        setHousePosition(val);
+                      }
+                    }}
+                    options={[
+                      ...STAFF_ROLES.map((role) => ({ value: role, primaryText: role })),
+                      { value: "Other", primaryText: "Other..." },
+                    ]}
+                    placeholder="Select Position..."
+                    searchPlaceholder="พิมพ์ค้นหาตำแหน่ง / Type to search..."
+                  />
 
                   {selectedSelectRole === "Other" && (
                     <Input

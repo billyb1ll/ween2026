@@ -292,11 +292,11 @@ export function LoginPage() {
         {showCheckmark ? (
           <VStack
             bg="var(--c-white)"
-            border="1px solid"
-            borderColor="border.subtle"
+            border="1.5px solid"
+            borderColor="var(--c-chocolate-light)"
             borderRadius="2xl"
             p={{ base: 6, md: 8 }}
-            boxShadow="var(--shadow-lagoon)"
+            boxShadow="sm"
             align="center"
             py={{ base: 12, md: 16 }}
             animation="scale-in 0.4s var(--ease-out-quart)"
@@ -318,6 +318,7 @@ export function LoginPage() {
                 className="material-symbols-outlined"
                 fontSize="48px"
                 fontWeight="bold"
+                aria-hidden="true"
               >
                 check
               </Box>
@@ -344,11 +345,11 @@ export function LoginPage() {
         ) : (
           <Box
             bg="var(--c-white)"
-            border="1px solid"
-            borderColor="border.subtle"
+            border="1.5px solid"
+            borderColor="var(--c-chocolate-light)"
             borderRadius="2xl"
             p={{ base: 5, md: 8 }}
-            boxShadow="var(--shadow-lagoon)"
+            boxShadow="sm"
             animation="scale-in 0.4s var(--ease-out-quart)"
           >
             <VStack align="stretch" gap={4}>
@@ -385,6 +386,7 @@ export function LoginPage() {
                         color="var(--c-chocolate)"
                         textTransform="uppercase"
                         letterSpacing="0.05em"
+                        fontFamily="'Playfair Display', serif"
                       >
                         <label htmlFor="student-id-input">
                           Student ID
@@ -403,8 +405,8 @@ export function LoginPage() {
                         border="1.5px solid var(--c-outline)"
                         bg="var(--c-ivory)"
                         _focus={{
-                          borderColor: "var(--c-lagoon)",
-                          boxShadow: "0 0 0 3px var(--c-lagoon-light)",
+                          borderColor: "var(--c-chocolate)",
+                          boxShadow: "0 0 0 3px var(--c-chocolate-light)",
                           bg: "var(--c-white)",
                         }}
                         h="48px"
@@ -424,6 +426,7 @@ export function LoginPage() {
                       h="50px"
                       fontSize="md"
                       fontWeight="700"
+                      fontFamily="'Playfair Display', serif"
                       boxShadow="0 4px 12px rgba(73, 98, 104, 0.2)"
                       _hover={{
                         bg: "#3c5156",
@@ -454,6 +457,7 @@ export function LoginPage() {
                           fontWeight="700"
                           color="var(--c-chocolate)"
                           textTransform="uppercase"
+                          fontFamily="'Playfair Display', serif"
                         >
                           Enter New 6-digit PIN
                         </Text>
@@ -482,6 +486,7 @@ export function LoginPage() {
                           fontWeight="700"
                           color="var(--c-chocolate)"
                           textTransform="uppercase"
+                          fontFamily="'Playfair Display', serif"
                         >
                           Confirm PIN
                         </Text>
@@ -523,6 +528,7 @@ export function LoginPage() {
                       h="50px"
                       fontSize="md"
                       fontWeight="700"
+                      fontFamily="'Playfair Display', serif"
                       _hover={{
                         bg: "#62422f",
                         transform: "translateY(-2px)",
@@ -544,6 +550,8 @@ export function LoginPage() {
                         setAuthStage("id");
                       }}
                       _hover={{ bg: "rgba(0,0,0,0.02)" }}
+                      py={2}
+                      minH="44px"
                     >
                       Back
                     </Button>
@@ -596,6 +604,7 @@ export function LoginPage() {
                     }}
                     _hover={{ bg: "rgba(0,0,0,0.02)" }}
                     minH="44px"
+                    py={2}
                   >
                     Back to Student ID Verification
                   </Button>
@@ -649,6 +658,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadPro
           fontSize="sm"
           onClick={onClear}
           _hover={{ bg: "rgba(0,0,0,0.04)" }}
+          _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
           cursor="pointer"
           disabled={disabled}
         >
@@ -665,6 +675,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadPro
           color="var(--c-muted)"
           onClick={onBackspace}
           _hover={{ bg: "rgba(0,0,0,0.04)" }}
+          _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -672,7 +683,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadPro
           aria-label="Backspace"
           disabled={disabled}
         >
-          <span className="material-symbols-outlined">backspace</span>
+          <span className="material-symbols-outlined" aria-hidden="true">backspace</span>
         </Button>
       </Flex>
     </VStack>
@@ -707,6 +718,7 @@ function KeypadButton({
       _active={{
         bg: "var(--c-lagoon-light)",
       }}
+      _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
       onClick={() => onClick(value)}
       cursor="pointer"
       disabled={disabled}

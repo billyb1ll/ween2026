@@ -8,6 +8,9 @@ import {
   SimpleGrid,
   Spinner,
   Badge,
+  StatRoot,
+  StatLabel,
+  StatValueText,
 } from '@chakra-ui/react'
 import { supabase } from '../lib/supabase'
 
@@ -202,7 +205,7 @@ export function AdminKpiPage() {
       <VStack align="stretch" gap={8}>
         <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
           <Box>
-            <Heading as="h1" fontSize={{ base: "2xl", md: "3xl" }} color="var(--c-ink)" fontFamily="heading" mb={2}>
+            <Heading as="h1" fontSize={{ base: "2xl", md: "3xl" }} color="var(--c-ink)" fontFamily="'Playfair Display', serif" mb={2}>
               Platform KPI Dashboard
             </Heading>
             <Text color="fg.subtle">Real-time metrics and system health overview.</Text>
@@ -272,7 +275,7 @@ export function AdminKpiPage() {
               borderColor="border.subtle" 
               boxShadow="var(--shadow-card)"
             >
-              <Heading as="h3" fontSize="md" color="var(--c-chocolate)" mb={4} fontWeight="700">
+              <Heading as="h3" fontSize="md" color="var(--c-chocolate)" mb={4} fontWeight="700" fontFamily="'Playfair Display', serif">
                 Interactive Engagement Index
               </Heading>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={8} alignItems="center">
@@ -307,34 +310,36 @@ export function AdminKpiPage() {
 
 function KPICard({ title, value, icon, color }: { title: string, value: number, icon: string, color: string }) {
   return (
-    <Box 
+    <StatRoot
       bg="var(--c-white)" 
       p={6} 
-      borderRadius="2xl" 
+      borderRadius="xl" 
       border="1px solid" 
       borderColor="border.subtle" 
-      boxShadow="var(--shadow-card)" 
-      transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" 
-      _hover={{ transform: 'translateY(-4px)', boxShadow: 'var(--shadow-lagoon)' }}
+      boxShadow="sm"
+      transition="all 0.2s" 
+      _hover={{ transform: 'translateY(-2px)', boxShadow: 'md' }}
     >
-      <Flex align="center" gap={4} mb={4}>
+      <Flex align="center" justify="space-between" mb={3}>
+        <StatLabel fontSize="xs" fontWeight="700" color="fg.subtle" textTransform="uppercase" letterSpacing="wider">{title}</StatLabel>
         <Box 
-          w="48px" 
-          h="48px" 
-          borderRadius="full" 
-          bg={`color-mix(in srgb, ${color} 15%, transparent)`} 
+          w="36px" 
+          h="36px" 
+          borderRadius="lg" 
+          bg={`color-mix(in srgb, ${color} 12%, transparent)`} 
           display="flex" 
           alignItems="center" 
           justifyContent="center"
         >
-          <Box as="span" className="material-symbols-outlined" color={color} fontSize="24px">
+          <Box as="span" className="material-symbols-outlined" color={color} fontSize="20px">
             {icon}
           </Box>
         </Box>
-        <Text fontSize="sm" fontWeight="700" color="fg.subtle">{title}</Text>
       </Flex>
-      <Text fontSize="3xl" fontWeight="800" color="var(--c-ink)">{value.toLocaleString()}</Text>
-    </Box>
+      <StatValueText fontSize="2xl" fontWeight="800" color="var(--c-ink)" fontFamily="'Playfair Display', serif">
+        {value.toLocaleString()}
+      </StatValueText>
+    </StatRoot>
   )
 }
 

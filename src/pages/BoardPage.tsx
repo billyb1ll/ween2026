@@ -16,6 +16,7 @@ import {
   Switch,
 } from "@chakra-ui/react";
 import { useState, useEffect, useRef, memo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useUser, type User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -23,10 +24,7 @@ import {
   type DBPost,
   type BoardTab,
 } from "../hooks/useBoardRealtime";
-import {
-  useLiveChat,
-  type ChatMessage,
-} from "../hooks/useLiveChat";
+import { useLiveChat, type ChatMessage } from "../hooks/useLiveChat";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
@@ -74,7 +72,11 @@ function LivePresenceBadge({ count }: { count: number }) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      style={{ display: "inline-flex", width: "100%", justifyContent: "center" }}
+      style={{
+        display: "inline-flex",
+        width: "100%",
+        justifyContent: "center",
+      }}
     >
       <Flex
         align="center"
@@ -133,7 +135,16 @@ function formatChatTime(iso: string): string {
   return `${days}d`;
 }
 
-const ROLE_BADGE_MAP: Record<string, { label: string; color: string; bg: string; borderColor: string; icon: string }> = {
+const ROLE_BADGE_MAP: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    bg: string;
+    borderColor: string;
+    icon: string;
+  }
+> = {
   moderator: {
     label: "MOD",
     color: "red.600",
@@ -184,7 +195,12 @@ const LiveChatBubble = memo(function LiveChatBubble({
       transition="background 0.15s"
       w="100%"
     >
-      <Flex gap={3} align="start" flexDirection={isMe ? "row-reverse" : "row"} w="100%">
+      <Flex
+        gap={3}
+        align="start"
+        flexDirection={isMe ? "row-reverse" : "row"}
+        w="100%"
+      >
         {/* Avatar */}
         <Box
           as="button"
@@ -221,18 +237,30 @@ const LiveChatBubble = memo(function LiveChatBubble({
         {/* Content Wrapper */}
         <VStack align={isMe ? "end" : "start"} gap={1} flex={1} minW={0}>
           {/* Meta Info */}
-          <Flex align="center" gap={1.5} flexWrap="wrap" flexDirection={isMe ? "row-reverse" : "row"}>
+          <Flex
+            align="center"
+            gap={1.5}
+            flexWrap="wrap"
+            flexDirection={isMe ? "row-reverse" : "row"}
+          >
             <Text
               as="button"
               fontSize={{ base: "xs", md: "sm" }}
               fontWeight="700"
-              color={isMe ? "accent.solid" : isSenderStaff ? "accent.solid" : "fg.default"}
+              color={
+                isMe
+                  ? "accent.solid"
+                  : isSenderStaff
+                    ? "accent.solid"
+                    : "fg.default"
+              }
               cursor="pointer"
               onClick={() => onInspectUser(message.sender_id)}
               textAlign={isMe ? "right" : "left"}
               _hover={{ textDecoration: "underline" }}
             >
-              {prefix}{message.sender_nickname}
+              {prefix}
+              {message.sender_nickname}
             </Text>
             {badge && (
               <Badge
@@ -252,13 +280,21 @@ const LiveChatBubble = memo(function LiveChatBubble({
                 alignItems="center"
                 gap={0.5}
               >
-                <Box className="material-symbols-outlined" fontSize="3xs" style={{ display: "inline-block", verticalAlign: "middle" }}>
+                <Box
+                  className="material-symbols-outlined"
+                  fontSize="3xs"
+                  style={{ display: "inline-block", verticalAlign: "middle" }}
+                >
                   {badge.icon}
                 </Box>
                 {badge.label}
               </Badge>
             )}
-            <Text fontSize={{ base: "xs", md: "sm" }} color="fg.subtle" flexShrink={0}>
+            <Text
+              fontSize={{ base: "xs", md: "sm" }}
+              color="fg.subtle"
+              flexShrink={0}
+            >
               {formatChatTime(message.timestamp)}
             </Text>
             {isStaff && (
@@ -292,10 +328,22 @@ const LiveChatBubble = memo(function LiveChatBubble({
 
           {/* Chat Bubble Wrapper */}
           <Box
-            bg={isMe ? "var(--c-chocolate, #7c563f)" : isSenderStaff ? "color-mix(in srgb, var(--c-chocolate) 6%, var(--c-white))" : "bg.muted"}
+            bg={
+              isMe
+                ? "var(--c-chocolate, #7c563f)"
+                : isSenderStaff
+                  ? "color-mix(in srgb, var(--c-chocolate) 6%, var(--c-white))"
+                  : "bg.muted"
+            }
             color={isMe ? "white" : "fg.default"}
             border={isMe ? "none" : "1px solid"}
-            borderColor={isMe ? undefined : isSenderStaff ? "color-mix(in srgb, var(--c-chocolate) 20%, transparent)" : "border.subtle"}
+            borderColor={
+              isMe
+                ? undefined
+                : isSenderStaff
+                  ? "color-mix(in srgb, var(--c-chocolate) 20%, transparent)"
+                  : "border.subtle"
+            }
             px={{ base: 3.5, md: 4 }}
             py={{ base: 2, md: 2.5 }}
             borderRadius="xl"
@@ -305,7 +353,12 @@ const LiveChatBubble = memo(function LiveChatBubble({
             maxW={{ base: "85%", md: "70%" }}
             alignSelf={isMe ? "flex-end" : "flex-start"}
           >
-            <Text fontSize={{ base: "md", md: "15px" }} lineHeight="1.5" whiteSpace="pre-wrap" wordBreak="break-word">
+            <Text
+              fontSize={{ base: "md", md: "15px" }}
+              lineHeight="1.5"
+              whiteSpace="pre-wrap"
+              wordBreak="break-word"
+            >
               {message.content}
             </Text>
           </Box>
@@ -318,7 +371,8 @@ const LiveChatBubble = memo(function LiveChatBubble({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function BoardPage() {
-  const { user } = useUser();
+  const { user, loading } = useUser();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<BoardTab>("hype");
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [newPostText, setNewPostText] = useState("");
@@ -339,7 +393,9 @@ export function BoardPage() {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Realtime System Configuration Sync states
-  const [hypeBoardMode, setHypeBoardMode] = useState<"active" | "slow_3s" | "read_only">("active");
+  const [hypeBoardMode, setHypeBoardMode] = useState<
+    "active" | "slow_3s" | "read_only"
+  >("active");
   const [globalMuteActive, setGlobalMuteActive] = useState(false);
   const [isMemoryBoardActive, setIsMemoryBoardActive] = useState(true);
 
@@ -360,14 +416,19 @@ export function BoardPage() {
           const hypeMode = data.find((c) => c.key === "hype_board_mode");
           const globalMute = data.find((c) => c.key === "global_mute_active");
           if (hypeMode?.text_value) {
-            setHypeBoardMode(hypeMode.text_value as "active" | "slow_3s" | "read_only");
+            setHypeBoardMode(
+              hypeMode.text_value as "active" | "slow_3s" | "read_only",
+            );
           }
           if (globalMute) {
             setGlobalMuteActive(Boolean(globalMute.value));
           }
         }
       } catch (err) {
-        console.error("Failed to fetch initial system config in BoardPage:", err);
+        console.error(
+          "Failed to fetch initial system config in BoardPage:",
+          err,
+        );
       }
     };
 
@@ -387,7 +448,10 @@ export function BoardPage() {
       })
       .on("broadcast", { event: "config_change" }, (payload) => {
         if (active && payload.payload) {
-          if (payload.payload.key === "enable_memory_board" && payload.payload.value !== undefined) {
+          if (
+            payload.payload.key === "enable_memory_board" &&
+            payload.payload.value !== undefined
+          ) {
             setIsMemoryBoardActive(payload.payload.value);
           }
         }
@@ -479,9 +543,12 @@ export function BoardPage() {
   }, [chatMessages.length]);
 
   useEffect(() => {
-    const presenceChannel: RealtimeChannel = supabase.channel("board:global:presence", {
-      config: { private: true },
-    });
+    const presenceChannel: RealtimeChannel = supabase.channel(
+      "board:global:presence",
+      {
+        config: { private: true },
+      },
+    );
 
     presenceChannel
       .on("presence", { event: "sync" }, () => {
@@ -500,7 +567,7 @@ export function BoardPage() {
             user_id: user.student_id,
             nickname: user.nickname,
             online_at: new Date().toISOString(),
-            session_token: localStorage.getItem('baan7_session_token'),
+            session_token: localStorage.getItem("baan7_session_token"),
           });
         }
       });
@@ -510,8 +577,24 @@ export function BoardPage() {
     };
   }, [user]);
 
-  const isStaff = user?.role === 'staff' || user?.role === 'moderator' || user?.role === 'media_admin';
-  const isCooldownActive = !isStaff && hypeBoardMode === "slow_3s" && cooldownRemaining > 0;
+  // Redirect guest users to login page
+  useEffect(() => {
+    if (!loading && !user) {
+      toaster.create({
+        title:
+          "กรุณาล็อกอินเข้าสู่ระบบก่อน เพื่อใช้งานฟีเจอร์แชตและกระดานข้อความ",
+        type: "warning",
+      });
+      navigate("/login");
+    }
+  }, [loading, user, navigate]);
+
+  const isStaff =
+    user?.role === "staff" ||
+    user?.role === "moderator" ||
+    user?.role === "media_admin";
+  const isCooldownActive =
+    !isStaff && hypeBoardMode === "slow_3s" && cooldownRemaining > 0;
   const effectiveHypeActive = hypeActive || isStaff;
   const effectiveMemoryActive = memoryActive || isStaff;
   const isMemoryAccessible = true;
@@ -567,7 +650,11 @@ export function BoardPage() {
     setIsInspectorLoading(true);
     setInspectedUser(null);
     try {
-      const { data, error } = await supabase.from('users').select('*').eq('student_id', userId).single();
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("student_id", userId)
+        .single();
       if (!error && data) {
         setInspectedUser(data as User);
       }
@@ -588,7 +675,7 @@ export function BoardPage() {
     if (!newPostText.trim() || !selectedTag) return;
     let imageUrl = null;
 
-    if (memoryImage && activeTab === 'memory') {
+    if (memoryImage && activeTab === "memory") {
       setIsUploadingImage(true);
       try {
         const compressedBlob = await compressImage(memoryImage);
@@ -596,31 +683,36 @@ export function BoardPage() {
         const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('board_media')
+          .from("board_media")
           .upload(filePath, compressedBlob, {
-            contentType: 'image/jpeg',
-            cacheControl: '3600',
-            upsert: true
+            contentType: "image/jpeg",
+            cacheControl: "3600",
+            upsert: true,
           });
 
         if (!uploadError) {
           const { data: publicUrlData } = supabase.storage
-            .from('board_media')
+            .from("board_media")
             .getPublicUrl(filePath);
           imageUrl = publicUrlData.publicUrl;
         } else {
-           console.error('Upload Error', uploadError);
-           toaster.create({ title: 'Image upload failed', type: 'error' });
+          console.error("Upload Error", uploadError);
+          toaster.create({ title: "Image upload failed", type: "error" });
         }
       } catch (err) {
-        console.error('Compression/Upload Error', err);
-        toaster.create({ title: 'Image upload failed', type: 'error' });
+        console.error("Compression/Upload Error", err);
+        toaster.create({ title: "Image upload failed", type: "error" });
       } finally {
         setIsUploadingImage(false);
       }
     }
 
-    await handleCreatePost(newPostText.trim(), [selectedTag], isAnonymous, imageUrl);
+    await handleCreatePost(
+      newPostText.trim(),
+      [selectedTag],
+      isAnonymous,
+      imageUrl,
+    );
     setNewPostText("");
     setIsAnonymous(false);
     setSelectedTag(null);
@@ -648,6 +740,14 @@ export function BoardPage() {
 
   const visiblePosts = filteredPosts.slice(0, visibleCount);
   const hasMore = filteredPosts.length > visibleCount;
+  // Loading state / guest state flash prevention
+  if (loading || !user) {
+    return (
+      <Flex justify="center" align="center" minH="100vh" bg="bg.canvas">
+        <Spinner size="xl" color="var(--c-lagoon)" />
+      </Flex>
+    );
+  }
 
   return (
     <Box
@@ -668,7 +768,7 @@ export function BoardPage() {
       >
         <Heading
           as="h1"
-          fontFamily="heading"
+          fontFamily="'Playfair Display', serif"
           fontSize={{ base: "2rem", md: "3.5rem" }}
           fontWeight={700}
           lineHeight={1.1}
@@ -676,7 +776,8 @@ export function BoardPage() {
           color="accent.solid"
           textAlign="center"
         >
-          {(!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")
+          {(!effectiveHypeActive && activeTab === "hype") ||
+          (!effectiveMemoryActive && activeTab === "memory")
             ? "Offline"
             : `The ${activeTab === "hype" ? "Hype" : "Memory"} Board`}
         </Heading>
@@ -686,14 +787,21 @@ export function BoardPage() {
           textAlign="center"
           maxW="lg"
         >
-          {(!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")
+          {(!effectiveHypeActive && activeTab === "hype") ||
+          (!effectiveMemoryActive && activeTab === "memory")
             ? "Orientation boards are currently closed by staff. Check back soon!"
             : "Share the excitement, cheer on your peers, and build the Baan 7 community spirit!"}
         </Text>
 
         {/* Live Presence Badge */}
         {(effectiveHypeActive || isMemoryAccessible) && (
-          <Box display="flex" gap={2} mx="auto" justifyContent="center" w={{ base: "90%", md: "auto" }}>
+          <Box
+            display="flex"
+            gap={2}
+            mx="auto"
+            justifyContent="center"
+            w={{ base: "90%", md: "auto" }}
+          >
             <LivePresenceBadge count={onlineCount} />
           </Box>
         )}
@@ -729,9 +837,24 @@ export function BoardPage() {
       )}
 
       {/* Global Board Kill-Switch Ribbon */}
-      {((!effectiveHypeActive && activeTab === "hype") || (!effectiveMemoryActive && activeTab === "memory")) ? (
-        <Flex justify="center" align="center" minH="200px" bg="bg.surface" borderRadius="xl" border="1px solid" borderColor="border.subtle" p={6}>
-          <Text fontSize="md" fontWeight="600" color="fg.subtle" textAlign="center">
+      {(!effectiveHypeActive && activeTab === "hype") ||
+      (!effectiveMemoryActive && activeTab === "memory") ? (
+        <Flex
+          justify="center"
+          align="center"
+          minH="200px"
+          bg="bg.surface"
+          borderRadius="xl"
+          border="1px solid"
+          borderColor="border.subtle"
+          p={6}
+        >
+          <Text
+            fontSize="md"
+            fontWeight="600"
+            color="fg.subtle"
+            textAlign="center"
+          >
             บอร์ดสนทนาปิดปรับปรุงชั่วคราวตามลำดับกิจกรรมโปรดรอสัญญาณจากพี่สตาฟ
           </Text>
         </Flex>
@@ -764,7 +887,11 @@ export function BoardPage() {
             flexShrink={0}
           >
             <HStack gap={3}>
-              <Box className="material-symbols-outlined" fontSize="xl" color="accent.solid">
+              <Box
+                className="material-symbols-outlined"
+                fontSize="xl"
+                color="accent.solid"
+              >
                 chat
               </Box>
               <Heading
@@ -789,7 +916,11 @@ export function BoardPage() {
                 {!shouldReduceMotion && (
                   <motion.div
                     animate={{ scale: [1, 2], opacity: [0.6, 0] }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeOut" }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1.5,
+                      ease: "easeOut",
+                    }}
                     style={{
                       position: "absolute",
                       inset: 0,
@@ -814,7 +945,11 @@ export function BoardPage() {
             ) : chatMessages.length === 0 ? (
               <Flex justify="center" align="center" h="100%" p={6}>
                 <VStack gap={2}>
-                  <Box className="material-symbols-outlined" fontSize="4xl" color="fg.subtle">
+                  <Box
+                    className="material-symbols-outlined"
+                    fontSize="4xl"
+                    color="fg.subtle"
+                  >
                     forum
                   </Box>
                   <Text color="fg.subtle" fontSize="sm" textAlign="center">
@@ -827,13 +962,17 @@ export function BoardPage() {
                 ref={virtuosoRef}
                 data={chatMessages}
                 className="live-chat-scroll"
-                followOutput={(isAtBottom) => isAtBottom ? "smooth" : "smooth"}
+                followOutput={(isAtBottom) =>
+                  isAtBottom ? "smooth" : "smooth"
+                }
                 initialTopMostItemIndex={Math.max(0, chatMessages.length - 1)}
                 itemContent={(_index, msg) => (
                   <LiveChatBubble
                     key={msg.id}
                     message={msg}
-                    isStaff={user?.role !== "student" && user?.role !== undefined}
+                    isStaff={
+                      user?.role !== "student" && user?.role !== undefined
+                    }
                     isMe={msg.sender_id === user?.student_id}
                     onDelete={deleteMessage}
                     onInspectUser={handleInspectUser}
@@ -924,7 +1063,11 @@ export function BoardPage() {
                     justifyContent="center"
                     flexShrink={0}
                   >
-                    <Box className="material-symbols-outlined" fontSize="md" color="brand.fg">
+                    <Box
+                      className="material-symbols-outlined"
+                      fontSize="md"
+                      color="brand.fg"
+                    >
                       person
                     </Box>
                   </Box>
@@ -932,32 +1075,56 @@ export function BoardPage() {
                 <form
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!chatInput.trim() || chatSending || isCooldownActive || (globalMuteActive && !isStaff)) return;
+                    if (
+                      !chatInput.trim() ||
+                      chatSending ||
+                      isCooldownActive ||
+                      (globalMuteActive && !isStaff)
+                    )
+                      return;
                     const textToSend = chatInput.trim();
                     const success = await sendMessage(textToSend);
                     if (success) {
                       setChatInput("");
                       if (hypeBoardMode === "slow_3s" && !isStaff) {
                         const now = Date.now();
-                        localStorage.setItem("ween_last_chat_sent", String(now));
+                        localStorage.setItem(
+                          "ween_last_chat_sent",
+                          String(now),
+                        );
                         setLastChatSent(now);
                       }
                     }
                   }}
-                  style={{ flex: 1, display: "flex", gap: "8px", alignItems: "center" }}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
                 >
-                  <Box position="relative" flex={1} display="flex" alignItems="center">
+                  <Box
+                    position="relative"
+                    flex={1}
+                    display="flex"
+                    alignItems="center"
+                  >
                     <Input
                       placeholder={
                         isCooldownActive
                           ? "Slow mode: Cooldown active"
                           : user
-                          ? "Type a message..."
-                          : "Sign in to chat..."
+                            ? "Type a message..."
+                            : "Sign in to chat..."
                       }
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      disabled={!user || chatSending || isCooldownActive || (globalMuteActive && !isStaff)}
+                      disabled={
+                        !user ||
+                        chatSending ||
+                        isCooldownActive ||
+                        (globalMuteActive && !isStaff)
+                      }
                       maxLength={200}
                       h="40px"
                       borderRadius="xl"
@@ -996,10 +1163,17 @@ export function BoardPage() {
                     p={0}
                     borderRadius="xl"
                     cursor="pointer"
-                    disabled={!user || !chatInput.trim() || chatSending || isCooldownActive || (globalMuteActive && !isStaff)}
+                    disabled={
+                      !user ||
+                      !chatInput.trim() ||
+                      chatSending ||
+                      isCooldownActive ||
+                      (globalMuteActive && !isStaff)
+                    }
                     loading={chatSending}
                     _hover={{
-                      boxShadow: "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
+                      boxShadow:
+                        "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
                     }}
                     aria-label="Send message"
                   >
@@ -1009,7 +1183,12 @@ export function BoardPage() {
                   </Button>
                 </form>
                 {user && chatInput.length > 0 && (
-                  <Text fontSize="2xs" color="fg.subtle" fontWeight="600" flexShrink={0}>
+                  <Text
+                    fontSize="2xs"
+                    color="fg.subtle"
+                    fontWeight="600"
+                    flexShrink={0}
+                  >
                     {chatInput.length}/200
                   </Text>
                 )}
@@ -1021,7 +1200,9 @@ export function BoardPage() {
         /* ═══ MEMORY BOARD (Memory Tab) ═══════════════════════════════════ */
         <Box maxW="4xl" mx="auto" w="100%">
           {/* 1. Governance Configuration Panel for Moderator / Admin */}
-          {(user?.role === "moderator" || (user?.role as string) === "superadmin" || (user?.role as string) === "admin") && (
+          {(user?.role === "moderator" ||
+            (user?.role as string) === "superadmin" ||
+            (user?.role as string) === "admin") && (
             <Box
               bg="bg.surface"
               border="1px solid"
@@ -1031,22 +1212,40 @@ export function BoardPage() {
               mb={6}
               boxShadow="sm"
             >
-              <Flex align="center" justify="space-between" flexWrap="wrap" gap={4}>
+              <Flex
+                align="center"
+                justify="space-between"
+                flexWrap="wrap"
+                gap={4}
+              >
                 <Box>
-                  <Heading as="h3" fontSize="md" fontWeight="700" color="accent.solid" mb={1}>
+                  <Heading
+                    as="h3"
+                    fontSize="md"
+                    fontWeight="700"
+                    color="accent.solid"
+                    mb={1}
+                  >
                     Memory Board Governance Panel
                   </Heading>
                   <Text fontSize="xs" color="fg.subtle">
-                    Control public visibility of the Memory Board for general students.
+                    Control public visibility of the Memory Board for general
+                    students.
                   </Text>
                 </Box>
                 <HStack gap={3}>
-                  <Text fontSize="sm" fontWeight="600" color={isMemoryBoardActive ? "green.600" : "red.600"}>
+                  <Text
+                    fontSize="sm"
+                    fontWeight="600"
+                    color={isMemoryBoardActive ? "green.600" : "red.600"}
+                  >
                     {isMemoryBoardActive ? "Publicly Open" : "Publicly Closed"}
                   </Text>
                   <Switch.Root
                     checked={isMemoryBoardActive}
-                    onCheckedChange={(details: { checked: boolean }) => handleToggleMemoryBoard(details.checked)}
+                    onCheckedChange={(details: { checked: boolean }) =>
+                      handleToggleMemoryBoard(details.checked)
+                    }
                     colorPalette="teal"
                   >
                     <Switch.HiddenInput />
@@ -1075,35 +1274,48 @@ export function BoardPage() {
               textAlign="center"
               boxShadow="sm"
             >
-              <Box className="material-symbols-outlined" fontSize="5xl" color="accent.solid" mb={4}>
+              <Box
+                className="material-symbols-outlined"
+                fontSize="5xl"
+                color="accent.solid"
+                mb={4}
+              >
                 lock
               </Box>
-              <Heading as="h3" fontSize="xl" fontWeight="700" color="fg.default" mb={2}>
+              <Heading
+                as="h3"
+                fontSize="xl"
+                fontWeight="700"
+                color="fg.default"
+                mb={2}
+              >
                 Memory Board Locked
               </Heading>
               <Text fontSize="md" color="fg.muted" maxW="md">
-                Memory Board will be unlocked during the final session. Stay tuned!
+                Memory Board will be unlocked during the final session. Stay
+                tuned!
               </Text>
             </Flex>
           ) : (
             /* Accessible Flow (Board is open, or board is closed but accessed by Staff / Media Admin / Moderator) */
             <>
               {/* Subtle staff-only indicator banner */}
-              {!isMemoryBoardActive && (user?.role === "staff" || user?.role === "media_admin") && (
-                <Box
-                  bg="orange.50"
-                  border="1px solid"
-                  borderColor="orange.200"
-                  borderRadius="xl"
-                  p={3}
-                  mb={6}
-                  textAlign="center"
-                >
-                  <Text fontSize="sm" fontWeight="600" color="orange.700">
-                    [Staff Only View: Board is currently hidden from Students]
-                  </Text>
-                </Box>
-              )}
+              {!isMemoryBoardActive &&
+                (user?.role === "staff" || user?.role === "media_admin") && (
+                  <Box
+                    bg="orange.50"
+                    border="1px solid"
+                    borderColor="orange.200"
+                    borderRadius="xl"
+                    p={3}
+                    mb={6}
+                    textAlign="center"
+                  >
+                    <Text fontSize="sm" fontWeight="600" color="orange.700">
+                      [Staff Only View: Board is currently hidden from Students]
+                    </Text>
+                  </Box>
+                )}
 
               {/* Category Filters */}
               <Box
@@ -1158,9 +1370,13 @@ export function BoardPage() {
                         cursor="pointer"
                         transition="all 0.2s"
                         bg={
-                          activeCategory === cat.value ? "accent.solid" : "bg.surface"
+                          activeCategory === cat.value
+                            ? "accent.solid"
+                            : "bg.surface"
                         }
-                        color={activeCategory === cat.value ? "white" : "fg.default"}
+                        color={
+                          activeCategory === cat.value ? "white" : "fg.default"
+                        }
                         border="1px solid"
                         borderColor={
                           activeCategory === cat.value
@@ -1169,7 +1385,9 @@ export function BoardPage() {
                         }
                         _hover={{
                           bg:
-                            activeCategory === cat.value ? "accent.solid" : "bg.hero",
+                            activeCategory === cat.value
+                              ? "accent.solid"
+                              : "bg.hero",
                         }}
                       >
                         {cat.label}
@@ -1257,7 +1475,11 @@ export function BoardPage() {
 
                         {user && (
                           <VStack align="start" gap={2} my={3} w="100%">
-                            <Text fontSize="xs" fontWeight="700" color="fg.muted">
+                            <Text
+                              fontSize="xs"
+                              fontWeight="700"
+                              color="fg.muted"
+                            >
                               Select a Tag (Required):
                             </Text>
                             <HStack
@@ -1271,34 +1493,43 @@ export function BoardPage() {
                                 "scrollbar-width": "none",
                               }}
                             >
-                              {["#Hype", "#Question", "#Memory", "#Ween2026"].map(
-                                (tag) => {
-                                  const isSelected = selectedTag === tag;
-                                  return (
-                                    <Button
-                                      key={tag}
-                                      type="button"
-                                      onClick={() => setSelectedTag(tag)}
-                                      size="xs"
-                                      borderRadius="full"
-                                      bg={isSelected ? "accent.solid" : "bg.surface"}
-                                      color={isSelected ? "white" : "fg.default"}
-                                      border="1px solid"
-                                      borderColor={
-                                        isSelected ? "accent.solid" : "border.subtle"
-                                      }
-                                      h={{ base: "40px", md: "32px" }}
-                                      px={3}
-                                      cursor="pointer"
-                                      _hover={{
-                                        bg: isSelected ? "accent.solid" : "bg.hero",
-                                      }}
-                                    >
-                                      {tag}
-                                    </Button>
-                                  );
-                                },
-                              )}
+                              {[
+                                "#Hype",
+                                "#Question",
+                                "#Memory",
+                                "#Ween2026",
+                              ].map((tag) => {
+                                const isSelected = selectedTag === tag;
+                                return (
+                                  <Button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => setSelectedTag(tag)}
+                                    size="xs"
+                                    borderRadius="full"
+                                    bg={
+                                      isSelected ? "accent.solid" : "bg.surface"
+                                    }
+                                    color={isSelected ? "white" : "fg.default"}
+                                    border="1px solid"
+                                    borderColor={
+                                      isSelected
+                                        ? "accent.solid"
+                                        : "border.subtle"
+                                    }
+                                    h={{ base: "40px", md: "32px" }}
+                                    px={3}
+                                    cursor="pointer"
+                                    _hover={{
+                                      bg: isSelected
+                                        ? "accent.solid"
+                                        : "bg.hero",
+                                    }}
+                                  >
+                                    {tag}
+                                  </Button>
+                                );
+                              })}
                             </HStack>
                           </VStack>
                         )}
@@ -1320,18 +1551,38 @@ export function BoardPage() {
                                   onChange={handleImageChange}
                                   style={{ display: "none" }}
                                 />
-                                <label htmlFor="memory-image-upload" style={{ cursor: "pointer", fontSize: "0.875rem", color: "var(--c-chocolate)", fontWeight: 600 }}>
-                                  <Box as="span" className="material-symbols-outlined" fontSize="md" verticalAlign="middle" mr={1}>
+                                <label
+                                  htmlFor="memory-image-upload"
+                                  style={{
+                                    cursor: "pointer",
+                                    fontSize: "0.875rem",
+                                    color: "var(--c-chocolate)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <Box
+                                    as="span"
+                                    className="material-symbols-outlined"
+                                    fontSize="md"
+                                    verticalAlign="middle"
+                                    mr={1}
+                                  >
                                     image
                                   </Box>
-                                  {memoryImage ? memoryImage.name : "Attach Image (Max 1)"}
+                                  {memoryImage
+                                    ? memoryImage.name
+                                    : "Attach Image (Max 1)"}
                                 </label>
                               </HStack>
                             )}
                           </HStack>
                           <HStack gap={4} align="center">
                             {user && (
-                              <Text fontSize="xs" color="fg.subtle" fontWeight="600">
+                              <Text
+                                fontSize="xs"
+                                color="fg.subtle"
+                                fontWeight="600"
+                              >
                                 {newPostText.length} / 150
                               </Text>
                             )}
@@ -1346,7 +1597,9 @@ export function BoardPage() {
                               cursor="pointer"
                               onClick={handleSubmitPost}
                               loading={submitting || isUploadingImage}
-                              disabled={!user || !newPostText.trim() || !selectedTag}
+                              disabled={
+                                !user || !newPostText.trim() || !selectedTag
+                              }
                               _hover={{
                                 boxShadow:
                                   "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
@@ -1448,7 +1701,13 @@ export function BoardPage() {
 
               {/* Load More */}
               {(hasMore || isFetchingMore) && (
-                <Flex justify="center" py={12} position="relative" zIndex={1} minH="60px">
+                <Flex
+                  justify="center"
+                  py={12}
+                  position="relative"
+                  zIndex={1}
+                  minH="60px"
+                >
                   <AnimatePresence mode="wait">
                     {isFetchingMore ? (
                       <motion.div
@@ -1492,7 +1751,10 @@ export function BoardPage() {
                           minH="44px"
                         >
                           Load More Memories
-                          <Box className="material-symbols-outlined" fontSize="md">
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="md"
+                          >
                             expand_more
                           </Box>
                         </Button>
@@ -1506,98 +1768,141 @@ export function BoardPage() {
         </Box>
       )}
 
-    {/* Profile Inspector Dialog Layer */}
-    <Dialog.Root open={isInspectorOpen} onOpenChange={(e) => setIsInspectorOpen(e.open)} placement={{ base: "bottom", md: "center" }}>
-      <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-      <Dialog.Positioner zIndex={2200} px={4}>
-        <Dialog.Content
-          width={{ base: "100%", md: "520px" }}
-          bg="var(--c-white)"
-          borderRadius="24px"
-          boxShadow="xl"
-          p={6}
-        >
-          {isInspectorLoading ? (
-            <VStack gap={4} align="center" py={6}>
-              <Skeleton boxSize="100px" borderRadius="full" />
-              <Skeleton height="24px" width="150px" />
-              <Skeleton height="16px" width="100px" />
-            </VStack>
-          ) : inspectedUser ? (
-            <VStack gap={4} align="center" pt={4} pb={2}>
-              <Box
-                w="100px"
-                h="100px"
-                borderRadius="full"
-                overflow="hidden"
-                bg={inspectedUser.profile_pic_url ? "transparent" : inspectedUser.avatar_color || "var(--c-muted-brown)"}
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                mb={2}
-                boxShadow="md"
-              >
-                {inspectedUser.profile_pic_url ? (
-                  <Image
-                    src={inspectedUser.profile_pic_url}
-                    alt={`${inspectedUser.nickname || 'User'}'s profile picture`}
-                    w="100%"
-                    h="100%"
-                    objectFit="cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <Text fontSize="2xl" fontWeight="700" color="white">
-                    {getInitials(inspectedUser.nickname || inspectedUser.student_id)}
-                  </Text>
-                )}
-              </Box>
-              <VStack gap={1} align="center">
-                <Text fontSize="2xl" fontWeight="700" color="var(--c-chocolate)" fontFamily="heading">
-                  {inspectedUser.nickname ? inspectedUser.nickname.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '') : "Guest"}
-                </Text>
-                {inspectedUser.full_name && (
-                  <Text fontSize="md" color="fg.muted" fontWeight="500">
-                    {inspectedUser.full_name.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
-                  </Text>
-                )}
+      {/* Profile Inspector Dialog Layer */}
+      <Dialog.Root
+        open={isInspectorOpen}
+        onOpenChange={(e) => setIsInspectorOpen(e.open)}
+        placement={{ base: "bottom", md: "center" }}
+      >
+        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+        <Dialog.Positioner zIndex={2200} px={4}>
+          <Dialog.Content
+            width={{ base: "100%", md: "520px" }}
+            bg="var(--c-white)"
+            borderRadius="24px"
+            boxShadow="xl"
+            p={6}
+          >
+            {isInspectorLoading ? (
+              <VStack gap={4} align="center" py={6}>
+                <Skeleton boxSize="100px" borderRadius="full" />
+                <Skeleton height="24px" width="150px" />
+                <Skeleton height="16px" width="100px" />
               </VStack>
+            ) : inspectedUser ? (
+              <VStack gap={4} align="center" pt={4} pb={2}>
+                <Box
+                  w="100px"
+                  h="100px"
+                  borderRadius="full"
+                  overflow="hidden"
+                  bg={
+                    inspectedUser.profile_pic_url
+                      ? "transparent"
+                      : inspectedUser.avatar_color || "var(--c-muted-brown)"
+                  }
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  mb={2}
+                  boxShadow="md"
+                >
+                  {inspectedUser.profile_pic_url ? (
+                    <Image
+                      src={inspectedUser.profile_pic_url}
+                      alt={`${inspectedUser.nickname || "User"}'s profile picture`}
+                      w="100%"
+                      h="100%"
+                      objectFit="cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <Text fontSize="2xl" fontWeight="700" color="white">
+                      {getInitials(
+                        inspectedUser.nickname || inspectedUser.student_id,
+                      )}
+                    </Text>
+                  )}
+                </Box>
+                <VStack gap={1} align="center">
+                  <Text
+                    fontSize="2xl"
+                    fontWeight="700"
+                    color="var(--c-chocolate)"
+                    fontFamily="heading"
+                  >
+                    {inspectedUser.nickname
+                      ? inspectedUser.nickname.replace(
+                          /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                          "",
+                        )
+                      : "Guest"}
+                  </Text>
+                  {inspectedUser.full_name && (
+                    <Text fontSize="md" color="fg.muted" fontWeight="500">
+                      {inspectedUser.full_name.replace(
+                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                        "",
+                      )}
+                    </Text>
+                  )}
+                </VStack>
 
-              <Flex gap={2} mt={3} flexWrap="wrap" justify="center">
-                {inspectedUser.house_position && (
-                  <Badge colorPalette="orange" size="md" borderRadius="full" px={3}>
-                    {inspectedUser.house_position.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
-                  </Badge>
-                )}
-                {inspectedUser.faculty && (
-                  <Badge colorPalette="gray" size="md" borderRadius="full" px={3}>
-                    {inspectedUser.faculty.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')}
-                  </Badge>
-                )}
-              </Flex>
-            </VStack>
-          ) : (
-            <Text textAlign="center" py={4} color="fg.subtle">User not found</Text>
-          )}
+                <Flex gap={2} mt={3} flexWrap="wrap" justify="center">
+                  {inspectedUser.house_position && (
+                    <Badge
+                      colorPalette="orange"
+                      size="md"
+                      borderRadius="full"
+                      px={3}
+                    >
+                      {inspectedUser.house_position.replace(
+                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                        "",
+                      )}
+                    </Badge>
+                  )}
+                  {inspectedUser.faculty && (
+                    <Badge
+                      colorPalette="gray"
+                      size="md"
+                      borderRadius="full"
+                      px={3}
+                    >
+                      {inspectedUser.faculty.replace(
+                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                        "",
+                      )}
+                    </Badge>
+                  )}
+                </Flex>
+              </VStack>
+            ) : (
+              <Text textAlign="center" py={4} color="fg.subtle">
+                User not found
+              </Text>
+            )}
 
-          <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              bg="transparent"
-              borderRadius="full"
-              w={{ base: "40px", md: "32px" }}
-              h={{ base: "40px", md: "32px" }}
-              minW={{ base: "40px", md: "32px" }}
-              p={0}
-              cursor="pointer"
-            >
-              <Box className="material-symbols-outlined" fontSize="md">close</Box>
-            </Button>
-          </Dialog.CloseTrigger>
-        </Dialog.Content>
-      </Dialog.Positioner>
-    </Dialog.Root>
+            <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                bg="transparent"
+                borderRadius="full"
+                w={{ base: "40px", md: "32px" }}
+                h={{ base: "40px", md: "32px" }}
+                minW={{ base: "40px", md: "32px" }}
+                p={0}
+                cursor="pointer"
+              >
+                <Box className="material-symbols-outlined" fontSize="md">
+                  close
+                </Box>
+              </Button>
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Root>
 
       {/* Mobile Composer FAB & Bottom Sheet */}
       {(effectiveHypeActive || isMemoryAccessible) && (
@@ -1649,7 +1954,7 @@ export function BoardPage() {
                   }}
                   onClick={() => setIsMobileComposerOpen(false)}
                 />
-                
+
                 {/* Bottom Sheet Composer */}
                 <motion.div
                   initial={{ y: "100%" }}
@@ -1671,7 +1976,9 @@ export function BoardPage() {
                 >
                   <Flex justify="space-between" align="center" mb={4}>
                     <Heading size="md" fontFamily="heading" color="fg.default">
-                      {activeTab === "hype" ? "Share the hype" : "Pin something"}
+                      {activeTab === "hype"
+                        ? "Share the hype"
+                        : "Pin something"}
                     </Heading>
                     <Box
                       as="button"
@@ -1722,7 +2029,10 @@ export function BoardPage() {
                       </Box>
                     )}
                     <Box flex={1}>
-                      <label htmlFor="mobile-board-composer" className="sr-only">
+                      <label
+                        htmlFor="mobile-board-composer"
+                        className="sr-only"
+                      >
                         {activeTab === "hype"
                           ? "Share the hype"
                           : "Pin something memorable"}
@@ -1755,11 +2065,34 @@ export function BoardPage() {
                       {activeTab === "memory" && (
                         <Box mt={3}>
                           {memoryImage ? (
-                            <Flex align="center" gap={3} bg="bg.muted" p={2} borderRadius="md" position="relative">
-                              <Box w="40px" h="40px" borderRadius="sm" overflow="hidden">
-                                <Image src={URL.createObjectURL(memoryImage)} alt={`Selected image preview: ${memoryImage.name}`} w="100%" h="100%" objectFit="cover" />
+                            <Flex
+                              align="center"
+                              gap={3}
+                              bg="bg.muted"
+                              p={2}
+                              borderRadius="md"
+                              position="relative"
+                            >
+                              <Box
+                                w="40px"
+                                h="40px"
+                                borderRadius="sm"
+                                overflow="hidden"
+                              >
+                                <Image
+                                  src={URL.createObjectURL(memoryImage)}
+                                  alt={`Selected image preview: ${memoryImage.name}`}
+                                  w="100%"
+                                  h="100%"
+                                  objectFit="cover"
+                                />
                               </Box>
-                              <Text fontSize="xs" color="fg.subtle" lineClamp={1} flex={1}>
+                              <Text
+                                fontSize="xs"
+                                color="fg.subtle"
+                                lineClamp={1}
+                                flex={1}
+                              >
                                 {memoryImage.name}
                               </Text>
                               <Button
@@ -1773,11 +2106,19 @@ export function BoardPage() {
                                 p={0}
                                 cursor="pointer"
                               >
-                                <Box className="material-symbols-outlined" fontSize="sm">close</Box>
+                                <Box
+                                  className="material-symbols-outlined"
+                                  fontSize="sm"
+                                >
+                                  close
+                                </Box>
                               </Button>
                             </Flex>
                           ) : (
-                            <label htmlFor="mobile-image-upload" style={{ cursor: "pointer" }}>
+                            <label
+                              htmlFor="mobile-image-upload"
+                              style={{ cursor: "pointer" }}
+                            >
                               <Button
                                 as="span"
                                 variant="outline"
@@ -1787,19 +2128,24 @@ export function BoardPage() {
                                 borderColor="border.subtle"
                                 _hover={{ bg: "bg.muted" }}
                               >
-                              <Box className="material-symbols-outlined" fontSize="sm">image</Box>
-                              Attach Image
-                              <input
-                                id="mobile-image-upload"
-                                type="file"
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    setMemoryImage(e.target.files[0]);
-                                  }
-                                }}
-                              />
+                                <Box
+                                  className="material-symbols-outlined"
+                                  fontSize="sm"
+                                >
+                                  image
+                                </Box>
+                                Attach Image
+                                <input
+                                  id="mobile-image-upload"
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: "none" }}
+                                  onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                      setMemoryImage(e.target.files[0]);
+                                    }
+                                  }}
+                                />
                               </Button>
                             </label>
                           )}
@@ -1810,41 +2156,55 @@ export function BoardPage() {
                         <Button
                           type="button"
                           onClick={async (e) => {
-                            const textarea = e.currentTarget.parentElement?.parentElement?.querySelector('textarea');
+                            const textarea =
+                              e.currentTarget.parentElement?.parentElement?.querySelector(
+                                "textarea",
+                              );
                             if (textarea && textarea.value.trim()) {
                               let imageUrl = null;
-                              if (memoryImage && activeTab === 'memory') {
+                              if (memoryImage && activeTab === "memory") {
                                 setIsUploadingImage(true);
                                 try {
-                                  const compressedBlob = await compressImage(memoryImage);
+                                  const compressedBlob =
+                                    await compressImage(memoryImage);
                                   const fileName = `${user?.student_id}-${Math.random()}-${Date.now()}.jpg`;
                                   const filePath = `${fileName}`;
 
-                                  const { error: uploadError } = await supabase.storage
-                                    .from('board_media')
-                                    .upload(filePath, compressedBlob, {
-                                      contentType: 'image/jpeg',
-                                      cacheControl: '3600',
-                                      upsert: true
-                                    });
+                                  const { error: uploadError } =
+                                    await supabase.storage
+                                      .from("board_media")
+                                      .upload(filePath, compressedBlob, {
+                                        contentType: "image/jpeg",
+                                        cacheControl: "3600",
+                                        upsert: true,
+                                      });
 
                                   if (!uploadError) {
-                                    const { data: publicUrlData } = supabase.storage
-                                      .from('board_media')
-                                      .getPublicUrl(filePath);
+                                    const { data: publicUrlData } =
+                                      supabase.storage
+                                        .from("board_media")
+                                        .getPublicUrl(filePath);
                                     imageUrl = publicUrlData.publicUrl;
                                   } else {
-                                    console.error('Upload Error', uploadError);
+                                    console.error("Upload Error", uploadError);
                                   }
                                 } catch (err) {
-                                  console.error('Compression/Upload Error', err);
+                                  console.error(
+                                    "Compression/Upload Error",
+                                    err,
+                                  );
                                 } finally {
                                   setIsUploadingImage(false);
                                 }
                               }
 
-                              await handleCreatePost(textarea.value.trim(), [], false, imageUrl);
-                              textarea.value = '';
+                              await handleCreatePost(
+                                textarea.value.trim(),
+                                [],
+                                false,
+                                imageUrl,
+                              );
+                              textarea.value = "";
                               setMemoryImage(null);
                               setIsMobileComposerOpen(false);
                             }
@@ -1854,8 +2214,14 @@ export function BoardPage() {
                           color="white"
                           borderRadius="full"
                           px={6}
-                          _hover={{ bg: "var(--c-chocolate-dark)", transform: "translateY(-1px)" }}
-                          _active={{ bg: "var(--c-chocolate-dark)", transform: "scale(0.98)" }}
+                          _hover={{
+                            bg: "var(--c-chocolate-dark)",
+                            transform: "translateY(-1px)",
+                          }}
+                          _active={{
+                            bg: "var(--c-chocolate-dark)",
+                            transform: "scale(0.98)",
+                          }}
                           _disabled={{ opacity: 0.6, cursor: "not-allowed" }}
                         >
                           {submitting || isUploadingImage ? (
@@ -1875,7 +2241,6 @@ export function BoardPage() {
           </AnimatePresence>
         </>
       )}
-
     </Box>
   );
 }
@@ -2211,7 +2576,11 @@ function CommentSection({
                   {comment.author?.profile_pic_url ? (
                     <Image
                       src={comment.author.profile_pic_url}
-                      alt={comment.author.nickname ? `${comment.author.nickname}'s profile picture` : "User's profile picture"}
+                      alt={
+                        comment.author.nickname
+                          ? `${comment.author.nickname}'s profile picture`
+                          : "User's profile picture"
+                      }
                       w="100%"
                       h="100%"
                       objectFit="cover"
@@ -2348,7 +2717,9 @@ export const HypeCard = memo(function HypeCard({
   const handleLike = () => {
     if (!user) return;
     setLocalLiked(!localLiked);
-    setLocalLikesCount(prev => localLiked ? Math.max(0, prev - 1) : prev + 1);
+    setLocalLikesCount((prev) =>
+      localLiked ? Math.max(0, prev - 1) : prev + 1,
+    );
     onLike(post.id);
   };
 
@@ -2361,9 +2732,20 @@ export const HypeCard = memo(function HypeCard({
       ? "Anonymous"
       : `${prefix}${post.author.nickname || "Guest Whitelist"}`;
   const displayAuthorInitials =
-    isAnon && currentUserRole !== "moderator"
-      ? <Box as="span" className="material-symbols-outlined" fontSize="inherit" display="flex" alignItems="center" justifyContent="center">person</Box>
-      : getInitials(displayAuthorName);
+    isAnon && currentUserRole !== "moderator" ? (
+      <Box
+        as="span"
+        className="material-symbols-outlined"
+        fontSize="inherit"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        person
+      </Box>
+    ) : (
+      getInitials(displayAuthorName)
+    );
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
       ? "var(--c-muted-brown)"
@@ -2384,26 +2766,35 @@ export const HypeCard = memo(function HypeCard({
         boxShadow: "var(--shadow-card-hover)",
       }}
     >
-      <Flex 
-        align="center" 
-        gap={3} 
+      <Flex
+        align="center"
+        gap={3}
         mb={3}
-        as={(!isAnon && onInspectUser) ? "button" : "div"}
-        role={(!isAnon && onInspectUser) ? "button" : undefined}
-        tabIndex={(!isAnon && onInspectUser) ? 0 : undefined}
+        as={!isAnon && onInspectUser ? "button" : "div"}
+        role={!isAnon && onInspectUser ? "button" : undefined}
+        tabIndex={!isAnon && onInspectUser ? 0 : undefined}
         onClick={() => {
           if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
         }}
-        cursor={(!isAnon && onInspectUser) ? "pointer" : "default"}
+        cursor={!isAnon && onInspectUser ? "pointer" : "default"}
         textAlign="left"
-        _focusVisible={(!isAnon && onInspectUser) ? { outline: "2px solid var(--c-orange)", outlineOffset: "2px", borderRadius: "md" } : undefined}
+        _focusVisible={
+          !isAnon && onInspectUser
+            ? {
+                outline: "2px solid var(--c-orange)",
+                outlineOffset: "2px",
+                borderRadius: "md",
+              }
+            : undefined
+        }
       >
         <Box
           w={{ base: 8, md: 10 }}
           h={{ base: 8, md: 10 }}
           borderRadius="full"
           bg={
-            (!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url
+            (!isAnon || currentUserRole === "moderator") &&
+            post.author.profile_pic_url
               ? "transparent"
               : displayAvatarColor
           }
@@ -2415,10 +2806,15 @@ export const HypeCard = memo(function HypeCard({
           color="white"
           overflow="hidden"
         >
-          {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
+          {(!isAnon || currentUserRole === "moderator") &&
+          post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
-              alt={isAnon ? "Anonymous user's profile picture" : `${post.author.nickname || 'User'}'s profile picture`}
+              alt={
+                isAnon
+                  ? "Anonymous user's profile picture"
+                  : `${post.author.nickname || "User"}'s profile picture`
+              }
               w="100%"
               h="100%"
               objectFit="cover"
@@ -2485,7 +2881,10 @@ export const HypeCard = memo(function HypeCard({
           type="button"
           role="group"
           color={localLiked ? "accent.solid" : "fg.subtle"}
-          bg={{ base: "transparent", md: localLiked ? "bg.hero" : "transparent" }}
+          bg={{
+            base: "transparent",
+            md: localLiked ? "bg.hero" : "transparent",
+          }}
           border="1px solid"
           borderColor={localLiked ? "accent.solid" : "border.subtle"}
           h={{ base: "40px", md: "32px" }}
@@ -2498,7 +2897,11 @@ export const HypeCard = memo(function HypeCard({
             handleLike();
           }}
           disabled={!user}
-          _hover={{ bg: "bg.hero", color: "accent.solid", borderColor: "accent.solid" }}
+          _hover={{
+            bg: "bg.hero",
+            color: "accent.solid",
+            borderColor: "accent.solid",
+          }}
         >
           <Box
             className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
@@ -2508,7 +2911,12 @@ export const HypeCard = memo(function HypeCard({
           >
             favorite
           </Box>
-          <Text fontSize="xs" fontWeight="600" ml={1} display={{ base: "none", md: "block" }}>
+          <Text
+            fontSize="xs"
+            fontWeight="600"
+            ml={1}
+            display={{ base: "none", md: "block" }}
+          >
             {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>
@@ -2635,7 +3043,9 @@ const MemoryCard = memo(function MemoryCard({
   const handleLike = () => {
     if (!user) return;
     setLocalLiked(!localLiked);
-    setLocalLikesCount(prev => localLiked ? Math.max(0, prev - 1) : prev + 1);
+    setLocalLikesCount((prev) =>
+      localLiked ? Math.max(0, prev - 1) : prev + 1,
+    );
     onLike(post.id);
   };
 
@@ -2651,9 +3061,20 @@ const MemoryCard = memo(function MemoryCard({
       ? "Anonymous"
       : `${prefix}${post.author.nickname || "Guest Whitelist"}`;
   const displayAuthorInitials =
-    isAnon && currentUserRole !== "moderator"
-      ? <Box as="span" className="material-symbols-outlined" fontSize="inherit" display="flex" alignItems="center" justifyContent="center">person</Box>
-      : getInitials(displayAuthorName);
+    isAnon && currentUserRole !== "moderator" ? (
+      <Box
+        as="span"
+        className="material-symbols-outlined"
+        fontSize="inherit"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      >
+        person
+      </Box>
+    ) : (
+      getInitials(displayAuthorName)
+    );
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
       ? "var(--c-muted-brown)"
@@ -2661,8 +3082,16 @@ const MemoryCard = memo(function MemoryCard({
 
   return (
     <Box
-      bg={isStaff ? "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-white))" : "bg.surface"}
-      border={isStaff ? "1px solid color-mix(in srgb, var(--c-chocolate) 20%, transparent)" : "1px dashed"}
+      bg={
+        isStaff
+          ? "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-white))"
+          : "bg.surface"
+      }
+      border={
+        isStaff
+          ? "1px solid color-mix(in srgb, var(--c-chocolate) 20%, transparent)"
+          : "1px dashed"
+      }
       borderColor={isStaff ? undefined : "border.default"}
       borderRadius="xl"
       p={{ base: 4, md: 5 }}
@@ -2689,26 +3118,35 @@ const MemoryCard = memo(function MemoryCard({
         boxShadow="0 2px 4px color-mix(in srgb, var(--c-ink) 20%, transparent)"
         zIndex={2}
       />
-      <Flex 
-        align="center" 
-        gap={2} 
+      <Flex
+        align="center"
+        gap={2}
         mb={3}
-        as={(!isAnon && onInspectUser) ? "button" : "div"}
-        role={(!isAnon && onInspectUser) ? "button" : undefined}
-        tabIndex={(!isAnon && onInspectUser) ? 0 : undefined}
+        as={!isAnon && onInspectUser ? "button" : "div"}
+        role={!isAnon && onInspectUser ? "button" : undefined}
+        tabIndex={!isAnon && onInspectUser ? 0 : undefined}
         onClick={() => {
           if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
         }}
-        cursor={(!isAnon && onInspectUser) ? "pointer" : "default"}
+        cursor={!isAnon && onInspectUser ? "pointer" : "default"}
         textAlign="left"
-        _focusVisible={(!isAnon && onInspectUser) ? { outline: "2px solid var(--c-orange)", outlineOffset: "2px", borderRadius: "md" } : undefined}
+        _focusVisible={
+          !isAnon && onInspectUser
+            ? {
+                outline: "2px solid var(--c-orange)",
+                outlineOffset: "2px",
+                borderRadius: "md",
+              }
+            : undefined
+        }
       >
         <Box
           w={8}
           h={8}
           borderRadius="full"
           bg={
-            (!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url
+            (!isAnon || currentUserRole === "moderator") &&
+            post.author.profile_pic_url
               ? "transparent"
               : displayAvatarColor
           }
@@ -2720,10 +3158,15 @@ const MemoryCard = memo(function MemoryCard({
           color="white"
           overflow="hidden"
         >
-          {(!isAnon || currentUserRole === "moderator") && post.author.profile_pic_url ? (
+          {(!isAnon || currentUserRole === "moderator") &&
+          post.author.profile_pic_url ? (
             <Image
               src={post.author.profile_pic_url}
-              alt={isAnon ? "Anonymous user's profile picture" : `${post.author.nickname || 'User'}'s profile picture`}
+              alt={
+                isAnon
+                  ? "Anonymous user's profile picture"
+                  : `${post.author.nickname || "User"}'s profile picture`
+              }
               w="100%"
               h="100%"
               objectFit="cover"
@@ -2770,8 +3213,21 @@ const MemoryCard = memo(function MemoryCard({
         {post.content}
       </Text>
       {post.image_url && (
-        <Box mb={3} borderRadius="lg" overflow="hidden" boxShadow="sm" maxH="240px">
-          <Image src={post.image_url} alt={`Memory board photo shared by ${isAnon ? 'Anonymous' : (post.author.nickname || 'User')}`} w="100%" h="100%" objectFit="cover" loading="lazy" />
+        <Box
+          mb={3}
+          borderRadius="lg"
+          overflow="hidden"
+          boxShadow="sm"
+          maxH="240px"
+        >
+          <Image
+            src={post.image_url}
+            alt={`Memory board photo shared by ${isAnon ? "Anonymous" : post.author.nickname || "User"}`}
+            w="100%"
+            h="100%"
+            objectFit="cover"
+            loading="lazy"
+          />
         </Box>
       )}
       <Flex gap={3} align="center">
@@ -2779,7 +3235,10 @@ const MemoryCard = memo(function MemoryCard({
           type="button"
           role="group"
           color={localLiked ? "accent.solid" : "fg.subtle"}
-          bg={{ base: "transparent", md: localLiked ? "bg.hero" : "transparent" }}
+          bg={{
+            base: "transparent",
+            md: localLiked ? "bg.hero" : "transparent",
+          }}
           border="1px solid"
           borderColor={localLiked ? "accent.solid" : "border.subtle"}
           h={{ base: "40px", md: "32px" }}
@@ -2792,7 +3251,11 @@ const MemoryCard = memo(function MemoryCard({
             handleLike();
           }}
           disabled={!user}
-          _hover={{ bg: "bg.hero", color: "accent.solid", borderColor: "accent.solid" }}
+          _hover={{
+            bg: "bg.hero",
+            color: "accent.solid",
+            borderColor: "accent.solid",
+          }}
         >
           <Box
             className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
@@ -2802,7 +3265,12 @@ const MemoryCard = memo(function MemoryCard({
           >
             favorite
           </Box>
-          <Text fontSize="xs" fontWeight="600" ml={1} display={{ base: "none", md: "block" }}>
+          <Text
+            fontSize="xs"
+            fontWeight="600"
+            ml={1}
+            display={{ base: "none", md: "block" }}
+          >
             {localLikesCount > 0 ? localLikesCount : "Like"}
           </Text>
         </Button>

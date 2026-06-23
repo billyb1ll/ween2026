@@ -10,51 +10,21 @@ import type { Variants } from "framer-motion";
 const ThreeBlob = lazy(() =>
   import("../components/ThreeBlob").then((module) => ({
     default: module.ThreeBlob,
-  })),
+  }))
 );
 
-const features = [
-  {
-    title: "Vibe Check",
-    description:
-      "Swipe to match with your Baan 7 friends and staff. Break the ice and build connections instantly.",
-    icon: "waving_hand",
-    color: "var(--c-lagoon-light)",
-    textColor: "var(--c-lagoon)",
-    link: "/vibe-check",
-    size: "large" as const,
-    avatars: ["B7", "Fr", "+12"],
-  },
-  {
-    title: "Hype Board",
-    description:
-      "Drop a message, share the hype, and see what everyone is talking about in real-time.",
-    icon: "campaign",
-    color: "var(--c-chocolate)",
-    textColor: "white",
-    link: "/board",
-    size: "wide" as const,
-  },
-  {
-    title: "Gallery",
-    description: "Real-time event photo streaming and AI-powered face claiming system.",
-    icon: "photo_library",
-    color: "var(--c-white)",
-    textColor: "var(--c-ink)",
-    link: "/gallery",
-    size: "small" as const,
-  },
-  {
-    title: "Next Event",
-    subtitle: "First Meet",
-    time: "Today, 18:00",
-    icon: "event",
-    color: "var(--c-ivory)",
-    textColor: "var(--c-ink)",
-    link: "/board",
-    size: "small" as const,
-  },
-];
+interface FeatureItem {
+  title: string;
+  description?: string;
+  icon: string;
+  color: string;
+  textColor: string;
+  link: string;
+  size: "large" | "wide" | "small";
+  avatars?: string[];
+  subtitle?: string;
+  time?: string;
+}
 
 const containerVariants = {
   hidden: {},
@@ -86,6 +56,85 @@ export function HomePage() {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const pathLength = shouldReduceMotion ? 1 : scrollYProgress;
   const variants = cardVariants(shouldReduceMotion);
+
+  const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
+
+  // Sync Vibe Check status from system config
+  useEffect(() => {
+    let active = true;
+    const fetchVibecheckConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("system_config")
+          .select("value")
+          .eq("key", "vibecheck_enabled")
+          .maybeSingle();
+        if (!error && data && active) {
+          setVibecheckEnabled(Boolean(data.value));
+        }
+      } catch (err) {
+        console.error("Error fetching vibecheck config:", err);
+      }
+    };
+    fetchVibecheckConfig();
+
+    const syncChannel = supabase.channel("live_chat:system_config_sync");
+    syncChannel
+      .on("broadcast", { event: "config_change" }, (payload) => {
+        if (active && payload.payload && payload.payload.key === "vibecheck_enabled") {
+          setVibecheckEnabled(Boolean(payload.payload.value));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(syncChannel);
+    };
+  }, []);
+
+  const features = [
+    {
+      title: vibecheckEnabled ? "Interactive Vibe Check" : "Stay Tuned! (Vibe Check)",
+      description: vibecheckEnabled
+        ? "Find hidden peers and staff members around the campus! Swipe to collect cards and make new friends."
+        : "Interactive Vibe Check is temporarily disabled by administrators (profile setup is suspended).",
+      icon: vibecheckEnabled ? "mood" : "lock_clock",
+      color: vibecheckEnabled ? "var(--c-lagoon-light)" : "var(--c-ivory)",
+      textColor: vibecheckEnabled ? "var(--c-lagoon)" : "var(--c-outline)",
+      link: vibecheckEnabled ? "/vibe-check" : "#",
+      size: "large" as const,
+      avatars: vibecheckEnabled ? ["B7", "Fr", "+12"] : undefined,
+    },
+    {
+      title: "Real-time Message Board",
+      description: "Share thoughts, send love, upload media, and hype up your fellow Baan 7 peers in real-time.",
+      icon: "campaign",
+      color: "var(--c-chocolate)",
+      textColor: "white",
+      link: "/board",
+      size: "wide" as const,
+    },
+    {
+      title: "Exclusive Gallery",
+      description: "Browse orientation activity highlights with our face-matching search engine.",
+      icon: "photo_library",
+      color: "var(--c-white)",
+      textColor: "var(--c-ink)",
+      link: "/gallery",
+      size: "small" as const,
+    },
+    {
+      title: "Next Event",
+      subtitle: "First Meet",
+      time: "Today, 18:00",
+      icon: "event",
+      color: "var(--c-ivory)",
+      textColor: "var(--c-ink)",
+      link: "/board",
+      size: "small" as const,
+    },
+  ];
 
   const [nextEvent, setNextEvent] = useState({
     title: "First Meet",
@@ -215,7 +264,7 @@ export function HomePage() {
         >
           <Heading
             as="h1"
-            fontFamily="heading"
+            fontFamily="'Playfair Display', serif"
             fontSize={{
               base: "clamp(2rem, 8vw, 2.8rem)",
               md: "clamp(3rem, 5vw, 4.5rem)",
@@ -231,7 +280,7 @@ export function HomePage() {
               as="span"
               color="accent.solid"
               fontStyle="italic"
-              fontFamily="heading"
+              fontFamily="'Playfair Display', serif"
             >
               Baan 7
             </Text>
@@ -244,11 +293,11 @@ export function HomePage() {
             lineHeight={1.6}
             mb={{ base: 8, md: 12 }}
           >
-            Welcome to Baan 7—the ultimate hub for orientation activities, real-time photo drops, and connecting with the ICT staff community.
+            Welcome to Baan 7—your official orientation portal. Connect with peers, engage with live activities, and access exclusive event content seamlessly.
           </Text>
 
           <Flex flexWrap="wrap" gap={3} align="center">
-            <Link to="/vibe-check">
+            <Link to={vibecheckEnabled ? "/vibe-check" : "/board"}>
               <HStack
                 as="span"
                 display="inline-flex"
@@ -339,7 +388,7 @@ export function HomePage() {
         <Box as="section" py={{ base: 8, md: 20 }} id="features">
           <Heading
             as="h2"
-            fontFamily="heading"
+            fontFamily="'Playfair Display', serif"
             fontSize={{ base: "1.5rem", md: "2rem" }}
             fontWeight={600}
             lineHeight={1.3}
@@ -410,63 +459,67 @@ function FeatureCardLarge({
   feature,
   variants,
 }: {
-  feature: (typeof features)[0];
+  feature: FeatureItem;
   variants: Variants;
 }) {
   const [tilt, setTilt] = useState(0);
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const isLocked = feature.link === "#";
 
   const handleTapStart = () => {
-    if (!shouldReduceMotion) {
+    if (!shouldReduceMotion && !isLocked) {
       setTilt((Math.random() - 0.5) * 1.0);
     }
   };
 
-  return (
-    <Link
-      to={feature.link}
-      className="feature-card-large"
-      style={{ display: "block", height: "100%" }}
+  const cardContent = (
+    <motion.div
+      variants={variants}
+      whileTap={
+        shouldReduceMotion || isLocked
+          ? { opacity: isLocked ? 1 : 0.8 }
+          : {
+              scale: 0.96,
+              rotate: tilt,
+              transition: { type: "spring", stiffness: 400, damping: 15 },
+            }
+      }
+      onTapStart={handleTapStart}
+      style={{ height: "100%" }}
     >
-      <motion.div
-        variants={variants}
-        whileTap={
-          shouldReduceMotion
-            ? { opacity: 0.8 }
+      <Box
+        bg={feature.color}
+        p={{ base: 6, md: 12 }}
+        borderRadius="2xl"
+        position="relative"
+        overflow="visible"
+        h={{ base: "auto", md: "100%" }}
+        minH={{ base: "200px", md: "auto" }}
+        display="flex"
+        flexDirection="column"
+        justifyContent="space-between"
+        transition="all 0.4s var(--ease-out-quart)"
+        cursor={isLocked ? "default" : "pointer"}
+        role={isLocked ? "presentation" : "group"}
+        opacity={isLocked ? 0.85 : 1}
+        border={isLocked ? "2px dashed" : "1px solid"}
+        borderColor={isLocked ? "border.subtle" : "transparent"}
+        _hover={
+          isLocked
+            ? undefined
             : {
-                scale: 0.96,
-                rotate: tilt,
-                transition: { type: "spring", stiffness: 400, damping: 15 },
+                transform: "translateY(-4px)",
+                boxShadow:
+                  "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
               }
         }
-        onTapStart={handleTapStart}
-        style={{ height: "100%" }}
       >
-        <Box
-          bg={feature.color}
-          p={{ base: 6, md: 12 }}
-          borderRadius="2xl"
-          position="relative"
-          overflow="hidden"
-          h={{ base: "auto", md: "100%" }}
-          minH={{ base: "200px", md: "auto" }}
-          display="flex"
-          flexDirection="column"
-          justifyContent="space-between"
-          transition="all 0.4s var(--ease-out-quart)"
-          cursor="pointer"
-          role="group"
-          _hover={{
-            transform: "translateY(-4px)",
-            boxShadow:
-              "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
-          }}
-        >
-          {/* Ambient glow */}
+        {/* Ambient glow */}
+        {!isLocked && (
           <Box
             position="absolute"
-            top={-10}
-            right={-10}
+            top={-2}
+            right={-2}
             w={{ base: "160px", md: "256px" }}
             h={{ base: "160px", md: "256px" }}
             bg="color-mix(in srgb, white 30%, transparent)"
@@ -475,90 +528,106 @@ function FeatureCardLarge({
             transition="background 0.4s"
             _groupHover={{ bg: "rgba(255,255,255,0.4)" }}
           />
+        )}
 
-          <VStack
-            align="start"
-            gap={{ base: 2, md: 4 }}
-            position="relative"
-            zIndex={1}
-            flex={1}
+        <VStack
+          align="start"
+          gap={{ base: 2, md: 4 }}
+          position="relative"
+          zIndex={1}
+          flex={1}
+        >
+          <Box
+            w={{ base: 12, md: 16 }}
+            h={{ base: 12, md: 16 }}
+            bg="color-mix(in srgb, white 80%, transparent)"
+            borderRadius="xl"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            boxShadow="var(--shadow-ambient)"
+            mb={{ base: 2, md: 4 }}
           >
             <Box
-              w={{ base: 12, md: 16 }}
-              h={{ base: 12, md: 16 }}
-              bg="color-mix(in srgb, white 80%, transparent)"
-              borderRadius="xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              boxShadow="var(--shadow-ambient)"
-              mb={{ base: 2, md: 4 }}
+              className="material-symbols-outlined" aria-hidden="true"
+              fontSize={{ base: "2xl", md: "3xl" }}
+              color={feature.textColor}
             >
-              <Box
-                className="material-symbols-outlined" aria-hidden="true"
-                fontSize={{ base: "2xl", md: "3xl" }}
-                color={feature.textColor}
-              >
-                {feature.icon}
-              </Box>
+              {feature.icon}
             </Box>
-            <Heading
-              as="h3"
-              fontFamily="heading"
-              fontSize={{ base: "1.5rem", md: "2.5rem" }}
-              fontWeight={700}
-              lineHeight={1.1}
-              color={feature.textColor}
-            >
-              {feature.title}
-            </Heading>
-            <Text
-              fontSize={{ base: "sm", md: "lg" }}
-              color={feature.textColor}
-              opacity={0.8}
-              maxW="md"
-            >
-              {feature.description}
-            </Text>
-          </VStack>
-
-          <Flex
-            position="relative"
-            zIndex={1}
-            mt={{ base: 4, md: 12 }}
-            align="flex-end"
-            justify="space-between"
+          </Box>
+          <Heading
+            as="h3"
+            fontFamily="'Playfair Display', serif"
+            fontSize={{ base: "1.5rem", md: "2.5rem" }}
+            fontWeight={700}
+            lineHeight={1.1}
+            color={feature.textColor}
           >
-            {feature.avatars && (
-              <HStack gap={0}>
-                {feature.avatars.map((label, i) => (
-                  <Box
-                    key={label}
-                    w={{ base: 10, md: 12 }}
-                    h={{ base: 10, md: 12 }}
-                    borderRadius="full"
-                    bg={
-                      i === 0
-                        ? "white"
-                        : i === 1
-                          ? "var(--c-chocolate-light)"
-                          : "var(--c-ivory)"
-                    }
-                    border="2px solid"
-                    borderColor={feature.color}
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="xs"
-                    fontWeight="700"
-                    color={i === 1 ? "var(--c-chocolate)" : feature.textColor}
-                    ml={i > 0 ? -4 : 0}
-                  >
-                    {label}
-                  </Box>
-                ))}
-              </HStack>
-            )}
+            {feature.title}
+          </Heading>
+          <Text
+            fontSize={{ base: "sm", md: "lg" }}
+            color={feature.textColor}
+            opacity={0.8}
+            maxW="md"
+          >
+            {feature.description}
+          </Text>
+        </VStack>
+
+        <Flex
+          position="relative"
+          zIndex={1}
+          mt={{ base: 4, md: 12 }}
+          align="flex-end"
+          justify="space-between"
+        >
+          {feature.avatars && (
+            <HStack gap={0}>
+              {feature.avatars.map((label, i) => (
+                <Box
+                  key={label}
+                  w={{ base: 10, md: 12 }}
+                  h={{ base: 10, md: 12 }}
+                  borderRadius="full"
+                  bg={
+                    i === 0
+                      ? "white"
+                      : i === 1
+                        ? "var(--c-chocolate-light)"
+                        : "var(--c-ivory)"
+                  }
+                  border="2px solid"
+                  borderColor={feature.color}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  fontSize="xs"
+                  fontWeight="700"
+                  color={i === 1 ? "var(--c-chocolate)" : feature.textColor}
+                  ml={i > 0 ? -4 : 0}
+                >
+                  {label}
+                </Box>
+              ))}
+            </HStack>
+          )}
+          {isLocked ? (
+            <Box
+              bg="rgba(124, 86, 63, 0.1)"
+              color="var(--c-chocolate)"
+              px={3}
+              py={1}
+              borderRadius="full"
+              fontSize="2xs"
+              fontWeight="800"
+              letterSpacing="0.05em"
+              textTransform="uppercase"
+            >
+              Coming Soon
+            </Box>
+          ) : (
             <Box
               className="material-symbols-outlined" aria-hidden="true"
               fontSize={{ base: "3xl", md: "5xl" }}
@@ -569,9 +638,62 @@ function FeatureCardLarge({
             >
               favorite
             </Box>
-          </Flex>
-        </Box>
-      </motion.div>
+          )}
+        </Flex>
+      </Box>
+    </motion.div>
+  );
+
+  if (isLocked) {
+    return (
+      <Box
+        bg="var(--c-ivory)"
+        p={{ base: 6, md: 12 }}
+        borderRadius="2xl"
+        border="2px dashed"
+        borderColor="var(--c-outline)"
+        h="100%"
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        textAlign="center"
+        minH={{ base: "200px", md: "auto" }}
+      >
+        <VStack gap={4} maxW="sm">
+          <Box
+            className="material-symbols-outlined"
+            aria-hidden="true"
+            fontSize={{ base: "3xl", md: "5xl" }}
+            color="var(--c-muted)"
+          >
+            lock_clock
+          </Box>
+          <Heading
+            as="h3"
+            fontFamily="'Playfair Display', serif"
+            fontSize={{ base: "xl", md: "2xl" }}
+            fontWeight={700}
+            color="var(--c-muted)"
+          >
+            Coming Soon
+          </Heading>
+          <Text
+            fontSize={{ base: "sm", md: "md" }}
+            color="var(--c-muted)"
+            opacity={0.8}
+            lineHeight={1.5}
+          >
+            {feature.description}
+          </Text>
+        </VStack>
+      </Box>
+    );
+  }
+
+  return (
+    <Link to={feature.link} className="feature-card-large">
+      {cardContent}
     </Link>
   );
 }
@@ -580,7 +702,7 @@ function FeatureCardWide({
   feature,
   variants,
 }: {
-  feature: (typeof features)[1];
+  feature: FeatureItem;
   variants: Variants;
 }) {
   const [tilt, setTilt] = useState(0);
@@ -596,7 +718,6 @@ function FeatureCardWide({
     <Link
       to={feature.link}
       className="feature-card-wide"
-      style={{ display: "block", height: "100%" }}
     >
       <motion.div
         variants={variants}
@@ -666,7 +787,7 @@ function FeatureCardWide({
             <VStack align="start" gap={2}>
               <Heading
                 as="h3"
-                fontFamily="heading"
+                fontFamily="'Playfair Display', serif"
                 fontSize={{ base: "1.25rem", md: "1.5rem" }}
                 fontWeight={600}
                 lineHeight={1.3}
@@ -693,7 +814,7 @@ function FeatureCardSmall({
   feature,
   variants,
 }: {
-  feature: (typeof features)[2];
+  feature: FeatureItem;
   variants: Variants;
 }) {
   const isGallery = feature.title === "Gallery";
@@ -707,7 +828,7 @@ function FeatureCardSmall({
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isGallery) {
       if (!immich.isConfigured || !immich.url) {
         e.preventDefault();
@@ -780,7 +901,7 @@ function FeatureCardSmall({
         </Box>
         <Heading
           as="h3"
-          fontFamily="heading"
+          fontFamily="'Playfair Display', serif"
           fontSize={{ base: "1.15rem", md: "1.5rem" }}
           fontWeight={600}
           lineHeight={1.3}
@@ -802,8 +923,7 @@ function FeatureCardSmall({
         href={immich.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="feature-card-small-link"
-        style={{ display: "block", height: "100%" }}
+        className="feature-card-small"
       >
         {cardContent}
       </a>
@@ -813,8 +933,8 @@ function FeatureCardSmall({
   return (
     <Link
       to={feature.link}
+      className="feature-card-small"
       onClick={handleClick}
-      style={{ display: "block", height: "100%" }}
     >
       {cardContent}
     </Link>
@@ -827,7 +947,7 @@ function FeatureCardEvent({
   countdownText,
   variants,
 }: {
-  feature: (typeof features)[3];
+  feature: FeatureItem;
   eventTitle: string;
   countdownText: string;
   variants: Variants;
@@ -870,7 +990,7 @@ function FeatureCardEvent({
           <VStack align="start" gap={1.5} mt={4}>
             <Heading
               as="h3"
-              fontFamily="heading"
+              fontFamily="'Playfair Display', serif"
               fontSize={{ base: "1.15rem", md: "1.5rem" }}
               fontWeight={600}
               lineHeight={1.3}

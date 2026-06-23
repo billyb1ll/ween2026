@@ -13,7 +13,7 @@ import {
   Dialog,
 } from "@chakra-ui/react";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const getInitials = (name: string) => {
   return name.trim().slice(0, 2).toUpperCase();
@@ -66,6 +66,7 @@ interface VibeMission {
 export function VibeCheckPage() {
   const { user, loading: authLoading } = useUser();
   const shouldReduceMotion = useReducedMotion() ?? false;
+  const navigate = useNavigate();
 
   // Deck States
   const [deck, setDeck] = useState<StaffProfile[]>([]);
@@ -74,6 +75,7 @@ export function VibeCheckPage() {
   const [animatingDir, setAnimatingDir] = useState<"left" | "right" | null>(
     null,
   );
+  const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
 
   // Game/Mission States
   const [currentMission, setCurrentMission] = useState<VibeMission | null>(
@@ -102,6 +104,21 @@ export function VibeCheckPage() {
   const collectOpacity = useTransform(x, [0, 80], [0, 1]);
   const skipOpacity = useTransform(x, [-80, 0], [1, 0]);
 
+  // Redirect logic when VibeCheck is disabled
+  useEffect(() => {
+    if (!loading && !vibecheckEnabled) {
+      if (user?.role === "student") {
+        navigate("/", { replace: true });
+      } else if (user && ["staff", "media_admin", "moderator"].includes(user.role)) {
+        toaster.create({
+          title: "ระบบ Vibe Check ถูกปิดใช้งานชั่วคราว",
+          type: "warning",
+        });
+        navigate("/admin", { replace: true });
+      }
+    }
+  }, [loading, vibecheckEnabled, user, navigate]);
+
   // Lockout Countdown Timer Effect
   useEffect(() => {
     if (!lockoutUntil) return;
@@ -122,22 +139,33 @@ export function VibeCheckPage() {
   const fetchGameData = useCallback(async () => {
     if (!user) return;
     try {
-      // 1. Fetch user game status
-      const { data: statusData, error: statusErr } = await supabase
-        .from("user_vibe_status")
-        .select("*, vibe_missions(*)")
-        .eq("student_id", user.student_id)
-        .maybeSingle();
+      // 1. Fetch user game status and system config
+      const [statusRes, configRes] = await Promise.all([
+        supabase
+          .from("user_vibe_status")
+          .select("*, vibe_missions(*)")
+          .eq("student_id", user.student_id)
+          .maybeSingle(),
+        supabase.from("system_config").select("*").eq("key", "vibecheck_enabled").maybeSingle()
+      ]);
 
-      if (statusErr) throw statusErr;
+      if (statusRes.error) throw statusRes.error;
+
+      if (configRes.data) {
+        const isEnabled = Boolean(configRes.data.value);
+        setVibecheckEnabled(isEnabled);
+        if (!isEnabled) {
+          return; // Don't fetch the rest of the game data
+        }
+      }
 
       let activeMission: VibeMission | null = null;
 
-      if (statusData) {
-        activeMission = statusData.vibe_missions as VibeMission;
-        setStrikeCount(statusData.strike_count || 0);
-        if (statusData.locked_until) {
-          const lockedTime = new Date(statusData.locked_until).getTime();
+      if (statusRes.data) {
+        activeMission = statusRes.data.vibe_missions as VibeMission;
+        setStrikeCount(statusRes.data.strike_count || 0);
+        if (statusRes.data.locked_until) {
+          const lockedTime = new Date(statusRes.data.locked_until).getTime();
           if (lockedTime > Date.now()) {
             setLockoutUntil(lockedTime);
           }
@@ -422,6 +450,10 @@ export function VibeCheckPage() {
     );
   }
 
+  if (!vibecheckEnabled) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <Box position="relative" minH="90vh" py={6} px={4} maxW="md" mx="auto">
       {/* 1. Header & Quick Collection Counter */}
@@ -452,6 +484,7 @@ export function VibeCheckPage() {
             className="material-symbols-outlined"
             fontSize="16px"
             mr={1}
+            aria-hidden="true"
           >
             menu_book
           </Box>
@@ -488,6 +521,7 @@ export function VibeCheckPage() {
               as="span"
               className="material-symbols-outlined"
               fontSize="16px"
+              aria-hidden="true"
             >
               military_tech
             </Box>
@@ -765,8 +799,9 @@ export function VibeCheckPage() {
                 fontSize="4xl"
                 color="var(--c-chocolate)"
                 mb={3}
+                aria-hidden="true"
               >
-                lock
+                lock_clock
               </Box>
               <Heading
                 as="h3"
@@ -807,6 +842,7 @@ export function VibeCheckPage() {
                 fontSize="4xl"
                 color="accent.solid"
                 mb={2}
+                aria-hidden="true"
               >
                 psychology_alt
               </Box>
@@ -863,6 +899,7 @@ export function VibeCheckPage() {
               as="span"
               className="material-symbols-outlined"
               fontSize="24px"
+              aria-hidden="true"
             >
               close
             </Box>
@@ -887,6 +924,7 @@ export function VibeCheckPage() {
               className="material-symbols-outlined"
               fontSize="24px"
               fontVariationSettings="'FILL' 1"
+              aria-hidden="true"
             >
               check
             </Box>
@@ -972,6 +1010,7 @@ export function VibeCheckPage() {
                           className="material-symbols-outlined"
                           fontSize="36px"
                           color="var(--c-muted)"
+                          aria-hidden="true"
                         >
                           search_off
                         </Box>
@@ -1123,6 +1162,7 @@ export function VibeCheckPage() {
                                         color="var(--c-muted)"
                                         fontSize="32px"
                                         opacity={0.4}
+                                        aria-hidden="true"
                                       >
                                         person
                                       </Box>
@@ -1142,6 +1182,7 @@ export function VibeCheckPage() {
                                           color="var(--c-muted)"
                                           fontSize="16px"
                                           opacity={0.6}
+                                          aria-hidden="true"
                                         >
                                           lock
                                         </Box>
@@ -1201,6 +1242,7 @@ export function VibeCheckPage() {
                     as="span"
                     className="material-symbols-outlined"
                     fontSize="20px"
+                    aria-hidden="true"
                   >
                     close
                   </Box>
@@ -1374,6 +1416,7 @@ export function VibeCheckPage() {
                     as="span"
                     className="material-symbols-outlined"
                     fontSize="20px"
+                    aria-hidden="true"
                   >
                     close
                   </Box>
@@ -1411,6 +1454,7 @@ export function VibeCheckPage() {
                 <span
                   className="material-symbols-outlined"
                   style={{ fontSize: "48px" }}
+                  aria-hidden="true"
                 >
                   military_tech
                 </span>

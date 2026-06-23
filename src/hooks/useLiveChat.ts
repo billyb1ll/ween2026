@@ -159,7 +159,7 @@ export function useLiveChat(
       return;
     }
 
-    let connectionTimeout: NodeJS.Timeout | null = null;
+    let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // ── Authenticated: WebSocket broadcast channel ──
     const channel = supabase.channel(`live_chat:${activeTab}`, {

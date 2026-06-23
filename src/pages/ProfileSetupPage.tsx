@@ -9,19 +9,20 @@ import {
   Text,
   VStack,
   HStack,
-  NativeSelect,
 } from '@chakra-ui/react'
+import { FacultySelect } from '../components/FacultySelect'
+import { SearchableSelect } from '../components/SearchableSelect'
 import { useUser } from '../context/UserContext'
 import { toaster } from '../components/ui/toaster'
-import { THAI_FACULTIES, STAFF_ROLES } from '../lib/constants'
+import { STAFF_ROLES } from '../lib/constants'
 
 const PRESET_COLORS = [
-  '#496268', // Lagoon
-  '#7c563f', // Chocolate
-  '#8c7b74', // Warm Muted Brown
-  '#9d806c', // Light Cocoa
-  '#5b6c6b', // Sage Slate
-  '#a38c75', // Warm Ochre
+  "var(--c-lagoon)",
+  "var(--c-chocolate)",
+  "var(--c-warm-muted)",
+  "var(--c-light-cocoa)",
+  "var(--c-sage-slate)",
+  "var(--c-warm-ochre)",
 ]
 
 export function ProfileSetupPage() {
@@ -158,35 +159,10 @@ export function ProfileSetupPage() {
                 >
                   <label htmlFor="setup-faculty">Faculty <Box as="span" color="var(--c-error)">*</Box></label>
                 </Box>
-                <NativeSelect.Root width="100%">
-                  <NativeSelect.Field
-                    id="setup-faculty"
-                    aria-label="Faculty"
-                    title="Faculty"
-                    value={faculty}
-                    onChange={(e) => setFaculty(e.currentTarget.value)}
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="var(--c-ivory)"
-                    px={4}
-                    _focus={{
-                      borderColor: 'var(--c-lagoon)',
-                      boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                      bg: 'var(--c-white)',
-                    }}
-                  >
-                    <option value="">Select Faculty...</option>
-                    {THAI_FACULTIES.map((fac) => {
-                      const cleanVal = fac.split(' (')[0]
-                      return (
-                        <option key={fac} value={cleanVal}>
-                          {fac}
-                        </option>
-                      )
-                    })}
-                  </NativeSelect.Field>
-                  <NativeSelect.Indicator />
-                </NativeSelect.Root>
+                <FacultySelect
+                  value={faculty}
+                  onChange={(val) => setFaculty(val)}
+                />
               </VStack>
 
               {/* Major / Staff Position */}
@@ -206,32 +182,16 @@ export function ProfileSetupPage() {
                   </label>
                 </Box>
                 {isStaff ? (
-                  <NativeSelect.Root width="100%">
-                    <NativeSelect.Field
-                      id="setup-major"
-                      aria-label="Staff Position"
-                      title="Staff Position"
-                      value={major}
-                      onChange={(e) => setMajor(e.currentTarget.value)}
-                      borderRadius="xl"
-                      border="1.5px solid var(--c-outline)"
-                      bg="var(--c-ivory)"
-                      px={4}
-                      _focus={{
-                        borderColor: 'var(--c-lagoon)',
-                        boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                        bg: 'var(--c-white)',
-                      }}
-                    >
-                      <option value="">Select Position...</option>
-                      {STAFF_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
+                  <SearchableSelect
+                    value={major}
+                    onChange={(val) => setMajor(val)}
+                    options={STAFF_ROLES.map((role) => ({
+                      value: role,
+                      primaryText: role,
+                    }))}
+                    placeholder="Select Position..."
+                    searchPlaceholder="พิมพ์ค้นหาตำแหน่ง / Type to search..."
+                  />
                 ) : (
                   <Input
                     id="setup-major"

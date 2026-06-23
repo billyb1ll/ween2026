@@ -90,7 +90,7 @@ const UserDropdownContent = ({
       <Text fontSize="xs" color="var(--c-muted)">
         {user?.faculty || user?.major || "Unassigned"}
       </Text>
-      <Text fontSize="2xs" color="var(--c-outline)">
+      <Text fontSize="xs" color="var(--c-muted)">
         ID: {user?.student_id}
       </Text>
     </Box>
@@ -115,7 +115,7 @@ const UserDropdownContent = ({
         </Button>
       </Link>
     )}
-    {user && (user.role === "moderator" || user.role === "media_admin") && (
+    {user && (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
       <>
         <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
           <Button
@@ -135,45 +135,27 @@ const UserDropdownContent = ({
             Admin Dashboard
           </Button>
         </Link>
-        <Link to="/admin/kpi" onClick={onClose} style={{ width: "100%" }}>
-          <Button
-            size="sm"
-            variant="ghost"
-            color="var(--c-chocolate)"
-            justifyContent="start"
-            px={2}
-            h={{ base: "44px", md: "36px" }}
-            w="100%"
-            borderRadius="8px"
-            _hover={{
-              bg: "rgba(73, 98, 104, 0.05)",
-              color: "var(--c-chocolate)",
-            }}
-          >
-            Platform KPIs
-          </Button>
-        </Link>
+        {user.role === "moderator" && (
+          <Link to="/admin/kpi" onClick={onClose} style={{ width: "100%" }}>
+            <Button
+              size="sm"
+              variant="ghost"
+              color="var(--c-chocolate)"
+              justifyContent="start"
+              px={2}
+              h={{ base: "44px", md: "36px" }}
+              w="100%"
+              borderRadius="8px"
+              _hover={{
+                bg: "rgba(73, 98, 104, 0.05)",
+                color: "var(--c-chocolate)",
+              }}
+            >
+              Platform KPIs
+            </Button>
+          </Link>
+        )}
       </>
-    )}
-    {user && (user.role === "moderator" || user.role === "staff") && (
-      <Link to="/staff" onClick={onClose} style={{ width: "100%" }}>
-        <Button
-          size="sm"
-          variant="ghost"
-          color="var(--c-chocolate)"
-          justifyContent="start"
-          px={2}
-          h={{ base: "44px", md: "36px" }}
-          w="100%"
-          borderRadius="8px"
-          _hover={{
-            bg: "rgba(73, 98, 104, 0.05)",
-            color: "var(--c-chocolate)",
-          }}
-        >
-          Staff Dashboard
-        </Button>
-      </Link>
     )}
     <Button
       size="sm"
@@ -203,6 +185,7 @@ export function Navbar() {
   >(null);
   const [tickerActive, setTickerActive] = useState(false);
   const [tickerText, setTickerText] = useState("");
+  const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
   const [dismissedText, setDismissedText] = useState<string>(() => {
     try {
       return sessionStorage.getItem("ween_dismissed_announcement_text") || "";
@@ -221,13 +204,18 @@ export function Navbar() {
         const { data: configs, error } = await supabase
           .from("system_config")
           .select("key, value, text_value")
-          .in("key", ["ticker_text", "emergency_announcement"]);
+          .in("key", ["ticker_text", "emergency_announcement", "vibecheck_enabled"]);
 
         if (error) throw error;
 
         if (active && configs) {
           const tickerConfig = configs.find((c) => c.key === "ticker_text");
           const announcementConfig = configs.find((c) => c.key === "emergency_announcement");
+          const vibecheckConfig = configs.find((c) => c.key === "vibecheck_enabled");
+
+          if (vibecheckConfig) {
+            setVibecheckEnabled(Boolean(vibecheckConfig.value));
+          }
 
           if (tickerConfig) {
             setTickerActive(Boolean(tickerConfig.value));
@@ -318,6 +306,10 @@ export function Navbar() {
               } else {
                 setEmergencyAnnouncement(null);
               }
+            });
+          } else if (newRecord.key === "vibecheck_enabled") {
+            Promise.resolve().then(() => {
+              setVibecheckEnabled(Boolean(newRecord.value));
             });
           }
         }
@@ -467,25 +459,22 @@ export function Navbar() {
                   _hover={{ opacity: 0.8 }}
                   gap={1}
                 >
-                  <Text color="red">Very</Text>
-                  <Text color="orange">Ween</Text>
+                  <Text color="#c53030">Very</Text>
+                  <Text color="var(--c-chocolate)">Ween</Text>
                 </Flex>
               </NavLink>
             </Flex>
 
             <HStack gap={1} justify="center">
               <NavItem to="/">Home</NavItem>
-              <NavItem to="/vibe-check">Vibe Check</NavItem>
+              {vibecheckEnabled && <NavItem to="/vibe-check">Vibe Check</NavItem>}
               <NavItem to="/board">Board</NavItem>
               <NavItem to="/gallery">Gallery</NavItem>
 
               {user &&
-                (user.role === "moderator" || user.role === "media_admin") && (
+                (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
                   <NavItem to="/admin">Admin</NavItem>
                 )}
-              {user && (user.role === "moderator" || user.role === "staff") && (
-                <NavItem to="/staff">Staff</NavItem>
-              )}
             </HStack>
 
             <Flex flex={1} justify="flex-end" align="center">
@@ -501,9 +490,7 @@ export function Navbar() {
                     minW="40px"
                     p={0}
                     borderRadius="full"
-                    bg={
-                      user.profile_pic_url ? "transparent" : user.avatar_color
-                    }
+                    bg={user.profile_pic_url ? "transparent" : user.avatar_color}
                     color="white"
                     display="flex"
                     alignItems="center"
@@ -600,6 +587,7 @@ export function Navbar() {
           <Flex align="center" justify="space-between" px={5} py={3}>
             <NavLink to="/">
               <Text
+                as="div"
                 fontFamily="heading"
                 color="accent.solid"
                 fontSize="lg"
@@ -607,8 +595,8 @@ export function Navbar() {
                 letterSpacing="0.1em"
               >
                 <HStack>
-                  <Text color="red">Very</Text>
-                  <Text color="orange">Ween</Text>
+                  <Text color="#c53030">Very</Text>
+                  <Text color="var(--c-chocolate)">Ween</Text>
                 </HStack>
               </Text>
             </NavLink>
@@ -844,21 +832,18 @@ export function Navbar() {
           mx="auto"
         >
           <MobileDockItem to="/" icon="home" label="Home" />
-          <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />
+          {vibecheckEnabled && <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />}
           <MobileDockItem to="/board" icon="campaign" label="Board" />
           <MobileDockItem to="/gallery" icon="photo_library" label="Gallery" />
 
           {user &&
-            (user.role === "moderator" || user.role === "media_admin") && (
+            (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
               <MobileDockItem
                 to="/admin"
                 icon="admin_panel_settings"
                 label="Admin"
               />
             )}
-          {user && (user.role === "moderator" || user.role === "staff") && (
-            <MobileDockItem to="/staff" icon="shield_person" label="Staff" />
-          )}
         </Flex>
       </Box>
     </>
@@ -936,7 +921,7 @@ function MobileDockItem({
             {icon}
           </Box>
         </motion.div>
-        <Text fontSize="2xs" fontWeight="600">
+        <Text fontSize="xs" fontWeight="600">
           {label}
         </Text>
       </VStack>
