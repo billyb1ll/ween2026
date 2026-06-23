@@ -205,7 +205,7 @@ export function AdminKpiPage() {
       <VStack align="stretch" gap={8}>
         <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
           <Box>
-            <Heading as="h1" fontSize={{ base: "2xl", md: "3xl" }} color="var(--c-ink)" fontFamily="'Playfair Display', serif" mb={2}>
+            <Heading as="h1" fontSize={{ base: "2xl", md: "3xl" }} color="var(--c-ink)" fontFamily="heading" mb={2}>
               Platform KPI Dashboard
             </Heading>
             <Text color="fg.subtle">Real-time metrics and system health overview.</Text>
@@ -243,9 +243,8 @@ export function AdminKpiPage() {
                 <Box 
                   w={`${onboardingRate}%`} 
                   h="100%" 
-                  bg="linear-gradient(90deg, var(--c-lagoon) 0%, #319795 100%)" 
+                  bg="var(--c-lagoon)" 
                   borderRadius="full" 
-                  transition="width 0.8s cubic-bezier(0.4, 0, 0.2, 1)" 
                 />
               </Box>
               <Flex justify="space-between" mt={2} fontSize="xs" color="fg.subtle" fontWeight="600">
@@ -275,7 +274,7 @@ export function AdminKpiPage() {
               borderColor="border.subtle" 
               boxShadow="var(--shadow-card)"
             >
-              <Heading as="h3" fontSize="md" color="var(--c-chocolate)" mb={4} fontWeight="700" fontFamily="'Playfair Display', serif">
+              <Heading as="h2" fontSize="md" color="var(--c-chocolate)" mb={4} fontWeight="700" fontFamily="heading">
                 Interactive Engagement Index
               </Heading>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={8} alignItems="center">
@@ -286,7 +285,7 @@ export function AdminKpiPage() {
                       {engagementIndex.toLocaleString()}
                     </Text>
                   </Box>
-                  <Text fontSize="xs" color="fg.subtle">
+                  <Text fontSize="xs" color="fg.subtle" maxW="60ch">
                     The Engagement Index measures all active touchpoints across the platform including live chat messages, discussion board posts, comments, and completed VibeQuest card checks.
                   </Text>
                 </VStack>
@@ -336,7 +335,7 @@ function KPICard({ title, value, icon, color }: { title: string, value: number, 
           </Box>
         </Box>
       </Flex>
-      <StatValueText fontSize="2xl" fontWeight="800" color="var(--c-ink)" fontFamily="'Playfair Display', serif">
+      <StatValueText fontSize="2xl" fontWeight="800" color="var(--c-ink)" fontFamily="heading">
         {value.toLocaleString()}
       </StatValueText>
     </StatRoot>
@@ -357,7 +356,6 @@ function EngagementBar({ label, value, max, color }: { label: string, value: num
           h="100%" 
           bg={color} 
           borderRadius="full" 
-          transition="width 0.8s cubic-bezier(0.4, 0, 0.2, 1)" 
         />
       </Box>
     </Box>
