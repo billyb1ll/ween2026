@@ -1,10 +1,10 @@
 export default async function handler(req, res) {
-  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL || 'http://159.223.45.67:2283/api'
+  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
   const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
   if (req.method === 'POST') {
     try {
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/search/metadata`, {
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/search/metadata`, {
         method: 'POST',
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body)

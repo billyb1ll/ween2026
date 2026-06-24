@@ -1,4 +1,6 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+dotenv.config() // load .env
+dotenv.config({ path: '.env.local', override: true }) // load .env.local
 import express from 'express'
 import cors from 'cors'
 import pkgClient from '@prisma/client'
@@ -157,7 +159,7 @@ app.post('/api/posts/:id/like', async (req, res) => {
 })
 
 // Immich Proxy Routes
-const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL || 'http://159.223.45.67:8080'
+const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
 const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
 const immichProxyHeaders = {
@@ -165,9 +167,37 @@ const immichProxyHeaders = {
   'Content-Type': 'application/json'
 }
 
+app.get('/api/immich/albums', async (req, res) => {
+  try {
+    const url = new URL(`${IMMICH_SERVER_URL}/api/albums`)
+    if (req.query.name) {
+      url.searchParams.append('name', req.query.name)
+    }
+    const response = await fetch(url.toString(), { headers: immichProxyHeaders })
+    if (!response.ok) return res.status(response.status).send(await response.text())
+    const data = await response.json()
+    res.json(data)
+  } catch (error) {
+    console.error('Immich proxy error (albums):', error)
+    res.status(500).json({ error: 'Failed to proxy to Immich' })
+  }
+})
+
+app.get('/api/immich/albums/:id', async (req, res) => {
+  try {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/albums/${req.params.id}`, { headers: immichProxyHeaders })
+    if (!response.ok) return res.status(response.status).send(await response.text())
+    const data = await response.json()
+    res.json(data)
+  } catch (error) {
+    console.error('Immich proxy error (album by id):', error)
+    res.status(500).json({ error: 'Failed to proxy to Immich' })
+  }
+})
+
 app.get('/api/immich/people', async (req, res) => {
   try {
-    const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/people?withHidden=false`, { headers: immichProxyHeaders })
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/people?withHidden=false`, { headers: immichProxyHeaders })
     if (!response.ok) return res.status(response.status).send(await response.text())
     const data = await response.json()
     res.json(data)
@@ -179,7 +209,7 @@ app.get('/api/immich/people', async (req, res) => {
 
 app.post('/api/immich/search/metadata', async (req, res) => {
   try {
-    const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/search/metadata`, {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/search/metadata`, {
       method: 'POST',
       headers: immichProxyHeaders,
       body: JSON.stringify(req.body)
@@ -195,7 +225,7 @@ app.post('/api/immich/search/metadata', async (req, res) => {
 
 app.put('/api/immich/people/:id', async (req, res) => {
   try {
-    const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/people/${req.params.id}`, {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${req.params.id}`, {
       method: 'PUT',
       headers: immichProxyHeaders,
       body: JSON.stringify(req.body)
@@ -213,7 +243,7 @@ app.get('/api/immich/people/:id/thumbnail', async (req, res) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
-    const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/people/${req.params.id}/thumbnail`, {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${req.params.id}/thumbnail`, {
       headers: { 'x-api-key': IMMICH_API_KEY },
       signal: controller.signal
     })
@@ -235,7 +265,7 @@ app.get('/api/immich/assets/:id/thumbnail', async (req, res) => {
   const timeoutId = setTimeout(() => controller.abort(), 5000)
   try {
     const size = req.query.size || 'thumbnail'
-    const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/assets/${req.params.id}/thumbnail?size=${size}`, {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/assets/${req.params.id}/thumbnail?size=${size}`, {
       headers: { 'x-api-key': IMMICH_API_KEY },
       signal: controller.signal
     })

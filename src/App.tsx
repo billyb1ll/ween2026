@@ -7,12 +7,15 @@ import { UserProvider, useUser } from './context/UserContext'
 import { Toaster } from './components/ui/toaster'
 import { LoadingFallback } from './components/LoadingFallback'
 import { TermsOfUseModal } from './components/TermsOfUseModal'
+import { GalleryLightboxProvider } from './context/GalleryLightboxContext'
 
 // Dynamic Route Splitting for Named Exports
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
 const VibeCheckPage = lazy(() => import('./pages/VibeCheckPage').then((module) => ({ default: module.VibeCheckPage })))
 const BoardPage = lazy(() => import('./pages/BoardPage').then((module) => ({ default: module.BoardPage })))
 const GalleryPage = lazy(() => import('./pages/GalleryPage').then((module) => ({ default: module.GalleryPage })))
+const MyMomentsPage = lazy(() => import('./pages/MyMomentsPage').then((module) => ({ default: module.MyMomentsPage })))
+const FaceClaimPage = lazy(() => import('./pages/FaceClaimPage').then((module) => ({ default: module.FaceClaimPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((module) => ({ default: module.ProfileEditPage })))
 const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
@@ -53,9 +56,10 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   return (
-    <Box minH="100vh" bg="bg.canvas" position="relative">
-      <a href="#main-content" className="skip-link">
-        Skip to content
+    <GalleryLightboxProvider>
+      <Box minH="100vh" bg="bg.canvas" position="relative">
+        <a href="#main-content" className="skip-link">
+          Skip to content
       </a>
       <Toaster />
       <TermsOfUseModal />
@@ -79,6 +83,8 @@ function AppContent() {
             <Route path="/vibe-check" element={<RequireCompleteProfile><VibeCheckPage /></RequireCompleteProfile>} />
             <Route path="/board" element={<RequireCompleteProfile><BoardPage /></RequireCompleteProfile>} />
             <Route path="/gallery" element={<RequireCompleteProfile><GalleryPage /></RequireCompleteProfile>} />
+            <Route path="/my-moments" element={<RequireCompleteProfile><MyMomentsPage /></RequireCompleteProfile>} />
+            <Route path="/face-claim" element={<RequireCompleteProfile><FaceClaimPage /></RequireCompleteProfile>} />
 
 
             {/* Administrative Dashboard Route (Unified) */}
@@ -107,6 +113,7 @@ function AppContent() {
       </Box>
       <Footer />
     </Box>
+    </GalleryLightboxProvider>
   )
 }
 

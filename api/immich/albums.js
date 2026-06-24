@@ -1,11 +1,11 @@
 export default async function handler(req, res) {
   const { name } = req.query
-  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL || 'http://159.223.45.67:2283/api'
+  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
   const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
   if (req.method === 'GET') {
     try {
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/albums`, { 
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/albums`, { 
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' } 
       })
       if (!response.ok) {

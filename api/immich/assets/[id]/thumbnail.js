@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   const { id, size } = req.query
-  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL || 'http://159.223.45.67:2283/api'
+  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
   const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
   if (req.method === 'GET') {
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     const timeoutId = setTimeout(() => controller.abort(), 5000)
     try {
       const imgSize = size || 'thumbnail'
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/v1/assets/${id}/thumbnail?size=${imgSize}`, {
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/assets/${id}/thumbnail?size=${imgSize}`, {
         headers: { 'x-api-key': IMMICH_API_KEY },
         signal: controller.signal
       })

@@ -30,6 +30,8 @@ import { FiAlertTriangle } from "react-icons/fi";
 import { WhitelistTable } from "../components/admin/WhitelistTable";
 import { SystemControlPanel } from "../components/admin/SystemControlPanel";
 import { UserInspectModal } from "../components/admin/UserInspectModal";
+import { MediaUploader } from "../components/admin/MediaUploader";
+import { AlbumMappingAdmin } from "../components/admin/AlbumMappingAdmin";
 
 export interface DBUser {
   student_id: string;
@@ -3189,6 +3191,9 @@ export function AdminDashboardPage() {
                 </Text>
               </Box>
             </Box>
+            
+            <MediaUploader />
+            <AlbumMappingAdmin />
           </VStack>
         )}
 

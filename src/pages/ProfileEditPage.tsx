@@ -14,11 +14,18 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import { useUser } from "../context/UserContext";
+import { useFaceClaim } from "../hooks/useFaceClaim";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import { STAFF_ROLES } from "../lib/constants";
 import { FacultySelect } from "../components/FacultySelect";
 import { SearchableSelect } from "../components/SearchableSelect";
+import { Tabs } from "@chakra-ui/react";
+import { useGalleryLightbox } from "../context/GalleryLightboxContext";
+import { createImmichService } from "../lib/immich";
+import type { ImmichAsset } from "../lib/immich";
+
+const immich = createImmichService({ baseUrl: "/api/immich" });
 
 const PRESET_COLORS = [
   "var(--c-lagoon)",
@@ -60,6 +67,15 @@ export function ProfileEditPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // My Photos states
+  const [myPhotos, setMyPhotos] = useState<ImmichAsset[]>([]);
+  const [myClaimedFaces, setMyClaimedFaces] = useState<string[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const { openLightbox } = useGalleryLightbox();
+  const [isImmichPickerOpen, setIsImmichPickerOpen] = useState(false);
+  
+  const { unclaimFace } = useFaceClaim();
 
   // House Position States (Option A predefined roles + custom fallback)
   const isCustomPosition =
@@ -125,10 +141,41 @@ export function ProfileEditPage() {
         console.error("Smart search exception:", err);
         setSuggestedAsset(null);
       }
-    };
+    }
 
     fetchSuggestion();
-  }, [user?.nickname, serverUrl, apiKey, isComingSoon]);
+  }, [user, serverUrl, apiKey, isComingSoon]);
+
+  // Fetch "My Photos"
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserPhotos = async () => {
+      setLoadingPhotos(true);
+      try {
+        const { data, error } = await supabase
+          .from('user_faces')
+          .select('immich_person_id')
+          .eq('student_id', user.student_id);
+
+        if (error) throw error;
+
+        const personIds = data.map(d => d.immich_person_id);
+        setMyClaimedFaces(personIds);
+        
+        if (personIds.length > 0) {
+          const assets = await immich.assets.searchMetadata({ personIds });
+          setMyPhotos(assets.assets?.items || []);
+        } else {
+          setMyPhotos([]);
+        }
+      } catch (err) {
+        console.error("Error fetching user photos:", err);
+      } finally {
+        setLoadingPhotos(false);
+      }
+    };
+    fetchUserPhotos();
+  }, [user]);
 
   const handleClaimSuggestion = async () => {
     if (!user || !suggestedAsset) return;
@@ -332,31 +379,101 @@ export function ProfileEditPage() {
     <Box
       minH="90vh"
       display="flex"
-      alignItems="center"
+      alignItems="flex-start"
       justifyContent="center"
       py={{ base: 6, md: 12 }}
       px={4}
     >
-      <Container maxW="md">
-        <Box
-          bg="bg.surface"
-          border="1px solid"
-          borderColor="border.subtle"
-          borderRadius="2xl"
-          p={{ base: 5, md: 8 }}
-          boxShadow="var(--shadow-card)"
-          animation="scale-in 0.4s var(--ease-out-quart)"
-        >
-          <VStack align="stretch" gap={6} as="form" onSubmit={handleSubmit}>
-            <VStack align="center" textAlign="center" gap={1}>
-              <Heading
-                as="h1"
-                fontFamily="'Playfair Display', serif"
-                fontSize="2xl"
-                color="accent.solid"
-                fontWeight="700"
-              >
-                Manage Profile
+      <Container maxW="3xl">
+        <Tabs.Root defaultValue="profile" variant="line" size="lg">
+          <Tabs.List bg="bg.surface" p={2} borderRadius="xl" mb={6} justifyContent="center" gap={{ base: 4, md: 10 }}>
+            <Tabs.Trigger value="profile" px={6} py={3} borderRadius="md" _selected={{ bg: "var(--c-chocolate)", color: "white" }}>
+              Profile Details
+            </Tabs.Trigger>
+            <Tabs.Trigger value="photos" px={6} py={3} borderRadius="md" _selected={{ bg: "var(--c-chocolate)", color: "white" }}>
+              My Photos
+            </Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="photos">
+            <Box bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={{ base: 5, md: 8 }} boxShadow="var(--shadow-card)" animation="scale-in 0.4s var(--ease-out-quart)">
+              <VStack align="stretch" gap={6}>
+                <VStack align="center" textAlign="center" gap={1}>
+                  <Heading as="h2" fontSize="2xl" color="accent.solid" fontWeight="700">My Claimed Faces</Heading>
+                  <Text color="fg.muted" fontSize="sm">Faces you have identified as yourself.</Text>
+                </VStack>
+
+                {myClaimedFaces.length > 0 ? (
+                  <Box display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(5, 1fr)", md: "repeat(7, 1fr)" }} gap={4}>
+                    {myClaimedFaces.map(personId => (
+                      <VStack key={personId} align="center" gap={2}>
+                        <Box w="72px" h="72px" borderRadius="full" overflow="hidden" border="2px solid var(--c-lagoon)" boxShadow="sm">
+                          <Image src={immich.people.thumbnailUrl(personId)} w="100%" h="100%" objectFit="cover" />
+                        </Box>
+                        <Button 
+                          variant="ghost" 
+                          color="red.500" 
+                          h="24px" 
+                          px={2}
+                          fontSize="xs"
+                          borderRadius="md"
+                          _hover={{ bg: "red.50" }}
+                          onClick={async () => {
+                            if (window.confirm("Are you sure you want to unclaim this face?")) {
+                              const ok = await unclaimFace(personId);
+                              if (ok) {
+                                setMyClaimedFaces(prev => prev.filter(id => id !== personId));
+                                setMyPhotos([]); // Will require refresh or refetching
+                              }
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </VStack>
+                    ))}
+                  </Box>
+                ) : (
+                  <Text textAlign="center" color="fg.subtle">No faces claimed yet. Visit the Gallery to claim faces.</Text>
+                )}
+
+                <Box borderTop="1px solid" borderColor="border.subtle" pt={6} mt={2} />
+
+                <VStack align="center" textAlign="center" gap={1}>
+                  <Heading as="h2" fontSize="2xl" color="accent.solid" fontWeight="700">My Identified Photos</Heading>
+                  <Text color="fg.muted" fontSize="sm">Photos from the gallery where your face was recognized.</Text>
+                </VStack>
+                {loadingPhotos ? (
+                  <Text textAlign="center" color="fg.subtle" py={10}>Searching for your photos...</Text>
+                ) : myPhotos.length === 0 ? (
+                  <Flex justify="center" py={12} bg="bg.hero" border="1px dashed" borderColor="border.subtle" borderRadius="xl">
+                    <Text color="fg.subtle">No photos found. You can claim your face in the Gallery.</Text>
+                  </Flex>
+                ) : (
+                  <Box display="grid" gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)" }} gap={4}>
+                    {myPhotos.map((asset, i) => (
+                      <Box key={asset.id} borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => openLightbox(i, myPhotos)} transition="transform 0.3s" _hover={{ transform: "translateY(-2px)" }}>
+                        <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h={{ base: "160px", sm: "200px" }} w="100%" objectFit="cover" />
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </VStack>
+            </Box>
+          </Tabs.Content>
+
+          <Tabs.Content value="profile" p={0}>
+            <Box maxW="md" mx="auto" bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={{ base: 5, md: 8 }} boxShadow="var(--shadow-card)" animation="scale-in 0.4s var(--ease-out-quart)">
+              <VStack align="stretch" gap={6} as="form" onSubmit={handleSubmit}>
+                <VStack align="center" textAlign="center" gap={1}>
+                  <Heading
+                    as="h1"
+                    fontFamily="'Playfair Display', serif"
+                    fontSize="2xl"
+                    color="accent.solid"
+                    fontWeight="700"
+                  >
+                    Manage Profile
               </Heading>
               <Text color="fg.muted" fontSize="sm">
                 Set up your orientation identity. Let's make connections!
@@ -785,7 +902,7 @@ export function ProfileEditPage() {
                   ref={fileInputRef}
                   display="none"
                 />
-                <Flex gap={2}>
+                <Flex gap={2} wrap="wrap">
                   <Button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -802,6 +919,21 @@ export function ProfileEditPage() {
                   >
                     Upload Photo
                   </Button>
+                  {myPhotos.length > 0 && (
+                    <Button
+                      type="button"
+                      onClick={() => setIsImmichPickerOpen(!isImmichPickerOpen)}
+                      bg="var(--c-lagoon)"
+                      color="white"
+                      h="44px"
+                      borderRadius="xl"
+                      cursor="pointer"
+                      _hover={{ bg: "teal.600" }}
+                      flex={1}
+                    >
+                      Pick from Immich
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -817,6 +949,30 @@ export function ProfileEditPage() {
                     URL
                   </Button>
                 </Flex>
+
+                {isImmichPickerOpen && myPhotos.length > 0 && (
+                  <Box p={4} mt={2} bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="xl" animation="scale-in 0.3s var(--ease-out-quart)">
+                    <Text fontSize="sm" fontWeight="700" color="accent.solid" mb={3}>Select a photo</Text>
+                    <Box display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)" }} gap={3} maxH="240px" overflowY="auto" p={1}>
+                      {myPhotos.map(asset => (
+                        <Box 
+                          key={asset.id} 
+                          cursor="pointer" 
+                          borderRadius="md" 
+                          overflow="hidden"
+                          onClick={() => {
+                            setProfilePicUrl(immich.assets.thumbnailUrl(asset.id, "preview"));
+                            setIsImmichPickerOpen(false);
+                          }}
+                          border="2px solid transparent"
+                          _hover={{ borderColor: "var(--c-lagoon)" }}
+                        >
+                          <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h="80px" w="100%" objectFit="cover" />
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
                 {profilePicUrl && (
                   <Button
                     type="button"
@@ -874,6 +1030,8 @@ export function ProfileEditPage() {
             </HStack>
           </VStack>
         </Box>
+        </Tabs.Content>
+        </Tabs.Root>
       </Container>
 
       {/* Crop Overlay Modal */}
