@@ -5,14 +5,13 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  const { id, size } = req.query
+  const { id } = req.query
   const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
   const IMMICH_API_KEY = process.env.IMMICH_API_KEY
 
   if (req.method === 'GET') {
     try {
-      const imgSize = size || 'thumbnail'
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/assets/${id}/thumbnail?size=${imgSize}`, {
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/assets/${id}/original`, {
         headers: { 'x-api-key': IMMICH_API_KEY }
       })
       
@@ -20,13 +19,20 @@ export default async function handler(req, res) {
         return res.status(404).send(Buffer.from(''))
       }
       
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg')
-      res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=43200')
+      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream')
+      res.setHeader('Cache-Control', 'public, s-maxage=31536000, immutable')
+      
+      const cd = response.headers.get('content-disposition')
+      if (cd) {
+        res.setHeader('Content-Disposition', cd)
+      } else {
+        res.setHeader('Content-Disposition', `attachment; filename="immich-asset-${id}.jpg"`)
+      }
       
       Readable.fromWeb(response.body).pipe(res)
       return
     } catch (error) {
-      console.error('Proxy assets thumbnail error:', error.message)
+      console.error('Proxy assets original error:', error.message)
       // Return 404 empty buffer instead of hanging/crashing
       return res.status(404).send(Buffer.from(''))
     }

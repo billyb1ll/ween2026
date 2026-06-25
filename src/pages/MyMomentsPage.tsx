@@ -9,14 +9,14 @@ import {
 } from "@chakra-ui/react";
 import React, { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
-import { createImmichService } from "../lib/immich";
+import { immich } from "../lib/immich";
 import type { ImmichAsset } from "../lib/immich";
 import { VirtuosoGrid } from "react-virtuoso";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
 import { supabase } from "../lib/supabase";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function MyMomentsPage() {
   const { user } = useUser();

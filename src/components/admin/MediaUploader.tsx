@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { Box, Button, VStack, Text, Input, Flex, Spinner } from "@chakra-ui/react";
-import { createImmichService } from "../../lib/immich";
+import { immich } from "../../lib/immich";
 import { useAlbumMappings } from "../../config/album-mapping";
 import { toaster } from "../ui/toaster";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function MediaUploader() {
   const { mappings, loading } = useAlbumMappings();

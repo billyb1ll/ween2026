@@ -13,14 +13,14 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useUser } from "../context/UserContext";
 import { toaster } from "../components/ui/toaster";
-import { createImmichService } from "../lib/immich";
+import { immich } from "../lib/immich";
 import type { ImmichAsset, ImmichPerson } from "../lib/immich";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { VirtuosoGrid } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import React from "react";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function FaceClaimPage() {
   const { user, updateProfile } = useUser();

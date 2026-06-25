@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useRef, useCallback } from 
 import type { ImmichAsset } from '../lib/immich/types';
 import type { VirtuosoGridHandle } from 'react-virtuoso';
 import { FaceOverlayLightbox } from '../components/gallery/FaceOverlayLightbox';
-import { createImmichService } from '../lib/immich';
+import { immich } from '../lib/immich';
 
 interface GalleryLightboxContextType {
   openLightbox: (index: number, assets: ImmichAsset[]) => void;
@@ -11,7 +11,7 @@ interface GalleryLightboxContextType {
 
 export const GalleryLightboxContext = createContext<GalleryLightboxContextType | null>(null);
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export const GalleryLightboxProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);

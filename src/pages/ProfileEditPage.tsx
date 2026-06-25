@@ -22,10 +22,10 @@ import { FacultySelect } from "../components/FacultySelect";
 import { SearchableSelect } from "../components/SearchableSelect";
 import { Tabs } from "@chakra-ui/react";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
-import { createImmichService } from "../lib/immich";
+import { immich } from "../lib/immich";
 import type { ImmichAsset } from "../lib/immich";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 const PRESET_COLORS = [
   "var(--c-lagoon)",

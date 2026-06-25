@@ -25,6 +25,6 @@ dist-ssr
 
 /src/generated/prisma
 .vercel
-.env*.local
-.env
+.env*
+!.env.example
 .agents/brain/

@@ -9,14 +9,14 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import React, { useState, useEffect } from "react";
-import { createImmichService } from "../lib/immich";
+import { immich } from "../lib/immich";
 import type { ImmichAsset } from "../lib/immich";
 import { VirtuosoGrid } from "react-virtuoso";
 import { Link } from "react-router-dom";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function GalleryPage() {
   const { mappings, loading: loadingMappings } = useAlbumMappings();

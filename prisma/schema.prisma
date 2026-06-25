@@ -1,32 +1,181 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
-model User {
-  id          Int      @id @default(autoincrement())
-  username    String   @unique
-  name        String
-  major       String
-  bio         String
-  avatarColor String   @default("#7c563f")
-  immichAssetId String? @map("immich_asset_id")
-  posts       Post[]
-  createdAt   DateTime @default(now())
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model audit_logs {
+  id           BigInt    @id @default(autoincrement())
+  moderator_id String?   @db.VarChar
+  action_type  String    @db.VarChar
+  target_id    String?   @db.VarChar
+  details      String?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  users        users?    @relation(fields: [moderator_id], references: [student_id], onUpdate: NoAction)
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  content   String
-  createdAt DateTime @default(now())
-  likes     Int      @default(0)
-  tags      String   @default("")
-  authorId  Int
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model collected_cards {
+  id                                      BigInt    @id @default(autoincrement())
+  student_id                              String?   @db.VarChar
+  staff_id                                String?   @db.VarChar
+  collected_at                            DateTime? @default(now()) @db.Timestamptz(6)
+  users_collected_cards_staff_idTousers   users?    @relation("collected_cards_staff_idTousers", fields: [staff_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+  users_collected_cards_student_idTousers users?    @relation("collected_cards_student_idTousers", fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([student_id, staff_id], map: "unique_student_staff")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model event_config {
+  key        String   @id @db.VarChar
+  title      String   @db.VarChar
+  event_time DateTime @db.Timestamptz(6)
+}
+
+model gallery_photos {
+  id          BigInt    @id @default(autoincrement())
+  src         String
+  caption     String
+  likes       Int?      @default(0)
+  student_id  String?   @db.VarChar
+  author_name String?   @db.VarChar
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users?    @relation(fields: [student_id], references: [student_id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model live_chats {
+  id         String   @id @db.Uuid
+  content    String
+  student_id String
+  tab        String   @default("hype")
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  users      users    @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([tab, created_at(sort: Desc)], map: "idx_live_chats_tab_created")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model post_comments {
+  id         BigInt    @id @default(autoincrement())
+  post_id    BigInt
+  student_id String    @db.VarChar
+  content    String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users     @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([post_id], map: "idx_post_comments_post_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model posts {
+  id            BigInt          @id @default(autoincrement())
+  content       String
+  likes         Int?            @default(0)
+  type          String          @default("hype") @db.VarChar
+  is_anonymous  Boolean?        @default(false)
+  is_hidden     Boolean?        @default(false)
+  student_id    String?         @db.VarChar
+  tags          String[]        @default([])
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  liked_by      String[]        @default([])
+  image_url     String?
+  is_pinned     Boolean?        @default(false)
+  post_comments post_comments[]
+  users         users?          @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([type, is_hidden, is_pinned(sort: Desc), created_at(sort: Desc)], map: "idx_posts_type_hidden_pinned_created")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model system_config {
+  key        String  @id @db.VarChar
+  value      Boolean @default(true)
+  text_value String?
+  int_value  Int?
+}
+
+model user_faces {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  student_id       String    @db.VarChar
+  immich_person_id String    @db.VarChar
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  users            users     @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([student_id, immich_person_id], map: "unique_user_person")
+  @@index([immich_person_id], map: "idx_user_faces_immich_person_id")
+  @@index([student_id], map: "idx_user_faces_student_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_sessions {
+  session_token String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  student_id    String?   @db.VarChar
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at    DateTime  @db.Timestamptz(6)
+  users         users?    @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([session_token], map: "idx_user_sessions_session_token")
+  @@index([student_id], map: "idx_user_sessions_student_id")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_vibe_status {
+  student_id         String         @id @db.VarChar
+  current_mission_id BigInt?
+  strike_count       Int?           @default(0)
+  lock_count         Int?           @default(0)
+  locked_until       DateTime?      @db.Timestamptz(6)
+  vibe_missions      vibe_missions? @relation(fields: [current_mission_id], references: [id], onUpdate: NoAction)
+  users              users          @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  student_id                                        String            @id @db.VarChar
+  pin_hash                                          String?           @db.VarChar
+  nickname                                          String?           @db.VarChar
+  faculty                                           String?           @db.VarChar
+  major                                             String?           @db.VarChar
+  ig                                                String?           @db.VarChar
+  role                                              String?           @default("student") @db.VarChar
+  avatar_color                                      String?           @default("#496268") @db.VarChar
+  images                                            String[]          @default([])
+  tags                                              String[]          @default([])
+  created_at                                        DateTime?         @default(now()) @db.Timestamptz(6)
+  bio                                               String?
+  profile_pic_url                                   String?
+  photo_pool                                        String[]          @default([])
+  baan_position                                     String?           @db.VarChar
+  house_position                                    String?           @db.VarChar
+  immich_asset_id                                   String?
+  has_accepted_tos                                  Boolean?          @default(false)
+  audit_logs                                        audit_logs[]
+  collected_cards_collected_cards_staff_idTousers   collected_cards[] @relation("collected_cards_staff_idTousers")
+  collected_cards_collected_cards_student_idTousers collected_cards[] @relation("collected_cards_student_idTousers")
+  gallery_photos                                    gallery_photos[]
+  live_chats                                        live_chats[]
+  post_comments                                     post_comments[]
+  posts                                             posts[]
+  user_faces                                        user_faces[]
+  user_sessions                                     user_sessions[]
+  user_vibe_status                                  user_vibe_status?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vibe_missions {
+  id               BigInt             @id @default(autoincrement())
+  sequence_order   Int                @unique
+  target_role      String             @db.VarChar
+  required_count   Int
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  user_vibe_status user_vibe_status[]
 }

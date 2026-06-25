@@ -1,9 +1,9 @@
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
-import { createImmichService } from "../lib/immich";
+import { immich } from "../lib/immich";
 import { toaster } from "../components/ui/toaster";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function useFaceClaim() {
   const { user } = useUser();

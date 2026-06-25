@@ -54,42 +54,17 @@ export function createImmichService(config: ImmichClientConfig): ImmichService {
   };
 }
 
-// ── Default Singleton (from Vite env vars) ──────────────────
+// ── Default Singleton ─────────────────────────────────────────
 
 /**
- * Default Immich service configured from Vite environment variables.
- *
- * Returns `null` if VITE_IMMICH_SERVER_URL is not set or is a placeholder.
- * This prevents crashes when Immich is not yet configured.
+ * Default Immich service configured dynamically.
+ * 
+ * In development, uses the local proxy (`/api/immich`).
+ * In production, it connects to your backend proxy if `VITE_API_BASE_URL` is provided.
+ * 
+ * NOTE: The frontend MUST talk to the backend proxy. It cannot talk directly 
+ * to the Immich server because Immich does not support CORS preflight (OPTIONS) requests.
  */
-function createDefaultService(): ImmichService | null {
-  try {
-    const url = import.meta.env?.VITE_IMMICH_SERVER_URL;
-    const apiKey = import.meta.env?.VITE_IMMICH_API_KEY;
+const baseUrl = import.meta.env.VITE_API_BASE_URL || "/api/immich";
 
-    if (!url || typeof url !== "string") return null;
-
-    const trimmed = url.trim().toLowerCase();
-    const placeholders = ["placeholder", "todo", "change-me"];
-    if (placeholders.some((p) => trimmed.includes(p))) return null;
-
-    // Validate URL
-    new URL(url.trim());
-
-    return createImmichService({
-      baseUrl: url.trim(),
-      apiKey: apiKey || undefined,
-    });
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Pre-configured Immich service singleton.
- * `null` when Immich is not configured (placeholder/missing env vars).
- *
- * Check before use:
- *   if (immichService) { await immichService.server.ping(); }
- */
-export const immichService = createDefaultService();
+export const immich = createImmichService({ baseUrl });

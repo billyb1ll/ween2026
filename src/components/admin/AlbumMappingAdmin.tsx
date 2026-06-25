@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Box, Button, VStack, Text, Flex, Spinner, Input, IconButton } from "@chakra-ui/react";
-import { createImmichService } from "../../lib/immich";
+import { immich } from "../../lib/immich";
 import { useAlbumMappings } from "../../config/album-mapping";
 import type { AlbumMapping } from "../../config/album-mapping";
 import { supabase } from "../../lib/supabase";
 import { toaster } from "../ui/toaster";
 import { FiTrash2, FiPlus, FiSave } from "react-icons/fi";
 
-const immich = createImmichService({ baseUrl: "/api/immich" });
+
 
 export function AlbumMappingAdmin() {
   const { mappings, loading, refetch } = useAlbumMappings();
