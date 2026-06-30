@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Dialog,
   Button,
@@ -10,7 +10,6 @@ import {
   Badge,
   HStack,
   Spinner,
-  Image,
   Input,
 } from "@chakra-ui/react";
 import { Tooltip } from "../ui/tooltip";
@@ -18,9 +17,10 @@ import { FacultySelect } from "../FacultySelect";
 import { SearchableSelect } from "../SearchableSelect";
 import { STAFF_ROLES } from "../../lib/constants";
 import type { DBUser, AuditLog } from "../../pages/AdminDashboardPage";
+import { UserAvatar } from "../UserAvatar";
 
 interface UserInspectModalProps {
-  inspectUser: DBUser;
+  inspectUser: DBUser | null;
   onClose: () => void;
   inspectUserStats: {
     collectedCount: number;
@@ -71,6 +71,26 @@ export function UserInspectModal({
   handleEditUser,
   getRoleDescription,
 }: UserInspectModalProps) {
+  // Ensure document scroll and pointer-events are unlocked on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.pointerEvents = "";
+    };
+  }, []);
+
+  if (!inspectUser) {
+    return (
+      <Dialog.Root
+        open={false}
+        onOpenChange={onClose}
+        placement={{ base: "bottom", md: "center" }}
+      >
+        <></>
+      </Dialog.Root>
+    );
+  }
+
   return (
     <Dialog.Root
       open={!!inspectUser}
@@ -124,39 +144,16 @@ export function UserInspectModal({
                 gap={4}
                 align="center"
               >
-                <Box
-                  w="64px"
-                  h="64px"
-                  borderRadius="full"
-                  overflow="hidden"
-                  border="2.5px solid var(--c-chocolate)"
-                  bg={
-                    inspectUser.profile_pic_url
-                      ? "transparent"
-                      : inspectUser.avatar_color || "var(--c-lagoon)"
-                  }
-                  color="white"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
+                <UserAvatar
+                  src={inspectUser.profile_pic_url}
+                  name={inspectUser.nickname || "User"}
+                  avatarColor={inspectUser.avatar_color || "var(--c-lagoon)"}
+                  size="64px"
+                  fontSize="md"
+                  border="2px solid var(--c-chocolate)"
                   boxShadow="sm"
-                >
-                  {inspectUser.profile_pic_url ? (
-                    <Image
-                      src={inspectUser.profile_pic_url}
-                      alt={`${inspectUser.nickname || "User"}'s profile picture`}
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                    />
-                  ) : (
-                    <Text fontSize="lg" fontWeight="700">
-                      {(inspectUser.nickname || "NN")
-                        .substring(0, 2)
-                        .toUpperCase()}
-                    </Text>
-                  )}
-                </Box>
+                />
+
                 <VStack align="start" gap={0.5}>
                   <Text
                     fontSize="sm"
@@ -350,32 +347,13 @@ export function UserInspectModal({
                                   borderColor="border.subtle"
                                   boxShadow="sm"
                                 >
-                                  {staff.profile_pic_url ? (
-                                    <Image
+                                  <UserAvatar
                                       src={staff.profile_pic_url}
-                                      alt={`${staff.nickname}'s profile picture`}
-                                      w="24px"
-                                      h="24px"
-                                      borderRadius="full"
-                                      objectFit="cover"
-                                    />
-                                  ) : (
-                                    <Flex
-                                      w="24px"
-                                      h="24px"
-                                      borderRadius="full"
-                                      bg={staff.avatar_color}
-                                      color="white"
-                                      align="center"
-                                      justify="center"
+                                      name={staff.nickname}
+                                      avatarColor={staff.avatar_color}
+                                      size="24px"
                                       fontSize="xs"
-                                      fontWeight="700"
-                                    >
-                                      {staff.nickname
-                                        .substring(0, 2)
-                                        .toUpperCase()}
-                                    </Flex>
-                                  )}
+                                    />
                                   <Text
                                     fontSize="sm"
                                     fontWeight="600"

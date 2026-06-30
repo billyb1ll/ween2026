@@ -182,7 +182,7 @@ export function FaceClaimPage() {
 
       <Box mb={8}>
         {loadingPeople ? (
-          <Flex justify="center" py={6}><Spinner size="lg" color="var(--c-lagoon)" /></Flex>
+          <Flex justify="center" py={6}><Spinner size="lg" color="brand.solid" /></Flex>
         ) : filteredPeople.length === 0 ? (
           <Flex justify="center" py={6} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl">
             <Text color="fg.subtle">No unclaimed faces found in the database.</Text>
@@ -218,7 +218,7 @@ export function FaceClaimPage() {
                   >
                     <Box 
                       w="72px" h="72px" borderRadius="full" position="relative"
-                      border={isSelected ? "3px solid var(--c-lagoon)" : "2px dashed var(--c-muted)"} 
+                      border={isSelected ? "3px solid var(--chakra-colors-brand-solid)" : "2px dashed var(--chakra-colors-fg-muted)"} 
                       p="2px" 
                       transition="all 0.2s" 
                       transform={isSelected ? "scale(1.05)" : "none"}
@@ -229,7 +229,7 @@ export function FaceClaimPage() {
                       {isSelected && (
                         <Flex 
                           position="absolute" top="-4px" right="-4px" 
-                          bg="var(--c-lagoon)" w="24px" h="24px" borderRadius="full" 
+                          bg="brand.solid" w="24px" h="24px" borderRadius="full" 
                           align="center" justify="center" color="white"
                           boxShadow="sm"
                         >
@@ -248,7 +248,7 @@ export function FaceClaimPage() {
           <Box animation="scale-in 0.4s var(--ease-out-quart)" mt={12}>
             {loadingPersonAssets ? (
               <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={4}>
-                {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--c-chocolate) 5%, var(--c-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
+                {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, var(--chakra-colors-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
               </SimpleGrid>
             ) : personAssets.length === 0 ? (
               <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl"><Text color="fg.subtle">No photos matched this face classification.</Text></Flex>
@@ -305,7 +305,7 @@ export function FaceClaimPage() {
                 Ensure these are you before confirming.
               </Text>
             </VStack>
-            <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="var(--c-lagoon)" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} loading={claiming} onClick={handleExecuteClaim} _hover={{ bg: "teal.600" }}>
+            <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} loading={claiming} onClick={handleExecuteClaim} _hover={{ bg: "teal.600" }}>
               Confirm Selection
             </Button>
           </Flex>

@@ -78,3 +78,48 @@ export async function compressImage(
     reader.onerror = () => resolve(file);
   });
 }
+
+/**
+ * Resolves a profile picture URL to a fully-qualified URL if it's relative
+ * or formatted for older storage systems.
+ */
+export function getAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // If it's already an absolute URL, return it
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  // If it's a relative Immich proxy path, map it to production URL if configured
+  if (url.startsWith("/api/immich/")) {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || "";
+    if (apiBase && apiBase.startsWith("http")) {
+      // replace /api/immich prefix with the apiBase
+      return `${apiBase}${url.substring(11)}`;
+    }
+    return url;
+  }
+
+  // For Supabase paths (relative bucket path or filename)
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://gyabqyvdxdtoaqayfjho.supabase.co";
+
+  let cleanPath = url.trim();
+  if (cleanPath.startsWith("/")) {
+    cleanPath = cleanPath.substring(1);
+  }
+
+  // If it is already a storage path, prepend supabase URL
+  if (cleanPath.startsWith("storage/v1/object/public/")) {
+    return `${supabaseUrl}/${cleanPath}`;
+  }
+
+  // If it starts with profiles/
+  if (cleanPath.startsWith("profiles/")) {
+    return `${supabaseUrl}/storage/v1/object/public/${cleanPath}`;
+  }
+
+  // Default fallback: assume it is a filename in the "profiles" bucket
+  return `${supabaseUrl}/storage/v1/object/public/profiles/${cleanPath}`;
+}
+

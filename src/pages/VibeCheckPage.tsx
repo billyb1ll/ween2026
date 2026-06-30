@@ -15,9 +15,6 @@ import {
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
-const getInitials = (name: string) => {
-  return name.trim().slice(0, 2).toUpperCase();
-};
 import {
   motion,
   useMotionValue,
@@ -28,6 +25,7 @@ import {
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
+import { UserAvatar } from "../components/UserAvatar";
 
 
 interface StaffProfile {
@@ -1077,40 +1075,18 @@ export function VibeCheckPage() {
                                     }
                                   }}
                                 >
-                                  <Box
-                                    position="relative"
-                                    w="80px"
-                                    h="80px"
-                                    borderRadius="full"
-                                    overflow="hidden"
+                                  <UserAvatar
+                                    src={s.profile_pic_url}
+                                    name={s.nickname || "Staff"}
+                                    avatarColor={s.avatar_color}
+                                    size="80px"
+                                    fontSize="xl"
                                     border="2px solid"
                                     borderColor="accent.solid"
-                                    bg={s.avatar_color}
-                                    mb={1.5}
-                                  >
-                                    {s.profile_pic_url ? (
-                                      <Image
-                                        draggable={false}
-                                        src={s.profile_pic_url}
-                                        alt={`${s.nickname || "Staff"}'s collection sticker portrait`}
-                                        w="100%"
-                                        h="100%"
-                                        objectFit="cover"
-                                        loading="lazy"
-                                      />
-                                    ) : (
-                                      <Flex
-                                        w="100%"
-                                        h="100%"
-                                        align="center"
-                                        justify="center"
-                                        color="white"
-                                        fontWeight="700"
-                                      >
-                                        {getInitials(s.nickname || "?")}
-                                      </Flex>
-                                    )}
-                                  </Box>
+                                    boxShadow="none"
+                                    cursor="default"
+                                    borderRadius="full"
+                                  />
                                   <Text
                                     fontSize="2xs"
                                     fontWeight="600"
@@ -1291,19 +1267,22 @@ export function VibeCheckPage() {
               <Dialog.Body p={0} flex={1} overflowY="auto">
                 <VStack gap={4} align="stretch">
                   <HStack gap={4}>
-                    <Image
-                      src={
-                        selectedStaffDetail.profile_pic_url ||
-                        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"
-                      }
-                      alt={`${selectedStaffDetail.nickname || "Staff"}'s detailed profile portrait`}
-                      w="72px"
-                      h="72px"
-                      borderRadius="full"
-                      objectFit="cover"
+                    <UserAvatar
+                      src={selectedStaffDetail.profile_pic_url}
+                      name={selectedStaffDetail.nickname || "Staff"}
+                      avatarColor={selectedStaffDetail.avatar_color || "accent.solid"}
+                      size="72px"
                       border="2px solid"
                       borderColor="accent.solid"
-                      loading="lazy"
+                      fallback={
+                        <Image
+                          src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=200&h=200&fit=crop"
+                          alt="Fallback portrait"
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                        />
+                      }
                     />
                     <VStack align="start" gap={0.5}>
                       <Heading

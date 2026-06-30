@@ -44,8 +44,6 @@ export interface UseBoardRealtimeReturn {
     imageUrl?: string | null,
   ) => Promise<void>;
   handleLikePost: (postId: number) => Promise<void>;
-  handlePinPost: (postId: number, currentStatus: boolean) => Promise<void>;
-  handleDeletePost: (postId: number) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -523,103 +521,6 @@ export function useBoardRealtime(
     [user],
   );
 
-  // ── Admin: Pin post ───────────────────────────────────────────────────────
-  const handlePinPost = useCallback(
-    async (postId: number, currentStatus: boolean) => {
-      if (!user || user.role === "student") return;
-
-      const nextStatus = !currentStatus;
-
-      // Optimistic update
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? { ...p, is_pinned: nextStatus } : p,
-        ),
-      );
-
-      // Broadcast pin state
-      channelRef.current
-        ?.send({
-          type: "broadcast",
-          event: "post_pinned",
-          payload: {
-            postId,
-            is_pinned: nextStatus,
-            session_token: localStorage.getItem("baan7_session_token"),
-          },
-        })
-        .catch((err) => console.error("[Realtime] Broadcast pin error:", err));
-
-      try {
-        const { error } = await supabase.rpc("pin_post_secure", {
-          p_post_id: postId,
-          p_student_id: user.student_id,
-          p_pin_hash: user.pin_hash || "",
-          p_is_pinned: nextStatus,
-        });
-
-        if (error) throw error;
-
-        toaster.create({
-          title: nextStatus ? "Post pinned" : "Post unpinned",
-          type: "success",
-        });
-      } catch (err) {
-        console.error("[Board] Pin error:", err);
-        // Rollback pin state
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId ? { ...p, is_pinned: currentStatus } : p,
-          ),
-        );
-        toaster.create({ title: "Error pinning post", type: "error" });
-      }
-    },
-    [user],
-  );
-
-  // ── Admin: Delete post ────────────────────────────────────────────────────
-  const handleDeletePost = useCallback(
-    async (postId: number) => {
-      if (!user || user.role === "student") return;
-
-      // Optimistic delete
-      setPosts((prev) => prev.filter((p) => p.id !== postId));
-
-      // Broadcast delete state
-      channelRef.current
-        ?.send({
-          type: "broadcast",
-          event: "post_deleted",
-          payload: {
-            postId,
-            session_token: localStorage.getItem("baan7_session_token"),
-          },
-        })
-        .catch((err) =>
-          console.error("[Realtime] Broadcast delete error:", err),
-        );
-
-      try {
-        const { error } = await supabase.rpc("delete_post_secure", {
-          p_post_id: postId,
-          p_student_id: user.student_id,
-          p_pin_hash: user.pin_hash || "",
-        });
-        if (error) throw error;
-
-        toaster.create({
-          title: "Post deleted",
-          type: "success",
-        });
-      } catch (err) {
-        console.error("[Board] Delete error:", err);
-        toaster.create({ title: "Error deleting post", type: "error" });
-      }
-    },
-    [user],
-  );
-
   return {
     posts,
     loading,
@@ -628,7 +529,5 @@ export function useBoardRealtime(
     memoryActive,
     handleCreatePost,
     handleLikePost,
-    handlePinPost,
-    handleDeletePost,
   };
 }

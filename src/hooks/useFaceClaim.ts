@@ -8,40 +8,6 @@ import { toaster } from "../components/ui/toaster";
 export function useFaceClaim() {
   const { user } = useUser();
 
-  const claimFace = async (personId: string, nickname: string, studentId: string) => {
-    if (!user) return false;
-
-    try {
-      // 1. Dual write to Supabase
-      const { error: sbError } = await supabase.from('user_faces').insert({
-        student_id: studentId,
-        immich_person_id: personId
-      });
-      
-      if (sbError && sbError.code !== '23505') {
-        throw sbError;
-      }
-
-      // 2. Dual write to Immich
-      await immich.people.update(personId, { name: nickname });
-      
-      toaster.create({
-        title: "Face Claimed",
-        description: `Successfully claimed face for ${nickname}`,
-        type: "success",
-      });
-
-      return true;
-    } catch (err) {
-      console.error("Error claiming face:", err);
-      toaster.create({
-        title: "Failed to claim face",
-        type: "error",
-      });
-      return false;
-    }
-  };
-
   const unclaimFace = async (personId: string) => {
     if (!user) return false;
     
@@ -76,5 +42,5 @@ export function useFaceClaim() {
     }
   };
 
-  return { claimFace, unclaimFace };
+  return { unclaimFace };
 }

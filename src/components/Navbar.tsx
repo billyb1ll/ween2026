@@ -6,7 +6,6 @@ import {
   Button,
   VStack,
   Portal,
-  Image,
 } from "@chakra-ui/react";
 import { NavLink, Link } from "react-router-dom";
 import {
@@ -20,6 +19,7 @@ import { useUser } from "../context/UserContext";
 import type { User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
+import { UserAvatar } from "./UserAvatar";
 
 interface NavItemProps {
   to: string;
@@ -27,12 +27,7 @@ interface NavItemProps {
   icon?: string;
 }
 
-const getInitials = (name: string) => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
+
 
 function NavItem({ to, children, icon }: NavItemProps) {
   const navContent = (isActive: boolean) => (
@@ -491,31 +486,20 @@ export function Navbar() {
                     minW="40px"
                     p={0}
                     borderRadius="full"
-                    bg={user.profile_pic_url ? "transparent" : user.avatar_color}
-                    color="white"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontWeight="700"
-                    fontSize="sm"
+                    bg="transparent"
                     cursor="pointer"
                     boxShadow="var(--shadow-ambient)"
                     transition="all 0.2s"
                     _hover={{ transform: "scale(1.05)" }}
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                   >
-                    {user.profile_pic_url ? (
-                      <Image
-                        src={user.profile_pic_url}
-                        alt={user.nickname ? `${user.nickname}'s profile picture` : "Your profile picture"}
-                        w="100%"
-                        h="100%"
-                        objectFit="cover"
-                        borderRadius="full"
-                      />
-                    ) : (
-                      getInitials(user.nickname || user.student_id)
-                    )}
+                    <UserAvatar
+                      src={user.profile_pic_url}
+                      name={user.nickname || user.student_id}
+                      avatarColor={user.avatar_color}
+                      size="40px"
+                      fontSize="sm"
+                    />
                   </Button>
 
                   {dropdownOpen && desktopCoords && (
@@ -614,31 +598,20 @@ export function Navbar() {
                   minW="44px"
                   p={0}
                   borderRadius="full"
-                  bg={user.profile_pic_url ? "transparent" : user.avatar_color}
-                  color="white"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  fontWeight="700"
-                  fontSize="sm"
+                  bg="transparent"
                   cursor="pointer"
                   boxShadow="var(--shadow-ambient)"
                   transition="all 0.2s"
                   _hover={{ transform: "scale(1.05)" }}
                   onClick={() => setMobileDropdownOpen(!mobileDropdownOpen)}
                 >
-                  {user.profile_pic_url ? (
-                    <Image
-                      src={user.profile_pic_url}
-                      alt={user.nickname ? `${user.nickname}'s profile picture` : "Your profile picture"}
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                      borderRadius="full"
-                    />
-                  ) : (
-                    getInitials(user.nickname || user.student_id)
-                  )}
+                  <UserAvatar
+                    src={user.profile_pic_url}
+                    name={user.nickname || user.student_id}
+                    avatarColor={user.avatar_color}
+                    size="44px"
+                    fontSize="sm"
+                  />
                 </Button>
 
                 {mobileDropdownOpen && mobileCoords && (

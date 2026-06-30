@@ -1,10 +1,16 @@
 import { useState, useRef } from "react";
-import { Box, Button, VStack, Text, Input, Flex, Spinner } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  VStack,
+  Text,
+  Input,
+  Flex,
+  Spinner,
+} from "@chakra-ui/react";
 import { immich } from "../../lib/immich";
 import { useAlbumMappings } from "../../config/album-mapping";
 import { toaster } from "../ui/toaster";
-
-
 
 export function MediaUploader() {
   const { mappings, loading } = useAlbumMappings();
@@ -19,13 +25,13 @@ export function MediaUploader() {
     if (fileList.length === 0) return;
     setUploading(true);
     setProgress(0);
-    
+
     // Convert to array
     const files = Array.from(fileList);
-    
+
     try {
       // 1. Find the target album in Immich
-      const mapping = mappings.find(m => m.key === selectedAlbum);
+      const mapping = mappings.find((m) => m.key === selectedAlbum);
       let album = null;
       if (mapping?.immichAlbumId) {
         album = await immich.albums.getById(mapping.immichAlbumId);
@@ -34,9 +40,13 @@ export function MediaUploader() {
       } else {
         album = await immich.albums.findByName(selectedAlbum);
       }
-      
+
       if (!album) {
-        toaster.create({ title: "Album not found", description: `Could not find album ${mapping?.label || selectedAlbum}`, type: "error" });
+        toaster.create({
+          title: "Album not found",
+          description: `Could not find album ${mapping?.label || selectedAlbum}`,
+          type: "error",
+        });
         setUploading(false);
         return;
       }
@@ -44,10 +54,10 @@ export function MediaUploader() {
       // 2. Upload assets concurrently (Batching)
       const assetIds: string[] = [];
       const CONCURRENCY = 5;
-      
+
       for (let i = 0; i < files.length; i += CONCURRENCY) {
         const batch = files.slice(i, i + CONCURRENCY);
-        
+
         const uploadPromises = batch.map(async (file) => {
           try {
             const res = await immich.assets.upload(file);
@@ -61,23 +71,35 @@ export function MediaUploader() {
             throw err;
           }
         });
-        
+
         const results = await Promise.all(uploadPromises);
         assetIds.push(...results.filter((id): id is string => Boolean(id)));
-        
+
         setProgress(Math.round(((i + batch.length) / files.length) * 100));
       }
 
       // 3. Add to album
       if (assetIds.length > 0) {
         await immich.albums.addAssets({ albumIds: [album.id], assetIds });
-        toaster.create({ title: "Upload Complete", description: `Successfully added ${assetIds.length} assets to ${mapping?.label || album.albumName}.`, type: "success" });
+        toaster.create({
+          title: "Upload Complete",
+          description: `Successfully added ${assetIds.length} assets to ${mapping?.label || album.albumName}.`,
+          type: "success",
+        });
       } else {
-        toaster.create({ title: "Upload Skipped", description: `No new photos added (all duplicates).`, type: "info" });
+        toaster.create({
+          title: "Upload Skipped",
+          description: `No new photos added (all duplicates).`,
+          type: "info",
+        });
       }
     } catch (err) {
       console.error("Upload error:", err);
-      toaster.create({ title: "Upload Failed", description: "Failed to upload media to Immich.", type: "error" });
+      toaster.create({
+        title: "Upload Failed",
+        description: "Failed to upload media to Immich.",
+        type: "error",
+      });
     } finally {
       setUploading(false);
       setProgress(0);
@@ -89,16 +111,26 @@ export function MediaUploader() {
   if (loading) return <Spinner color="var(--c-chocolate)" />;
 
   return (
-    <Box bg="bg.surface" p={6} borderRadius="xl" border="1px solid" borderColor="border.subtle">
+    <Box
+      bg="bg.surface"
+      p={6}
+      borderRadius="xl"
+      border="1px solid"
+      borderColor="border.subtle"
+    >
       <VStack align="stretch" gap={4}>
-        <Text fontWeight="700" color="accent.solid" fontSize="lg">Immich Direct Upload</Text>
-        
+        <Text fontWeight="700" color="accent.solid" fontSize="lg">
+          Immich Direct Upload
+        </Text>
+
         <Flex gap={2} mb={2} wrap="wrap">
-          {mappings.map(m => (
+          {mappings.map((m) => (
             <Button
               key={m.key}
               variant={selectedAlbum === m.key ? "solid" : "outline"}
-              bg={selectedAlbum === m.key ? "var(--c-chocolate)" : "transparent"}
+              bg={
+                selectedAlbum === m.key ? "var(--c-chocolate)" : "transparent"
+              }
               color={selectedAlbum === m.key ? "white" : "var(--c-chocolate)"}
               onClick={() => setSelectedAlbum(m.key)}
               size="sm"
@@ -112,12 +144,22 @@ export function MediaUploader() {
         <Box
           border="2px dashed"
           borderColor={dragActive ? "var(--c-chocolate)" : "border.subtle"}
-          bg={dragActive ? "color-mix(in srgb, var(--c-chocolate) 5%, transparent)" : "transparent"}
+          bg={
+            dragActive
+              ? "color-mix(in srgb, var(--c-chocolate) 5%, transparent)"
+              : "transparent"
+          }
           borderRadius="xl"
           p={10}
           textAlign="center"
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-          onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setDragActive(false);
+          }}
           onDrop={(e) => {
             e.preventDefault();
             setDragActive(false);
@@ -127,16 +169,30 @@ export function MediaUploader() {
           {uploading ? (
             <VStack>
               <Spinner color="var(--c-chocolate)" />
-              <Text color="fg.muted">Uploading & adding to album... {progress}%</Text>
+              <Text color="fg.muted">
+                Uploading & adding to album... {progress}%
+              </Text>
             </VStack>
           ) : (
             <VStack gap={3}>
-              <Text color="fg.muted">Drag & drop photos here, or select files/folders</Text>
+              <Text color="fg.muted">
+                Drag & drop photos here, or select files/folders
+              </Text>
               <Flex gap={4}>
-                <Button onClick={() => fileInputRef.current?.click()} variant="outline" color="var(--c-chocolate)" borderColor="var(--c-chocolate)">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  color="var(--c-chocolate)"
+                  borderColor="var(--c-chocolate)"
+                >
                   Select Files
                 </Button>
-                <Button onClick={() => folderInputRef.current?.click()} variant="solid" bg="var(--c-chocolate)" color="white">
+                <Button
+                  onClick={() => folderInputRef.current?.click()}
+                  variant="solid"
+                  bg="var(--c-chocolate)"
+                  color="white"
+                >
                   Select Folder
                 </Button>
               </Flex>
@@ -146,6 +202,7 @@ export function MediaUploader() {
                 accept="image/*,video/*"
                 display="none"
                 ref={fileInputRef}
+                aria-label="Select files to upload"
                 onChange={(e) => {
                   if (e.target.files) handleFiles(e.target.files);
                 }}
@@ -159,6 +216,7 @@ export function MediaUploader() {
                 webkitdirectory=""
                 directory=""
                 ref={folderInputRef}
+                aria-label="Select folder to upload"
                 onChange={(e) => {
                   if (e.target.files) handleFiles(e.target.files);
                 }}

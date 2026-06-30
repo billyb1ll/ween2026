@@ -30,6 +30,7 @@ import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
+import { UserAvatar } from "../components/UserAvatar";
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -202,37 +203,15 @@ const LiveChatBubble = memo(function LiveChatBubble({
         w="100%"
       >
         {/* Avatar */}
-        <Box
-          as="button"
-          w={7}
-          h={7}
-          borderRadius="full"
-          bg={message.sender_avatar_color}
-          color="white"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          fontWeight="700"
+        <UserAvatar
+          src={message.sender_profile_pic_url}
+          name={message.sender_nickname}
+          avatarColor={message.sender_avatar_color}
+          size="28px"
           fontSize="2xs"
-          flexShrink={0}
-          mt="2px"
-          cursor="pointer"
           onClick={() => onInspectUser(message.sender_id)}
-          overflow="hidden"
-        >
-          {message.sender_profile_pic_url ? (
-            <Image
-              src={message.sender_profile_pic_url}
-              alt={message.sender_nickname}
-              w="100%"
-              h="100%"
-              objectFit="cover"
-              loading="lazy"
-            />
-          ) : (
-            getInitials(message.sender_nickname)
-          )}
-        </Box>
+          cursor="pointer"
+        />
 
         {/* Content Wrapper */}
         <VStack align={isMe ? "end" : "start"} gap={1} flex={1} minW={0}>
@@ -330,9 +309,9 @@ const LiveChatBubble = memo(function LiveChatBubble({
           <Box
             bg={
               isMe
-                ? "var(--c-chocolate, #7c563f)"
+                ? "accent.solid"
                 : isSenderStaff
-                  ? "color-mix(in srgb, var(--c-chocolate) 6%, var(--c-white))"
+                  ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 6%, var(--chakra-colors-white))"
                   : "bg.muted"
             }
             color={isMe ? "white" : "fg.default"}
@@ -341,7 +320,7 @@ const LiveChatBubble = memo(function LiveChatBubble({
               isMe
                 ? undefined
                 : isSenderStaff
-                  ? "color-mix(in srgb, var(--c-chocolate) 20%, transparent)"
+                  ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
                   : "border.subtle"
             }
             px={{ base: 3.5, md: 4 }}
@@ -387,7 +366,6 @@ export function BoardPage() {
   const [isInspectorLoading, setIsInspectorLoading] = useState(false);
   const [memoryImage, setMemoryImage] = useState<File | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isMobileComposerOpen, setIsMobileComposerOpen] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [chatInput, setChatInput] = useState("");
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -517,7 +495,7 @@ export function BoardPage() {
     memoryActive,
     handleCreatePost,
     handleLikePost,
-  } = useBoardRealtime(activeTab, user);
+  } = useBoardRealtime("memory", user);
 
   // Live chat — new hook (only active when on hype tab)
   const {
@@ -527,7 +505,7 @@ export function BoardPage() {
     onlineCount: chatOnlineCount,
     sendMessage,
     deleteMessage,
-  } = useLiveChat(activeTab, user);
+  } = useLiveChat("hype", user);
 
   // Auto-scroll snapping for inbound messages
   useEffect(() => {
@@ -744,7 +722,7 @@ export function BoardPage() {
   if (loading || !user) {
     return (
       <Flex justify="center" align="center" minH="100vh" bg="bg.canvas">
-        <Spinner size="xl" color="var(--c-lagoon)" />
+        <Spinner size="xl" color="brand.solid" />
       </Flex>
     );
   }
@@ -940,7 +918,7 @@ export function BoardPage() {
           <Box flex={1} overflow="hidden">
             {chatLoading ? (
               <Flex justify="center" align="center" h="100%">
-                <Spinner size="lg" color="var(--c-lagoon)" />
+                <Spinner size="lg" color="brand.solid" />
               </Flex>
             ) : chatMessages.length === 0 ? (
               <Flex justify="center" align="center" h="100%" p={6}>
@@ -989,7 +967,7 @@ export function BoardPage() {
               py={4}
               borderTop="1px solid"
               borderColor="border.subtle"
-              bg="var(--c-ivory)"
+              bg="bg.canvas"
               flexShrink={0}
               textAlign="center"
             >
@@ -1020,7 +998,7 @@ export function BoardPage() {
                   px={4}
                 >
                   <Text
-                    color="var(--c-error)"
+                    color="red.500"
                     fontWeight="bold"
                     fontSize="sm"
                     display="flex"
@@ -1140,8 +1118,8 @@ export function BoardPage() {
                       <Box
                         position="absolute"
                         right="12px"
-                        bg="var(--c-lagoon-light)"
-                        color="var(--c-lagoon)"
+                        bg="var(--chakra-colors-brand-muted)"
+                        color="brand.solid"
                         px={2}
                         py={0.5}
                         borderRadius="md"
@@ -1173,7 +1151,7 @@ export function BoardPage() {
                     loading={chatSending}
                     _hover={{
                       boxShadow:
-                        "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
+                        "0 4px 14px color-mix(in srgb, var(--chakra-colors-accent-solid) 25%, transparent)",
                     }}
                     aria-label="Send message"
                   >
@@ -1403,31 +1381,23 @@ export function BoardPage() {
                 <VStack align="stretch" gap={{ base: 4, md: 6 }}>
                   {/* Composer */}
                   <Box
-                    display={{ base: "none", md: "block" }}
+                    display="block"
                     bg="bg.surface"
                     border="1px solid"
                     borderColor="border.subtle"
                     borderRadius="2xl"
-                    p={{ base: 4, md: 6 }}
+                    p={{ base: 3.5, md: 6 }}
                     animation="fade-in-up 0.6s var(--ease-out-expo) 0.15s both"
                   >
                     <Flex gap={{ base: 3, md: 4 }} align="start">
                       {user ? (
-                        <Box
-                          w={{ base: 10, md: 12 }}
-                          h={{ base: 10, md: 12 }}
-                          borderRadius="full"
-                          bg={user.avatar_color}
-                          color="white"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          fontWeight="700"
+                        <UserAvatar
+                          src={user.profile_pic_url}
+                          name={user.nickname || user.student_id}
+                          avatarColor={user.avatar_color}
+                          size={{ base: "40px", md: "48px" }}
                           fontSize="sm"
-                          flexShrink={0}
-                        >
-                          {getInitials(user.nickname || user.student_id)}
-                        </Box>
+                        />
                       ) : (
                         <Box
                           w={{ base: 10, md: 12 }}
@@ -1465,9 +1435,9 @@ export function BoardPage() {
                           maxLength={150}
                           variant="flushed"
                           resize="none"
-                          fontSize="md"
-                          color="var(--c-ink)"
-                          _focus={{ borderColor: "var(--c-lagoon)" }}
+                          fontSize={{ base: "sm", md: "md" }}
+                          color="fg.default"
+                          _focus={{ borderColor: "brand.solid" }}
                           minH="60px"
                           p={0}
                           mb={2}
@@ -1517,7 +1487,7 @@ export function BoardPage() {
                                         ? "accent.solid"
                                         : "border.subtle"
                                     }
-                                    h={{ base: "40px", md: "32px" }}
+                                    h="32px"
                                     px={3}
                                     cursor="pointer"
                                     _hover={{
@@ -1556,7 +1526,7 @@ export function BoardPage() {
                                   style={{
                                     cursor: "pointer",
                                     fontSize: "0.875rem",
-                                    color: "var(--c-chocolate)",
+                                    color: "accent.solid",
                                     fontWeight: 600,
                                   }}
                                 >
@@ -1589,10 +1559,10 @@ export function BoardPage() {
                             <Button
                               bg="accent.solid"
                               color="white"
-                              px={6}
-                              py={2}
+                              px={{ base: 4, md: 6 }}
+                              py={{ base: 1.5, md: 2 }}
                               borderRadius="xl"
-                              fontSize="sm"
+                              fontSize={{ base: "xs", md: "sm" }}
                               fontWeight="600"
                               cursor="pointer"
                               onClick={handleSubmitPost}
@@ -1602,9 +1572,9 @@ export function BoardPage() {
                               }
                               _hover={{
                                 boxShadow:
-                                  "0 4px 14px color-mix(in srgb, var(--c-chocolate) 25%, transparent)",
+                                  "0 4px 14px color-mix(in srgb, var(--chakra-colors-accent-solid) 25%, transparent)",
                               }}
-                              minH="44px"
+                              minH={{ base: "36px", md: "44px" }}
                             >
                               Pin it!
                             </Button>
@@ -1778,7 +1748,7 @@ export function BoardPage() {
         <Dialog.Positioner zIndex={2200} px={4}>
           <Dialog.Content
             width={{ base: "100%", md: "520px" }}
-            bg="var(--c-white)"
+            bg="white"
             borderRadius="24px"
             boxShadow="xl"
             p={6}
@@ -1791,44 +1761,19 @@ export function BoardPage() {
               </VStack>
             ) : inspectedUser ? (
               <VStack gap={4} align="center" pt={4} pb={2}>
-                <Box
-                  w="100px"
-                  h="100px"
-                  borderRadius="full"
-                  overflow="hidden"
-                  bg={
-                    inspectedUser.profile_pic_url
-                      ? "transparent"
-                      : inspectedUser.avatar_color || "var(--c-muted-brown)"
-                  }
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  mb={2}
+                <UserAvatar
+                  src={inspectedUser.profile_pic_url}
+                  name={inspectedUser.nickname || inspectedUser.student_id}
+                  avatarColor={inspectedUser.avatar_color || "accent.muted"}
+                  size="100px"
+                  fontSize="2xl"
                   boxShadow="md"
-                >
-                  {inspectedUser.profile_pic_url ? (
-                    <Image
-                      src={inspectedUser.profile_pic_url}
-                      alt={`${inspectedUser.nickname || "User"}'s profile picture`}
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <Text fontSize="2xl" fontWeight="700" color="white">
-                      {getInitials(
-                        inspectedUser.nickname || inspectedUser.student_id,
-                      )}
-                    </Text>
-                  )}
-                </Box>
+                />
                 <VStack gap={1} align="center">
                   <Text
                     fontSize="2xl"
                     fontWeight="700"
-                    color="var(--c-chocolate)"
+                    color="accent.solid"
                     fontFamily="heading"
                   >
                     {inspectedUser.nickname
@@ -1904,343 +1849,6 @@ export function BoardPage() {
         </Dialog.Positioner>
       </Dialog.Root>
 
-      {/* Mobile Composer FAB & Bottom Sheet */}
-      {(effectiveHypeActive || isMemoryAccessible) && (
-        <>
-          <Box
-            as="button"
-            display={{ base: "flex", md: "none" }}
-            position="fixed"
-            bottom={{ base: "90px", md: "30px" }}
-            left={{ base: "24px", md: "auto" }}
-            right={{ base: "auto", md: "30px" }}
-            w="56px"
-            h="56px"
-            borderRadius="full"
-            bg="color-mix(in srgb, var(--c-chocolate) 100%, transparent)"
-            color="white"
-            alignItems="center"
-            justifyContent="center"
-            fontSize="3xl"
-            fontWeight="bold"
-            boxShadow="0 12px 40px rgba(73, 98, 104, 0.25)"
-            zIndex="9999"
-            onClick={() => setIsMobileComposerOpen(true)}
-            transition="all 0.2s"
-            _active={{ transform: "scale(0.95)" }}
-            aria-label="Open Composer"
-            aria-hidden={isMobileComposerOpen}
-          >
-            <Box className="material-symbols-outlined">add</Box>
-          </Box>
-
-          <AnimatePresence>
-            {isMobileComposerOpen && (
-              <>
-                {/* Backdrop */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.4)",
-                    backdropFilter: "blur(4px)",
-                    zIndex: 1400,
-                  }}
-                  onClick={() => setIsMobileComposerOpen(false)}
-                />
-
-                {/* Bottom Sheet Composer */}
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  style={{
-                    position: "fixed",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 1401,
-                    backgroundColor: "var(--c-surface, #ffffff)",
-                    borderTopLeftRadius: "24px",
-                    borderTopRightRadius: "24px",
-                    padding: "24px",
-                    boxShadow: "0 -4px 20px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Flex justify="space-between" align="center" mb={4}>
-                    <Heading size="md" fontFamily="heading" color="fg.default">
-                      {activeTab === "hype"
-                        ? "Share the hype"
-                        : "Pin something"}
-                    </Heading>
-                    <Box
-                      as="button"
-                      className="material-symbols-outlined"
-                      onClick={() => setIsMobileComposerOpen(false)}
-                      color="fg.subtle"
-                      _hover={{ color: "fg.default" }}
-                    >
-                      close
-                    </Box>
-                  </Flex>
-
-                  <Flex gap={{ base: 3, md: 4 }} align="start">
-                    {user ? (
-                      <Box
-                        w={{ base: 10, md: 12 }}
-                        h={{ base: 10, md: 12 }}
-                        borderRadius="full"
-                        bg={user.avatar_color}
-                        color="white"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        fontWeight="700"
-                        fontSize="sm"
-                        flexShrink={0}
-                      >
-                        {getInitials(user.nickname || user.student_id)}
-                      </Box>
-                    ) : (
-                      <Box
-                        w={{ base: 10, md: 12 }}
-                        h={{ base: 10, md: 12 }}
-                        borderRadius="full"
-                        bg="brand.muted"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                        flexShrink={0}
-                      >
-                        <Box
-                          className="material-symbols-outlined"
-                          fontSize="xl"
-                          color="brand.fg"
-                        >
-                          person
-                        </Box>
-                      </Box>
-                    )}
-                    <Box flex={1}>
-                      <label
-                        htmlFor="mobile-board-composer"
-                        className="sr-only"
-                      >
-                        {activeTab === "hype"
-                          ? "Share the hype"
-                          : "Pin something memorable"}
-                      </label>
-                      <Textarea
-                        id="mobile-board-composer"
-                        name="content"
-                        placeholder={
-                          activeTab === "hype"
-                            ? "Share the hype..."
-                            : "Pin something memorable..."
-                        }
-                        size="lg"
-                        minH={{ base: "100px", md: "120px" }}
-                        p={4}
-                        border="none"
-                        borderRadius="xl"
-                        bg="bg.muted"
-                        color="fg.default"
-                        _focus={{
-                          bg: "bg.surface",
-                          boxShadow: "0 0 0 2px var(--c-orange)",
-                          outline: "none",
-                        }}
-                        required
-                        disabled={submitting || isUploadingImage}
-                        fontFamily="body"
-                      />
-
-                      {activeTab === "memory" && (
-                        <Box mt={3}>
-                          {memoryImage ? (
-                            <Flex
-                              align="center"
-                              gap={3}
-                              bg="bg.muted"
-                              p={2}
-                              borderRadius="md"
-                              position="relative"
-                            >
-                              <Box
-                                w="40px"
-                                h="40px"
-                                borderRadius="sm"
-                                overflow="hidden"
-                              >
-                                <Image
-                                  src={URL.createObjectURL(memoryImage)}
-                                  alt={`Selected image preview: ${memoryImage.name}`}
-                                  w="100%"
-                                  h="100%"
-                                  objectFit="cover"
-                                />
-                              </Box>
-                              <Text
-                                fontSize="xs"
-                                color="fg.subtle"
-                                lineClamp={1}
-                                flex={1}
-                              >
-                                {memoryImage.name}
-                              </Text>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                bg="transparent"
-                                onClick={() => setMemoryImage(null)}
-                                w={{ base: "40px", md: "32px" }}
-                                h={{ base: "40px", md: "32px" }}
-                                minW={{ base: "40px", md: "32px" }}
-                                p={0}
-                                cursor="pointer"
-                              >
-                                <Box
-                                  className="material-symbols-outlined"
-                                  fontSize="sm"
-                                >
-                                  close
-                                </Box>
-                              </Button>
-                            </Flex>
-                          ) : (
-                            <label
-                              htmlFor="mobile-image-upload"
-                              style={{ cursor: "pointer" }}
-                            >
-                              <Button
-                                as="span"
-                                variant="outline"
-                                size="sm"
-                                borderRadius="full"
-                                gap={2}
-                                borderColor="border.subtle"
-                                _hover={{ bg: "bg.muted" }}
-                              >
-                                <Box
-                                  className="material-symbols-outlined"
-                                  fontSize="sm"
-                                >
-                                  image
-                                </Box>
-                                Attach Image
-                                <input
-                                  id="mobile-image-upload"
-                                  type="file"
-                                  accept="image/*"
-                                  style={{ display: "none" }}
-                                  onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                      setMemoryImage(e.target.files[0]);
-                                    }
-                                  }}
-                                />
-                              </Button>
-                            </label>
-                          )}
-                        </Box>
-                      )}
-
-                      <Flex justify="flex-end" mt={3} gap={3}>
-                        <Button
-                          type="button"
-                          onClick={async (e) => {
-                            const textarea =
-                              e.currentTarget.parentElement?.parentElement?.querySelector(
-                                "textarea",
-                              );
-                            if (textarea && textarea.value.trim()) {
-                              let imageUrl = null;
-                              if (memoryImage && activeTab === "memory") {
-                                setIsUploadingImage(true);
-                                try {
-                                  const compressedBlob =
-                                    await compressImage(memoryImage);
-                                  const fileName = `${user?.student_id}-${Math.random()}-${Date.now()}.jpg`;
-                                  const filePath = `${fileName}`;
-
-                                  const { error: uploadError } =
-                                    await supabase.storage
-                                      .from("board_media")
-                                      .upload(filePath, compressedBlob, {
-                                        contentType: "image/jpeg",
-                                        cacheControl: "3600",
-                                        upsert: true,
-                                      });
-
-                                  if (!uploadError) {
-                                    const { data: publicUrlData } =
-                                      supabase.storage
-                                        .from("board_media")
-                                        .getPublicUrl(filePath);
-                                    imageUrl = publicUrlData.publicUrl;
-                                  } else {
-                                    console.error("Upload Error", uploadError);
-                                  }
-                                } catch (err) {
-                                  console.error(
-                                    "Compression/Upload Error",
-                                    err,
-                                  );
-                                } finally {
-                                  setIsUploadingImage(false);
-                                }
-                              }
-
-                              await handleCreatePost(
-                                textarea.value.trim(),
-                                [],
-                                false,
-                                imageUrl,
-                              );
-                              textarea.value = "";
-                              setMemoryImage(null);
-                              setIsMobileComposerOpen(false);
-                            }
-                          }}
-                          disabled={submitting || isUploadingImage}
-                          bg="var(--c-chocolate)"
-                          color="white"
-                          borderRadius="full"
-                          px={6}
-                          _hover={{
-                            bg: "var(--c-chocolate-dark)",
-                            transform: "translateY(-1px)",
-                          }}
-                          _active={{
-                            bg: "var(--c-chocolate-dark)",
-                            transform: "scale(0.98)",
-                          }}
-                          _disabled={{ opacity: 0.6, cursor: "not-allowed" }}
-                        >
-                          {submitting || isUploadingImage ? (
-                            <Spinner size="sm" color="white" />
-                          ) : (
-                            <Text fontWeight="600" fontFamily="heading">
-                              Post
-                            </Text>
-                          )}
-                        </Button>
-                      </Flex>
-                    </Box>
-                  </Flex>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </>
-      )}
     </Box>
   );
 }
@@ -2269,7 +1877,7 @@ function JellyScrollLoader() {
           h="36px"
           borderRadius="full"
           border="4px solid rgba(197, 224, 230, 0.3)"
-          borderTopColor="var(--c-chocolate)"
+          borderTopColor="accent.solid"
           className="spin-loader"
         />
       </motion.div>
@@ -2284,7 +1892,7 @@ function JellyScrollLoader() {
         <Text
           fontSize="xs"
           fontWeight="600"
-          color="var(--c-chocolate)"
+          color="accent.solid"
           fontFamily="body"
         >
           Fetching more vibes...
@@ -2531,7 +2139,7 @@ function CommentSection({
 
       {commentsLoading ? (
         <Flex justify="center" py={2}>
-          <Spinner size="xs" color="var(--c-lagoon)" />
+          <Spinner size="xs" color="brand.solid" />
         </Flex>
       ) : comments.length === 0 ? (
         <Text fontSize="xs" color="fg.subtle">
@@ -2555,41 +2163,13 @@ function CommentSection({
                 borderRadius="xl"
                 align="start"
               >
-                <Box
-                  w={avatarSize}
-                  h={avatarSize}
-                  borderRadius="full"
-                  bg={
-                    comment.author?.profile_pic_url
-                      ? "transparent"
-                      : comment.author?.avatar_color || "var(--c-muted-brown)"
-                  }
-                  color="white"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
+                <UserAvatar
+                  src={comment.author?.profile_pic_url}
+                  name={comment.author?.nickname || comment.student_id}
+                  avatarColor={comment.author?.avatar_color || "accent.muted"}
+                  size={avatarSize}
                   fontSize={avatarFontSize}
-                  fontWeight="700"
-                  flexShrink={0}
-                  overflow="hidden"
-                >
-                  {comment.author?.profile_pic_url ? (
-                    <Image
-                      src={comment.author.profile_pic_url}
-                      alt={
-                        comment.author.nickname
-                          ? `${comment.author.nickname}'s profile picture`
-                          : "User's profile picture"
-                      }
-                      w="100%"
-                      h="100%"
-                      objectFit="cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    getInitials(comment.author?.nickname || comment.student_id)
-                  )}
-                </Box>
+                />
                 <VStack align="start" gap={0.5} flex={1}>
                   <HStack gap={1.5} flexWrap="wrap">
                     <Text fontSize="xs" fontWeight="700" color="fg.default">
@@ -2625,7 +2205,7 @@ function CommentSection({
                     onClick={() => handleDeleteComment(comment.id)}
                     variant="ghost"
                     bg="transparent"
-                    color="var(--c-error)"
+                    color="red.500"
                     w={{ base: "40px", md: "32px" }}
                     h={{ base: "40px", md: "32px" }}
                     minW={{ base: "40px", md: "32px" }}
@@ -2661,7 +2241,7 @@ function CommentSection({
             borderColor="border.subtle"
             bg="bg.surface"
             fontSize="xs"
-            _focus={{ borderColor: "var(--c-lagoon)" }}
+            _focus={{ borderColor: "brand.solid" }}
             required
           />
           <Button
@@ -2746,10 +2326,12 @@ export const HypeCard = memo(function HypeCard({
     ) : (
       getInitials(displayAuthorName)
     );
+
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
-      ? "var(--c-muted-brown)"
+      ? "accent.muted"
       : post.author.avatar_color;
+
 
   return (
     <Box
@@ -2781,7 +2363,7 @@ export const HypeCard = memo(function HypeCard({
         _focusVisible={
           !isAnon && onInspectUser
             ? {
-                outline: "2px solid var(--c-orange)",
+                outline: "2px solid var(--chakra-colors-orange-500)",
                 outlineOffset: "2px",
                 borderRadius: "md",
               }
@@ -3077,19 +2659,19 @@ const MemoryCard = memo(function MemoryCard({
     );
   const displayAvatarColor =
     isAnon && currentUserRole !== "moderator"
-      ? "var(--c-muted-brown)"
+      ? "accent.muted"
       : post.author.avatar_color;
 
   return (
     <Box
       bg={
         isStaff
-          ? "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-white))"
+          ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-white))"
           : "bg.surface"
       }
       border={
         isStaff
-          ? "1px solid color-mix(in srgb, var(--c-chocolate) 20%, transparent)"
+          ? "1px solid color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
           : "1px dashed"
       }
       borderColor={isStaff ? undefined : "border.default"}
@@ -3115,7 +2697,7 @@ const MemoryCard = memo(function MemoryCard({
         h={4}
         borderRadius="full"
         bg={index % 2 === 0 ? "var(--c-state-pin-a)" : "var(--c-state-pin-b)"}
-        boxShadow="0 2px 4px color-mix(in srgb, var(--c-ink) 20%, transparent)"
+        boxShadow="0 2px 4px color-mix(in srgb, var(--chakra-colors-fg-default) 20%, transparent)"
         zIndex={2}
       />
       <Flex
@@ -3133,49 +2715,21 @@ const MemoryCard = memo(function MemoryCard({
         _focusVisible={
           !isAnon && onInspectUser
             ? {
-                outline: "2px solid var(--c-orange)",
+                outline: "2px solid var(--chakra-colors-orange-500)",
                 outlineOffset: "2px",
                 borderRadius: "md",
               }
             : undefined
         }
       >
-        <Box
-          w={8}
-          h={8}
-          borderRadius="full"
-          bg={
-            (!isAnon || currentUserRole === "moderator") &&
-            post.author.profile_pic_url
-              ? "transparent"
-              : displayAvatarColor
-          }
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
+        <UserAvatar
+          src={(!isAnon || currentUserRole === "moderator") ? post.author.profile_pic_url : null}
+          name={displayAuthorName}
+          avatarColor={displayAvatarColor}
+          size="32px"
           fontSize="xs"
-          fontWeight="700"
-          color="white"
-          overflow="hidden"
-        >
-          {(!isAnon || currentUserRole === "moderator") &&
-          post.author.profile_pic_url ? (
-            <Image
-              src={post.author.profile_pic_url}
-              alt={
-                isAnon
-                  ? "Anonymous user's profile picture"
-                  : `${post.author.nickname || "User"}'s profile picture`
-              }
-              w="100%"
-              h="100%"
-              objectFit="cover"
-              loading="lazy"
-            />
-          ) : (
-            displayAuthorInitials
-          )}
-        </Box>
+          fallback={displayAuthorInitials}
+        />
         <VStack align="start" gap={0} flex={1}>
           <Text
             fontSize="xs"

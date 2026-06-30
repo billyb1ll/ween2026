@@ -1097,7 +1097,7 @@ export function AdminDashboardPage() {
             staff_id: s.student_id,
             nickname: s.nickname || "Unknown Staff",
             profile_pic_url: s.profile_pic_url || "",
-            avatar_color: s.avatar_color || "var(--c-muted)",
+            avatar_color: s.avatar_color || "fg.muted",
           }));
         }
       }
@@ -1893,7 +1893,7 @@ export function AdminDashboardPage() {
   if (loading) {
     return (
       <Flex minH="80vh" align="center" justify="center">
-        <Spinner size="xl" color="var(--c-lagoon)" />
+        <Spinner size="xl" color="brand.solid" />
       </Flex>
     );
   }
@@ -1949,14 +1949,14 @@ export function AdminDashboardPage() {
               py={1.5}
               h="36px"
               bg={
-                activeTab === "moderator" ? "var(--c-chocolate)" : "transparent"
+                activeTab === "moderator" ? "accent.solid" : "transparent"
               }
-              color={activeTab === "moderator" ? "white" : "var(--c-muted)"}
+              color={activeTab === "moderator" ? "white" : "fg.muted"}
               boxShadow={activeTab === "moderator" ? "sm" : "none"}
               _hover={{
                 bg:
                   activeTab === "moderator"
-                    ? "var(--c-chocolate)"
+                    ? "accent.solid"
                     : "rgba(73, 98, 104, 0.08)",
               }}
               fontSize="xs"
@@ -1976,13 +1976,13 @@ export function AdminDashboardPage() {
               px={6}
               py={1.5}
               h="36px"
-              bg={activeTab === "media" ? "var(--c-chocolate)" : "transparent"}
-              color={activeTab === "media" ? "white" : "var(--c-muted)"}
+              bg={activeTab === "media" ? "accent.solid" : "transparent"}
+              color={activeTab === "media" ? "white" : "fg.muted"}
               boxShadow={activeTab === "media" ? "sm" : "none"}
               _hover={{
                 bg:
                   activeTab === "media"
-                    ? "var(--c-chocolate)"
+                    ? "accent.solid"
                     : "rgba(73, 98, 104, 0.08)",
               }}
               fontSize="xs"
@@ -2002,13 +2002,13 @@ export function AdminDashboardPage() {
               px={6}
               py={1.5}
               h="36px"
-              bg={activeTab === "staff" ? "var(--c-chocolate)" : "transparent"}
-              color={activeTab === "staff" ? "white" : "var(--c-muted)"}
+              bg={activeTab === "staff" ? "accent.solid" : "transparent"}
+              color={activeTab === "staff" ? "white" : "fg.muted"}
               boxShadow={activeTab === "staff" ? "sm" : "none"}
               _hover={{
                 bg:
                   activeTab === "staff"
-                    ? "var(--c-chocolate)"
+                    ? "accent.solid"
                     : "rgba(73, 98, 104, 0.08)",
               }}
               fontSize="xs"
@@ -2031,7 +2031,7 @@ export function AdminDashboardPage() {
             px={6}
             py={1.5}
             h="36px"
-            color="var(--c-chocolate)"
+            color="accent.solid"
             _hover={{
               bg: "rgba(73, 98, 104, 0.05)",
             }}
@@ -2073,7 +2073,7 @@ export function AdminDashboardPage() {
             {/* 2. Emergency Broadcast */}
             {/* Section A: Emergency Broadcast Control */}
             <Box
-              bg="var(--c-white)"
+              bg="white"
               border="1px solid"
               borderColor="border.subtle"
               borderRadius="xl"
@@ -2093,7 +2093,7 @@ export function AdminDashboardPage() {
                   <Text
                     fontSize="xs"
                     fontWeight="700"
-                    color="var(--c-muted)"
+                    color="fg.muted"
                     mb={1}
                     textTransform="uppercase"
                   >
@@ -2105,15 +2105,15 @@ export function AdminDashboardPage() {
                     onChange={(e) => setEmergencyText(e.target.value)}
                     h="80px"
                     borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="var(--c-ivory)"
+                    border="1.5px solid var(--chakra-colors-border-default)"
+                    bg="bg.canvas"
                     p={3}
                     fontSize="sm"
                     outline="none"
                     resize="none"
                     _focus={{
-                      borderColor: "var(--c-lagoon)",
-                      boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                      borderColor: "brand.solid",
+                      boxShadow: "0 0 0 2px var(--chakra-colors-brand-muted)",
                     }}
                     disabled={isSavingAnnouncement}
                   />
@@ -2125,7 +2125,7 @@ export function AdminDashboardPage() {
                     <Text
                       fontSize="xs"
                       fontWeight="700"
-                      color="var(--c-muted)"
+                      color="fg.muted"
                       textTransform="uppercase"
                     >
                       Live Preview
@@ -2207,13 +2207,13 @@ export function AdminDashboardPage() {
                     <Box
                       py={3}
                       px={4}
-                      border="1px dashed var(--c-outline)"
+                      border="1px dashed var(--chakra-colors-border-default)"
                       borderRadius="lg"
                       bg="rgba(0,0,0,0.02)"
                     >
                       <Text
                         fontSize="xs"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                         fontStyle="italic"
                       >
                         Enter announcement text above to view live preview...
@@ -2262,10 +2262,10 @@ export function AdminDashboardPage() {
                     </Button>
                     <Button
                       type="submit"
-                      bg="var(--c-chocolate)"
+                      bg="accent.solid"
                       color="white"
                       _hover={{
-                        bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                        bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
                       }}
                       disabled={isSavingAnnouncement || !emergencyText.trim()}
                       py={1.5}
@@ -2301,7 +2301,7 @@ export function AdminDashboardPage() {
                     align="stretch"
                     gap={3}
                     flex={1}
-                    bg="color-mix(in srgb, var(--c-lagoon) 4%, transparent)"
+                    bg="color-mix(in srgb, var(--chakra-colors-brand-solid) 4%, transparent)"
                     p={4}
                     borderRadius="xl"
                     border="1px solid"
@@ -2312,13 +2312,13 @@ export function AdminDashboardPage() {
                         as="span"
                         className="material-symbols-outlined"
                         fontSize="18px"
-                        color="var(--c-lagoon)"
+                        color="brand.solid"
                       >
                         breaking_news
                       </Box>
                       <Text
                         fontWeight="700"
-                        color="var(--c-chocolate)"
+                        color="accent.solid"
                         fontSize="sm"
                       >
                         Global Marquee Ticker
@@ -2330,12 +2330,12 @@ export function AdminDashboardPage() {
                       onChange={(e) => setTickerText(e.target.value)}
                       h="44px"
                       borderRadius="xl"
-                      border="1.5px solid var(--c-outline)"
-                      bg="var(--c-white)"
+                      border="1.5px solid var(--chakra-colors-border-default)"
+                      bg="white"
                       fontSize="sm"
                       _focus={{
-                        borderColor: "var(--c-lagoon)",
-                        boxShadow: "0 0 0 2px var(--c-lagoon-light)",
+                        borderColor: "brand.solid",
+                        boxShadow: "0 0 0 2px var(--chakra-colors-brand-muted)",
                       }}
                       disabled={isSavingTicker}
                     />
@@ -2346,7 +2346,7 @@ export function AdminDashboardPage() {
                         <Text
                           fontSize="xs"
                           fontWeight="700"
-                          color="var(--c-muted)"
+                          color="fg.muted"
                           textTransform="uppercase"
                         >
                           Live Preview
@@ -2388,13 +2388,13 @@ export function AdminDashboardPage() {
                         <Box
                           py={3}
                           px={4}
-                          border="1px dashed var(--c-outline)"
+                          border="1px dashed var(--chakra-colors-border-default)"
                           borderRadius="lg"
                           bg="rgba(0,0,0,0.02)"
                         >
                           <Text
                             fontSize="xs"
-                            color="var(--c-muted)"
+                            color="fg.muted"
                             fontStyle="italic"
                           >
                             Enter ticker text above to view live preview...
@@ -2425,10 +2425,10 @@ export function AdminDashboardPage() {
                       </Button>
                       <Button
                         type="button"
-                        bg="var(--c-lagoon)"
+                        bg="brand.solid"
                         color="white"
                         _hover={{
-                          bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                          bg: "color-mix(in srgb, var(--chakra-colors-brand-solid) 85%, black)",
                         }}
                         h="40px"
                         py={1.5}
@@ -2458,7 +2458,7 @@ export function AdminDashboardPage() {
                     bg={
                       globalMuteActive
                         ? "color-mix(in srgb, #c53030 6%, transparent)"
-                        : "color-mix(in srgb, var(--c-ivory) 80%, transparent)"
+                        : "color-mix(in srgb, var(--chakra-colors-bg-canvas) 80%, transparent)"
                     }
                     p={4}
                     borderRadius="xl"
@@ -2471,13 +2471,13 @@ export function AdminDashboardPage() {
                         as="span"
                         className="material-symbols-outlined"
                         fontSize="18px"
-                        color={globalMuteActive ? "red.600" : "var(--c-muted)"}
+                        color={globalMuteActive ? "red.600" : "fg.muted"}
                       >
                         {globalMuteActive ? "volume_off" : "volume_up"}
                       </Box>
                       <Text
                         fontWeight="700"
-                        color="var(--c-chocolate)"
+                        color="accent.solid"
                         fontSize="sm"
                       >
                         Instant Panic Mute
@@ -2528,7 +2528,7 @@ export function AdminDashboardPage() {
                     ) : (
                       <Button
                         type="button"
-                        bg="var(--c-lagoon)"
+                        bg="brand.solid"
                         color="white"
                         h="48px"
                         py={2}
@@ -2537,7 +2537,7 @@ export function AdminDashboardPage() {
                         fontSize="sm"
                         fontWeight="800"
                         _hover={{
-                          bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+                          bg: "color-mix(in srgb, var(--chakra-colors-brand-solid) 85%, black)",
                         }}
                         transition="all 0.2s ease"
                         onClick={() => handlePanicMute(false)}
@@ -2563,7 +2563,7 @@ export function AdminDashboardPage() {
             {/* 3. Countdown Timer */}
             {/* Section F: Orientation Milestones Timer Setup */}
             <Box
-              bg="var(--c-white)"
+              bg="white"
               border="1px solid"
               borderColor="border.subtle"
               borderRadius="xl"
@@ -2581,7 +2581,7 @@ export function AdminDashboardPage() {
               >
                 <Flex gap={4} flexWrap="wrap">
                   <VStack align="start" gap={1} flex={1} minW="200px">
-                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    <Text fontSize="xs" fontWeight="700" color="fg.muted">
                       Countdown Target Label
                     </Text>
                     <Input
@@ -2589,14 +2589,14 @@ export function AdminDashboardPage() {
                       value={eventTitle}
                       onChange={(e) => setEventTitle(e.target.value)}
                       h="44px"
-                      bg="var(--c-ivory)"
+                      bg="bg.canvas"
                       borderRadius="xl"
-                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       required
                     />
                   </VStack>
                   <VStack align="start" gap={1} flex={1} minW="200px">
-                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    <Text fontSize="xs" fontWeight="700" color="fg.muted">
                       Milestone Calendar Time
                     </Text>
                     <Input
@@ -2604,16 +2604,16 @@ export function AdminDashboardPage() {
                       value={eventTime}
                       onChange={(e) => setEventTime(e.target.value)}
                       h="44px"
-                      bg="var(--c-ivory)"
+                      bg="bg.canvas"
                       borderRadius="xl"
-                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       required
                     />
                   </VStack>
                 </Flex>
                 <Button
                   type="submit"
-                  bg="var(--c-chocolate)"
+                  bg="accent.solid"
                   color="white"
                   loading={updatingEvent}
                   h="44px"
@@ -2630,7 +2630,7 @@ export function AdminDashboardPage() {
             {/* 4. Daily Vibe Mission */}
             {/* Section B: Daily Vibe Mission Sequence Configurator */}
             <Box
-              bg="var(--c-white)"
+              bg="white"
               border="1px solid"
               borderColor="border.subtle"
               borderRadius="xl"
@@ -2650,7 +2650,7 @@ export function AdminDashboardPage() {
                   p={3}
                 >
                   <Table.Root size="sm">
-                    <Table.Header bg="var(--c-ivory)">
+                    <Table.Header bg="bg.canvas">
                       <Table.Row>
                         <Table.ColumnHeader fontFamily="heading">Seq Order</Table.ColumnHeader>
                         <Table.ColumnHeader fontFamily="heading">
@@ -2736,7 +2736,7 @@ export function AdminDashboardPage() {
                   gap={3}
                   flexWrap="wrap"
                   align="end"
-                  bg="var(--c-ivory)"
+                  bg="bg.canvas"
                   p={4}
                   borderRadius="xl"
                 >
@@ -2744,7 +2744,7 @@ export function AdminDashboardPage() {
                     <Box
                       fontSize="xs"
                       fontWeight="700"
-                      color="var(--c-muted)"
+                      color="fg.muted"
                       textTransform="uppercase"
                     >
                       <label htmlFor="add-mission-target">
@@ -2770,7 +2770,7 @@ export function AdminDashboardPage() {
                     />
                   </VStack>
                   <VStack align="start" gap={1}>
-                    <Text fontSize="xs" fontWeight="700" color="var(--c-muted)">
+                    <Text fontSize="xs" fontWeight="700" color="fg.muted">
                       Required Card Count
                     </Text>
                     <Input
@@ -2784,14 +2784,14 @@ export function AdminDashboardPage() {
                       h="38px"
                       bg="white"
                       borderRadius="lg"
-                      border="1.5px solid var(--c-outline)"
-                      _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                      border="1.5px solid var(--chakra-colors-border-default)"
+                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       maxW="90px"
                     />
                   </VStack>
                   <Button
                     type="submit"
-                    bg="var(--c-chocolate)"
+                    bg="accent.solid"
                     color="white"
                     h={{ base: "40px", md: "38px" }}
                     py={1.5}
@@ -2818,7 +2818,7 @@ export function AdminDashboardPage() {
                     fontSize="sm"
                     fontWeight="700"
                     fontFamily="heading"
-                    color="var(--c-chocolate)"
+                    color="accent.solid"
                   >
                     Swipe Penalty & Exponential Lockout Variables
                   </Heading>
@@ -2827,7 +2827,7 @@ export function AdminDashboardPage() {
                       <Text
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                       >
                         Max Allowed Strikes
                       </Text>
@@ -2837,17 +2837,17 @@ export function AdminDashboardPage() {
                         onChange={(e) =>
                           setMaxStrikes(parseInt(e.target.value) || 1)
                         }
-                        bg="var(--c-ivory)"
+                        bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       />
                     </VStack>
                     <VStack align="start" gap={1} flex={1} minW="140px">
                       <Text
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                       >
                         Base Cooldown (minutes)
                       </Text>
@@ -2857,17 +2857,17 @@ export function AdminDashboardPage() {
                         onChange={(e) =>
                           setBaseCooldown(parseInt(e.target.value) || 1)
                         }
-                        bg="var(--c-ivory)"
+                        bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       />
                     </VStack>
                     <VStack align="start" gap={1} flex={1} minW="140px">
                       <Text
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                       >
                         Max Cooldown ceiling (minutes)
                       </Text>
@@ -2877,16 +2877,16 @@ export function AdminDashboardPage() {
                         onChange={(e) =>
                           setMaxCooldown(parseInt(e.target.value) || 1)
                         }
-                        bg="var(--c-ivory)"
+                        bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
                       />
                     </VStack>
                   </Flex>
                   <Button
                     type="submit"
-                    bg="var(--c-lagoon)"
+                    bg="brand.solid"
                     color="white"
                     h="40px"
                     py={1.5}
@@ -2929,7 +2929,7 @@ export function AdminDashboardPage() {
           {/* 6. System Audit Logs */}
           {/* Section D: Historical Administrative Audit Logs Timeline */}
           <Box
-            bg="var(--c-white)"
+            bg="white"
             border="1px solid"
             borderColor="border.subtle"
             borderRadius="xl"
@@ -2951,7 +2951,7 @@ export function AdminDashboardPage() {
                 px={3}
                 fontSize="xs"
                 fontWeight="600"
-                color="var(--c-muted)"
+                color="fg.muted"
               >
                 <HStack gap={1}>
                   <Box
@@ -2980,7 +2980,7 @@ export function AdminDashboardPage() {
                 overflow="hidden"
               >
                 <Table.Root size="sm" variant="line">
-                  <Table.Header bg="var(--c-ivory)">
+                  <Table.Header bg="bg.canvas">
                     <Table.Row>
                       <Table.ColumnHeader fontFamily="heading">Timestamp</Table.ColumnHeader>
                       <Table.ColumnHeader fontFamily="heading">Moderator</Table.ColumnHeader>
@@ -3087,7 +3087,7 @@ export function AdminDashboardPage() {
         (user?.role === "moderator" || user?.role === "media_admin") && (
           <VStack align="stretch" gap={6}>
             <Box
-              bg="var(--c-white)"
+              bg="white"
               p={6}
               border="1px solid"
               borderColor="border.subtle"
@@ -3099,7 +3099,7 @@ export function AdminDashboardPage() {
                 fontSize="lg"
                 fontWeight="700"
                 fontFamily="heading"
-                color="var(--c-chocolate)"
+                color="accent.solid"
                 mb={4}
               >
                 Immich Photo Server Connectivity (AV)
@@ -3109,10 +3109,10 @@ export function AdminDashboardPage() {
                   align="center"
                   justify="space-between"
                   p={3}
-                  bg="var(--c-ivory)"
+                  bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="var(--c-chocolate)">
+                  <Text fontWeight="600" color="accent.solid">
                     External Server Status
                   </Text>
                   <Badge
@@ -3125,13 +3125,13 @@ export function AdminDashboardPage() {
                   align="center"
                   justify="space-between"
                   p={3}
-                  bg="var(--c-ivory)"
+                  bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="var(--c-chocolate)">
+                  <Text fontWeight="600" color="accent.solid">
                     Configured Server Endpoint
                   </Text>
-                  <Text fontSize="xs" fontWeight="700" color="var(--c-lagoon)">
+                  <Text fontSize="xs" fontWeight="700" color="brand.solid">
                     {immichConfig.url || "None (Using local Supabase fallback)"}
                   </Text>
                 </Flex>
@@ -3139,16 +3139,16 @@ export function AdminDashboardPage() {
                   align="center"
                   justify="space-between"
                   p={3}
-                  bg="var(--c-ivory)"
+                  bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="var(--c-chocolate)">
+                  <Text fontWeight="600" color="accent.solid">
                     Synced Image Records
                   </Text>
                   <Text
                     fontSize="sm"
                     fontWeight="700"
-                    color="var(--c-chocolate)"
+                    color="accent.solid"
                   >
                     {immichStatus.totalImages} images
                   </Text>
@@ -3160,13 +3160,13 @@ export function AdminDashboardPage() {
                 fontSize="sm"
                 fontWeight="700"
                 fontFamily="heading"
-                color="var(--c-chocolate)"
+                color="accent.solid"
                 mb={2}
               >
                 DigitalOcean Droplet Sync Log Tracker
               </Heading>
               <Box
-                bg="var(--c-ink)"
+                bg="fg.default"
                 color="green.400"
                 p={4}
                 borderRadius="xl"
@@ -3203,13 +3203,13 @@ export function AdminDashboardPage() {
           <VStack align="stretch" gap={6}>
             {staffLoading ? (
               <Flex minH="40vh" align="center" justify="center">
-                <Spinner size="xl" color="var(--c-chocolate)" />
+                <Spinner size="xl" color="accent.solid" />
               </Flex>
             ) : (
               <>
                 {/* VibeCheck Setup Card */}
                 <Box
-                  bg="var(--c-white)"
+                  bg="white"
                   p={6}
                   border="1px solid"
                   borderColor="border.subtle"
@@ -3255,7 +3255,7 @@ export function AdminDashboardPage() {
                       <Text
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                         textTransform="uppercase"
                       >
                         Bio / Intro Phrase (Staff Intro)
@@ -3267,8 +3267,8 @@ export function AdminDashboardPage() {
                         onChange={(e) => setBio(e.target.value)}
                         h="44px"
                         borderRadius="xl"
-                        border="1.5px solid var(--c-outline)"
-                        bg="var(--c-ivory)"
+                        border="1.5px solid var(--chakra-colors-border-default)"
+                        bg="bg.canvas"
                         disabled={!vibecheckEnabled || savingProfile}
                       />
                     </VStack>
@@ -3277,7 +3277,7 @@ export function AdminDashboardPage() {
                       <Text
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-muted)"
+                        color="fg.muted"
                         textTransform="uppercase"
                       >
                         Vibe Check Photos (Max exactly 3 photos)
@@ -3349,7 +3349,7 @@ export function AdminDashboardPage() {
                                   {isUploading ? (
                                     <Spinner
                                       size="xs"
-                                      color="var(--c-lagoon)"
+                                      color="brand.solid"
                                     />
                                   ) : (
                                     <Flex gap={2}>
@@ -3388,7 +3388,7 @@ export function AdminDashboardPage() {
 
                     <Button
                       type="submit"
-                      bg="var(--c-chocolate)"
+                      bg="accent.solid"
                       color="white"
                       h="44px"
                       py={2}
@@ -3405,7 +3405,7 @@ export function AdminDashboardPage() {
 
                 {/* Hype & Memory Board Moderation Card */}
                 <Box
-                  bg="var(--c-white)"
+                  bg="white"
                   p={6}
                   border="1px solid"
                   borderColor="border.subtle"
@@ -3436,7 +3436,7 @@ export function AdminDashboardPage() {
                       overflow="hidden"
                     >
                       <Table.Root size="sm" variant="line">
-                        <Table.Header bg="var(--c-ivory)">
+                        <Table.Header bg="bg.canvas">
                           <Table.Row>
                             <Table.ColumnHeader fontFamily="heading">
                               Post Details & Comments
@@ -3624,14 +3624,14 @@ export function AdminDashboardPage() {
           placement={{ base: "bottom", md: "center" }}
         >
           <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
             backdropFilter="blur(4px)"
           />
           <Dialog.Positioner zIndex={1000} px={4}>
             <Dialog.Content
-              bg="var(--c-ivory)"
-              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
-              color="var(--c-ink)"
+              bg="bg.canvas"
+              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
+              color="fg.default"
               borderRadius={{ base: "t-3xl", md: "2xl" }}
               width={{ base: "100%", md: "560px" }}
               maxH={{ base: "92vh", md: "80vh" }}
@@ -3656,7 +3656,7 @@ export function AdminDashboardPage() {
                   <Dialog.Title
                     fontSize="xl"
                     fontWeight="bold"
-                    color="var(--c-chocolate)"
+                    color="accent.solid"
                     fontFamily="heading"
                   >
                     CSV Upload Preview & Duplicate Validation
@@ -3752,7 +3752,7 @@ export function AdminDashboardPage() {
                     borderRadius="xl"
                     cursor="pointer"
                     _hover={{
-                      bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                      bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
                     }}
                   >
                     Batch Upsert ({csvRecords.length} records)
@@ -3775,7 +3775,7 @@ export function AdminDashboardPage() {
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
-                  color="var(--c-muted)"
+                  color="fg.muted"
                   p={0}
                 >
                   <Box
@@ -3793,26 +3793,24 @@ export function AdminDashboardPage() {
       )}
 
       {/* User Inspector Dialog */}
-      {inspectUser && (
-        <UserInspectModal
-          inspectUser={inspectUser}
-          onClose={() => setInspectUser(null)}
-          inspectUserStats={inspectUserStats}
-          inspectUserLogs={inspectUserLogs}
-          editNickname={editNickname}
-          setEditNickname={setEditNickname}
-          editFaculty={editFaculty}
-          setEditFaculty={setEditFaculty}
-          editMajor={editMajor}
-          setEditMajor={setEditMajor}
-          editHousePosition={editHousePosition}
-          setEditHousePosition={setEditHousePosition}
-          editRole={editRole}
-          setEditRole={setEditRole}
-          handleEditUser={handleEditUser}
-          getRoleDescription={getRoleDescription}
-        />
-      )}
+      <UserInspectModal
+        inspectUser={inspectUser}
+        onClose={() => setInspectUser(null)}
+        inspectUserStats={inspectUserStats}
+        inspectUserLogs={inspectUserLogs}
+        editNickname={editNickname}
+        setEditNickname={setEditNickname}
+        editFaculty={editFaculty}
+        setEditFaculty={setEditFaculty}
+        editMajor={editMajor}
+        setEditMajor={setEditMajor}
+        editHousePosition={editHousePosition}
+        setEditHousePosition={setEditHousePosition}
+        editRole={editRole}
+        setEditRole={setEditRole}
+        handleEditUser={handleEditUser}
+        getRoleDescription={getRoleDescription}
+      />
 
       {/* Whitelist Remove Confirmation Dialog */}
       {userToDelete && (
@@ -3823,14 +3821,14 @@ export function AdminDashboardPage() {
           placement={{ base: "bottom", md: "center" }}
         >
           <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
             backdropFilter="blur(4px)"
           />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
-              bg="var(--c-ivory)"
-              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
-              color="var(--c-ink)"
+              bg="bg.canvas"
+              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
+              color="fg.default"
               borderRadius={{ base: "t-3xl", md: "2xl" }}
               width={{ base: "100%", md: "560px" }}
               maxH={{ base: "92vh", md: "80vh" }}
@@ -3927,7 +3925,7 @@ export function AdminDashboardPage() {
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
-                  color="var(--c-muted)"
+                  color="fg.muted"
                   p={0}
                 >
                   <Box
@@ -3954,7 +3952,7 @@ export function AdminDashboardPage() {
           zIndex={1500}
           w="calc(100% - 32px)"
           maxW="md"
-          bg="var(--c-chocolate)"
+          bg="accent.solid"
           color="white"
           borderRadius="2xl"
           boxShadow="lg"
@@ -3968,7 +3966,7 @@ export function AdminDashboardPage() {
                 as="span"
                 className="material-symbols-outlined"
                 fontSize="20px"
-                color="var(--c-chocolate-light)"
+                color="var(--chakra-colors-accent-muted)"
               >
                 check_box
               </Box>
@@ -3979,7 +3977,7 @@ export function AdminDashboardPage() {
             <Button
               size="sm"
               bg="red.600"
-              _hover={{ bg: "color-mix(in srgb, var(--c-error) 85%, black)" }}
+              _hover={{ bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)" }}
               color="white"
               borderRadius="xl"
               onClick={() => setIsBulkDeleteOpen(true)}
@@ -4004,14 +4002,14 @@ export function AdminDashboardPage() {
           placement={{ base: "bottom", md: "center" }}
         >
           <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
             backdropFilter="blur(4px)"
           />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
-              bg="var(--c-ivory)"
-              border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
-              color="var(--c-ink)"
+              bg="bg.canvas"
+              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
+              color="fg.default"
               borderRadius={{ base: "t-3xl", md: "2xl" }}
               width={{ base: "100%", md: "560px" }}
               maxH={{ base: "92vh", md: "80vh" }}
@@ -4084,7 +4082,7 @@ export function AdminDashboardPage() {
                     size="sm"
                     bg="red.600"
                     _hover={{
-                      bg: "color-mix(in srgb, var(--c-error) 85%, black)",
+                      bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)",
                     }}
                     color="white"
                     borderRadius="xl"
@@ -4113,7 +4111,7 @@ export function AdminDashboardPage() {
                   alignItems="center"
                   justifyContent="center"
                   cursor="pointer"
-                  color="var(--c-muted)"
+                  color="fg.muted"
                   p={0}
                 >
                   <Box

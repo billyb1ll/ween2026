@@ -80,7 +80,7 @@ export function GalleryPage() {
   if (loadingMappings) {
     return (
       <Flex minH="100vh" align="center" justify="center">
-        <Spinner size="xl" color="var(--c-chocolate)" />
+        <Spinner size="xl" color="accent.solid" />
       </Flex>
     );
   }
@@ -101,7 +101,7 @@ export function GalleryPage() {
 
       <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
         <Link to="/face-claim">
-          <Flex w="100%" bg="var(--c-ivory)" border="2px dashed" borderColor="var(--c-chocolate)" borderRadius="xl" p={{ base: 4, md: 5 }} align="center" justify="center" transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "color-mix(in srgb, var(--c-chocolate) 4%, var(--c-ivory) 96%)", transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
+          <Flex w="100%" bg="bg.canvas" border="2px dashed" borderColor="accent.solid" borderRadius="xl" p={{ base: 4, md: 5 }} align="center" justify="center" transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-bg-canvas) 96%)", transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
             <Box as="span" className="material-symbols-outlined" fontSize="24px" color="accent.solid" mr={3}>person_search</Box>
             <Text color="accent.solid" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center">
               Cannot find your photos? Try searching for your face using our AI face finder. (Face claiming is currently in testing/Beta).
@@ -120,10 +120,10 @@ export function GalleryPage() {
             }}
             h="44px" px={6} borderRadius="full" fontWeight="600" fontSize="sm"
             variant={activeDay === m.key ? 'solid' : 'outline'}
-            bg={activeDay === m.key ? 'var(--c-chocolate)' : 'transparent'}
-            color={activeDay === m.key ? 'white' : 'var(--c-chocolate)'}
-            borderColor="var(--c-chocolate)"
-            _hover={{ bg: activeDay === m.key ? 'var(--c-chocolate)' : 'color-mix(in srgb, var(--c-chocolate) 5%, transparent)' }}
+            bg={activeDay === m.key ? 'accent.solid' : 'transparent'}
+            color={activeDay === m.key ? 'white' : 'accent.solid'}
+            borderColor="accent.solid"
+            _hover={{ bg: activeDay === m.key ? 'accent.solid' : 'color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, transparent)' }}
           >
             {m.label}
           </Button>
@@ -133,7 +133,7 @@ export function GalleryPage() {
 
 
       {/* Main Photo Layout Grid with Virtuoso */}
-      <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={4} textTransform="uppercase" letterSpacing="0.05em">
+      <Text fontSize="xs" fontWeight="700" color="fg.muted" mb={4} textTransform="uppercase" letterSpacing="0.05em">
         {mappings.find(m => m.key === activeDay)?.label || "Gallery"}
       </Text>
 

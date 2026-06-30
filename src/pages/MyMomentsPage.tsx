@@ -70,17 +70,7 @@ export function MyMomentsPage() {
     fetchMyMoments();
   }, [user]);
 
-  // Filter photos by album mapping (we match the active mapping to the asset)
-  // Wait, does immich asset object contain album info?
-  // Usually, searchMetadata returns assets. We might have to filter by time, or if we have album maps, 
-  // we might not have album info directly on the asset easily unless we check date ranges or album membership.
-  // Actually, ImmichAsset doesn't always have album info. But maybe we can filter them locally if we must?
-  // Or we just fetch albums and see if asset is in it, or we skip album filtering if it's too complex.
-  // Let's provide a basic layout for now. If album filtering is hard, we can just do a date sort.
-  
-  // Wait, let's look at the plan: "Add an Album filter dropdown using the system's active albumMappings to sort the assets by activity/day."
-  // If we can't easily filter by album ID, maybe we can fetch the album assets and intersect?
-  // Yes, we can fetch the target album's assets, and filter our `photos` to only those that exist in the target album.
+  // Filter photos by album mapping
   const [filteredPhotos, setFilteredPhotos] = useState<ImmichAsset[]>([]);
   const [albumAssetsCache, setAlbumAssetsCache] = useState<Record<string, Set<string>>>({});
   
@@ -135,7 +125,7 @@ export function MyMomentsPage() {
   if (loadingMappings) {
     return (
       <Flex minH="100vh" align="center" justify="center">
-        <Spinner size="xl" color="var(--c-chocolate)" />
+        <Spinner size="xl" color="accent.solid" />
       </Flex>
     );
   }
@@ -154,20 +144,22 @@ export function MyMomentsPage() {
 
       <Flex justify="center" mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
         <Box maxW="300px" w="100%">
-          <select
+          <Box
+            as="select"
+            aria-label="Filter photos by album"
             value={selectedAlbumKey}
-            onChange={(e) => setSelectedAlbumKey(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 16px",
-              borderRadius: "8px",
-              border: "1px solid var(--chakra-colors-border-subtle)",
-              backgroundColor: "white",
-              fontSize: "14px",
-              fontWeight: 600,
-              color: "var(--chakra-colors-fg-muted)",
-              cursor: "pointer",
-            }}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedAlbumKey(e.target.value)}
+            w="100%"
+            py="10px"
+            px="16px"
+            borderRadius="8px"
+            border="1px solid"
+            borderColor="border.subtle"
+            bg="white"
+            fontSize="14px"
+            fontWeight={600}
+            color="fg.muted"
+            cursor="pointer"
           >
             <option value="all">All Moments</option>
             {mappings.map((m) => (
@@ -175,16 +167,16 @@ export function MyMomentsPage() {
                 {m.label}
               </option>
             ))}
-          </select>
+          </Box>
         </Box>
       </Flex>
 
-      <Text fontSize="xs" fontWeight="700" color="var(--c-muted)" mb={4} textTransform="uppercase" letterSpacing="0.05em">
+      <Text fontSize="xs" fontWeight="700" color="fg.muted" mb={4} textTransform="uppercase" letterSpacing="0.05em">
         {selectedAlbumKey === "all" ? "All Photos" : `${mappings.find(m => m.key === selectedAlbumKey)?.label}`}
       </Text>
 
       {loadingPhotos ? (
-        <Flex justify="center" py={12}><Spinner color="var(--c-lagoon)" size="lg" /></Flex>
+        <Flex justify="center" py={12}><Spinner color="brand.solid" size="lg" /></Flex>
       ) : photos.length === 0 ? (
         <Flex justify="center" align="center" direction="column" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl" gap={4}>
           <Text color="fg.subtle">You haven't claimed any faces yet.</Text>

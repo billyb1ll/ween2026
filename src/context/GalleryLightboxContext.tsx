@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import type { ImmichAsset } from '../lib/immich/types';
 import type { VirtuosoGridHandle } from 'react-virtuoso';
@@ -9,7 +10,7 @@ interface GalleryLightboxContextType {
   virtuosoRef: React.RefObject<VirtuosoGridHandle | null>;
 }
 
-export const GalleryLightboxContext = createContext<GalleryLightboxContextType | null>(null);
+const GalleryLightboxContext = createContext<GalleryLightboxContextType | null>(null);
 
 
 

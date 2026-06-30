@@ -408,7 +408,7 @@ export function ProfileEditPage() {
                     {myClaimedFaces.map(personId => (
                       <VStack key={personId} align="center" gap={2}>
                         <Box w="72px" h="72px" borderRadius="full" overflow="hidden" border="2px solid var(--c-lagoon)" boxShadow="sm">
-                          <Image src={immich.people.thumbnailUrl(personId)} w="100%" h="100%" objectFit="cover" />
+                          <Image src={immich.people.thumbnailUrl(personId)} w="100%" h="100%" objectFit="cover" loading="lazy" />
                         </Box>
                         <Button 
                           variant="ghost" 
@@ -453,7 +453,7 @@ export function ProfileEditPage() {
                   <Box display="grid" gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)" }} gap={4}>
                     {myPhotos.map((asset, i) => (
                       <Box key={asset.id} borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => openLightbox(i, myPhotos)} transition="transform 0.3s" _hover={{ transform: "translateY(-2px)" }}>
-                        <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h={{ base: "160px", sm: "200px" }} w="100%" objectFit="cover" />
+                        <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h={{ base: "160px", sm: "200px" }} w="100%" objectFit="cover" loading="lazy" />
                       </Box>
                     ))}
                   </Box>
@@ -504,6 +504,7 @@ export function ProfileEditPage() {
                     borderRadius="full"
                     objectFit="cover"
                     draggable={false}
+                    loading="lazy"
                   />
                   <VStack align="start" gap={0}>
                     <Text fontSize="xs" fontWeight="700" color="accent.solid">
@@ -611,6 +612,7 @@ export function ProfileEditPage() {
                     w="100%"
                     h="100%"
                     objectFit="cover"
+                    loading="lazy"
                   />
                 ) : (
                   getInitials(nickname || user?.student_id || "?")
@@ -967,7 +969,7 @@ export function ProfileEditPage() {
                           border="2px solid transparent"
                           _hover={{ borderColor: "var(--c-lagoon)" }}
                         >
-                          <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h="80px" w="100%" objectFit="cover" />
+                          <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h="80px" w="100%" objectFit="cover" loading="lazy" />
                         </Box>
                       ))}
                     </Box>
