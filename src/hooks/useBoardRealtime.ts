@@ -44,6 +44,7 @@ export interface UseBoardRealtimeReturn {
     imageUrl?: string | null,
   ) => Promise<void>;
   handleLikePost: (postId: number) => Promise<void>;
+  handleDeletePost: (postId: number) => Promise<void>;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -521,6 +522,52 @@ export function useBoardRealtime(
     [user],
   );
 
+  // ── Delete post secure RPC call ──
+  const handleDeletePost = useCallback(
+    async (postId: number) => {
+      if (!user) {
+        toaster.create({
+          title: "Sign In Required",
+          description: "Please sign in to delete your pinned orientation vibes!",
+          type: "warning",
+        });
+        return;
+      }
+
+      try {
+        const { error } = await supabase.rpc("delete_post_secure", {
+          p_post_id: postId,
+          p_student_id: user.student_id,
+          p_pin_hash: user.pin_hash || "",
+        });
+
+        if (error) throw error;
+
+        // Broadcast to other clients
+        channelRef.current
+          ?.send({
+            type: "broadcast",
+            event: "post_deleted",
+            payload: {
+              postId,
+              session_token: localStorage.getItem("baan7_session_token"),
+            },
+          })
+          .catch((err) =>
+            console.error("[Realtime] Broadcast post_deleted error:", err),
+          );
+
+        // Local update
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        toaster.create({ title: "Post Deleted!", type: "success" });
+      } catch (err) {
+        console.error("[Board] Delete post error:", err);
+        toaster.create({ title: "Failed to delete post", type: "error" });
+      }
+    },
+    [user],
+  );
+
   return {
     posts,
     loading,
@@ -529,5 +576,6 @@ export function useBoardRealtime(
     memoryActive,
     handleCreatePost,
     handleLikePost,
+    handleDeletePost,
   };
 }

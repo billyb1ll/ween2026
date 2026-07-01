@@ -15,11 +15,13 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 
 
 export function MyMomentsPage() {
-  const { user } = useUser();
+  const navigate = useNavigate();
+  const { user, hasClaimedFace, loading: loadingUser } = useUser();
   const { mappings, loading: loadingMappings } = useAlbumMappings();
   
   const [photos, setPhotos] = useState<ImmichAsset[]>([]);
@@ -28,6 +30,13 @@ export function MyMomentsPage() {
   
   // Lightbox state
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
+
+  // Redirect out if unauthenticated or has not claimed a face (and loading completed)
+  useEffect(() => {
+    if (!loadingUser && (!user || !hasClaimedFace)) {
+      navigate("/");
+    }
+  }, [user, hasClaimedFace, loadingUser, navigate]);
 
   // 1. Fetch user's claimed faces & corresponding photos
   useEffect(() => {
@@ -144,22 +153,25 @@ export function MyMomentsPage() {
 
       <Flex justify="center" mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
         <Box maxW="300px" w="100%">
-          <Box
-            as="select"
+          <select
             aria-label="Filter photos by album"
             value={selectedAlbumKey}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedAlbumKey(e.target.value)}
-            w="100%"
-            py="10px"
-            px="16px"
-            borderRadius="8px"
-            border="1px solid"
-            borderColor="border.subtle"
-            bg="white"
-            fontSize="14px"
-            fontWeight={600}
-            color="fg.muted"
-            cursor="pointer"
+            style={{
+              width: "100%",
+              paddingTop: "10px",
+              paddingBottom: "10px",
+              paddingLeft: "16px",
+              paddingRight: "16px",
+              borderRadius: "8px",
+              border: "1px solid var(--chakra-colors-border-subtle)",
+              backgroundColor: "white",
+              fontSize: "14px",
+              fontWeight: 600,
+              color: "var(--chakra-colors-fg-muted)",
+              cursor: "pointer",
+              outline: "none"
+            }}
           >
             <option value="all">All Moments</option>
             {mappings.map((m) => (
@@ -167,7 +179,7 @@ export function MyMomentsPage() {
                 {m.label}
               </option>
             ))}
-          </Box>
+          </select>
         </Box>
       </Flex>
 

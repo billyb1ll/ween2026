@@ -172,7 +172,7 @@ const UserDropdownContent = ({
 );
 
 export function Navbar() {
-  const { user, logout } = useUser();
+  const { user, logout, hasClaimedFace } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const [emergencyAnnouncement, setEmergencyAnnouncement] = useState<
@@ -465,7 +465,7 @@ export function Navbar() {
               {vibecheckEnabled && <NavItem to="/vibe-check">Vibe Check</NavItem>}
               <NavItem to="/board">Board</NavItem>
               <NavItem to="/gallery">Gallery</NavItem>
-              <NavItem to="/my-moments">My Moments</NavItem>
+              {user && hasClaimedFace && <NavItem to="/my-moments">My Moments</NavItem>}
 
               {user &&
                 (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
@@ -809,7 +809,9 @@ export function Navbar() {
           {vibecheckEnabled && <MobileDockItem to="/vibe-check" icon="mood" label="Vibe" />}
           <MobileDockItem to="/board" icon="campaign" label="Board" />
           <MobileDockItem to="/gallery" icon="photo_library" label="Gallery" />
-          <MobileDockItem to="/my-moments" icon="auto_awesome" label="Moments" />
+          {user && hasClaimedFace && (
+            <MobileDockItem to="/my-moments" icon="auto_awesome" label="Moments" />
+          )}
 
           {user &&
             (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (

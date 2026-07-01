@@ -51,7 +51,7 @@ interface SuggestedAsset {
 
 export function ProfileEditPage() {
   const navigate = useNavigate();
-  const { user, updateProfile } = useUser();
+  const { user, updateProfile, refreshClaimedFaceStatus } = useUser();
 
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [faculty, setFaculty] = useState(user?.faculty || "");
@@ -236,6 +236,7 @@ export function ProfileEditPage() {
           description: "Your profile picture has been updated with the suggested photo.",
           type: "success",
         });
+        refreshClaimedFaceStatus();
       } else {
         throw new Error("Update failed");
       }
@@ -424,6 +425,7 @@ export function ProfileEditPage() {
                               if (ok) {
                                 setMyClaimedFaces(prev => prev.filter(id => id !== personId));
                                 setMyPhotos([]); // Will require refresh or refetching
+                                refreshClaimedFaceStatus();
                               }
                             }
                           }}

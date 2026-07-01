@@ -23,7 +23,7 @@ import React from "react";
 
 
 export function FaceClaimPage() {
-  const { user, updateProfile } = useUser();
+  const { user, updateProfile, refreshClaimedFaceStatus } = useUser();
 
   const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
   const [personAssets, setPersonAssets] = useState<ImmichAsset[]>([]);
@@ -142,6 +142,8 @@ export function FaceClaimPage() {
         description: avatarUpdated ? "Successfully claimed faces and updated profile picture." : "Successfully claimed faces.",
         type: "success",
       });
+
+      refreshClaimedFaceStatus();
 
       setUnclaimedPeople((prev) => prev.filter((p) => !selectedPersonIds.includes(p.id)));
       setSelectedPersonIds([]);

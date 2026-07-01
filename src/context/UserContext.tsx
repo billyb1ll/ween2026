@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../utils/crypto";
 
@@ -27,6 +27,8 @@ export interface User {
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  hasClaimedFace: boolean;
+  refreshClaimedFaceStatus: (currentStudentId?: string) => Promise<void>;
   checkStudentId: (
     studentId: string,
   ) => Promise<{ exists: boolean; hasPin: boolean; user?: User }>;
@@ -55,6 +57,63 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [hasClaimedFace, setHasClaimedFace] = useState<boolean>(false);
+
+  const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
+    const studentId = currentStudentId || user?.student_id;
+    if (!studentId) {
+      setHasClaimedFace(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("user_faces")
+        .select("immich_person_id")
+        .eq("student_id", studentId);
+
+      if (error) throw error;
+      setHasClaimedFace(!!(data && data.length > 0));
+    } catch (err) {
+      console.error("Error checking claimed faces:", err);
+      setHasClaimedFace(false);
+    }
+  }, [user?.student_id]);
+
+  useEffect(() => {
+    let active = true;
+    if (user) {
+      const run = async () => {
+        const studentId = user.student_id;
+        try {
+          const { data, error } = await supabase
+            .from("user_faces")
+            .select("immich_person_id")
+            .eq("student_id", studentId);
+
+          if (error) throw error;
+          if (active) {
+            setHasClaimedFace(!!(data && data.length > 0));
+          }
+        } catch (err) {
+          console.error("Error in claimed face check:", err);
+          if (active) {
+            setHasClaimedFace(false);
+          }
+        }
+      };
+      run();
+    } else {
+      Promise.resolve().then(() => {
+        if (active) {
+          setHasClaimedFace(false);
+        }
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -307,6 +366,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         user,
         loading,
+        hasClaimedFace,
+        refreshClaimedFaceStatus,
         checkStudentId,
         login,
         registerPin,

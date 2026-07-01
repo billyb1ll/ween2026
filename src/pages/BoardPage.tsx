@@ -15,22 +15,24 @@ import {
   Skeleton,
   Switch,
 } from "@chakra-ui/react";
-import { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser, type User } from "../context/UserContext";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   useBoardRealtime,
   type DBPost,
   type BoardTab,
 } from "../hooks/useBoardRealtime";
 import { useLiveChat, type ChatMessage } from "../hooks/useLiveChat";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { Virtuoso, type VirtuosoHandle, VirtuosoGrid } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
+
+import { RoughNotation } from "react-rough-notation";
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -63,6 +65,124 @@ const getInitials = (name: string) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
+interface ParsedElement {
+  type: string; // 'text', 'h', 'u', 'c', 's'
+  color?: string; // 'yellow', 'pink', 'blue', 'green'
+  content: string | ParsedElement[];
+}
+
+const parseAccents = (text: string): ParsedElement[] => {
+  const parseNested = (txt: string): ParsedElement[] => {
+    if (!txt) return [];
+    
+    // Match any opening tag: [h], [h-color], [u], [u-color], [c], [c-color], [s], [s-color]
+    const openTagRegex = /\[(h|u|c|s)(?:-(yellow|pink|blue|green))?\]/;
+    const match = openTagRegex.exec(txt);
+    
+    if (!match) {
+      return [{ type: 'text', content: txt }];
+    }
+    
+    const startIdx = match.index;
+    const fullOpenTag = match[0];
+    const tagType = match[1];
+    const tagColor = match[2];
+    
+    // Find matching close tag
+    const closeTagRegex = new RegExp(`\\[\\/(?:${tagType}|${tagType}-${tagColor || 'yellow|pink|blue|green'})\\]`, 'g');
+    closeTagRegex.lastIndex = startIdx + fullOpenTag.length;
+    
+    const closeMatch = closeTagRegex.exec(txt);
+    if (!closeMatch) {
+      const plainPart = txt.substring(0, startIdx + fullOpenTag.length);
+      return [
+        { type: 'text', content: plainPart },
+        ...parseNested(txt.substring(startIdx + fullOpenTag.length))
+      ];
+    }
+    
+    const closeIdx = closeMatch.index;
+    const fullCloseTag = closeMatch[0];
+    
+    const innerText = txt.substring(startIdx + fullOpenTag.length, closeIdx);
+    const beforeText = txt.substring(0, startIdx);
+    const afterText = txt.substring(closeIdx + fullCloseTag.length);
+    
+    const result: ParsedElement[] = [];
+    if (beforeText) {
+      result.push(...parseNested(beforeText));
+    }
+    
+    result.push({
+      type: tagType,
+      color: tagColor,
+      content: parseNested(innerText)
+    });
+    
+    if (afterText) {
+      result.push(...parseNested(afterText));
+    }
+    
+    return result;
+  };
+
+  return parseNested(text);
+};
+const renderParsedAccents = (elements: ParsedElement[]): React.ReactNode => {
+  return elements.map((part, index) => {
+    const key = `${part.type}-${index}`;
+    if (part.type === 'text') {
+      return <span key={key}>{part.content as string}</span>;
+    }
+
+    let notationType: 'highlight' | 'underline' | 'circle' | 'strike-through' = 'highlight';
+    let color = 'rgba(251, 211, 141, 0.5)'; // default yellow
+
+    const resolvedColor = part.color || 'yellow'; // default to yellow if not specified
+    
+    if (part.type === 'h') {
+      notationType = 'highlight';
+      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.5)';
+      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.5)';
+      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.5)';
+      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.5)';
+    } else if (part.type === 'u') {
+      notationType = 'underline';
+      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.85)';
+      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.85)';
+      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.85)';
+      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.85)';
+    } else if (part.type === 'c') {
+      notationType = 'circle';
+      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.8)';
+      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.8)';
+      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.8)';
+      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.8)';
+    } else if (part.type === 's') {
+      notationType = 'strike-through';
+      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.7)';
+      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.7)';
+      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.7)';
+      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.7)';
+    }
+
+    return (
+      <span key={key} style={{ display: 'inline', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <RoughNotation
+          type={notationType}
+          color={color}
+          show={true}
+          strokeWidth={2.5}
+          animationDuration={800}
+        >
+          <span style={{ fontWeight: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {renderParsedAccents(part.content as ParsedElement[])}
+          </span>
+        </RoughNotation>
+      </span>
+    );
+  });
+};
 // ─── Live Presence Badge ──────────────────────────────────────────────────────
 
 function LivePresenceBadge({ count }: { count: number }) {
@@ -369,6 +489,71 @@ export function BoardPage() {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [chatInput, setChatInput] = useState("");
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [activeColor, setActiveColor] = useState<'yellow' | 'pink' | 'blue' | 'green'>('yellow');
+
+  const insertMarkupTag = (tagType: 'h' | 'u' | 'c' | 's') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    const startTag = activeColor === 'yellow' ? `[${tagType}]` : `[${tagType}-${activeColor}]`;
+    const endTag = activeColor === 'yellow' ? `[/${tagType}]` : `[/${tagType}-${activeColor}]`;
+
+    const selectedText = text.substring(start, end);
+
+    // Check if selectedText is already wrapped by this tag (any color)
+    const openTagPattern = new RegExp(`^\\[${tagType}(?:-(yellow|pink|blue|green))?\\]`);
+    const closeTagPattern = new RegExp(`\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]$`);
+
+    if (openTagPattern.test(selectedText) && closeTagPattern.test(selectedText)) {
+      const strippedText = selectedText.replace(openTagPattern, '').replace(closeTagPattern, '');
+      const newText = text.substring(0, start) + strippedText + text.substring(end);
+      setNewPostText(newText);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + strippedText.length);
+      }, 50);
+      return;
+    }
+
+    // Check if surrounding text contains the tags
+    const beforeStr = text.substring(0, start);
+    const afterStr = text.substring(end);
+    
+    const surroundingOpenPattern = new RegExp(`\\[${tagType}(?:-(yellow|pink|blue|green))?\\]$`);
+    const surroundingClosePattern = new RegExp(`^\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]`);
+    
+    const openMatch = beforeStr.match(surroundingOpenPattern);
+    const closeMatch = afterStr.match(surroundingClosePattern);
+    
+    if (openMatch && closeMatch) {
+      const newBefore = beforeStr.substring(0, beforeStr.length - openMatch[0].length);
+      const newAfter = afterStr.substring(closeMatch[0].length);
+      const newText = newBefore + selectedText + newAfter;
+      setNewPostText(newText);
+      const newStart = start - openMatch[0].length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newStart, newStart + selectedText.length);
+      }, 50);
+      return;
+    }
+
+    // Wrap with new tag
+    const replacement = startTag + selectedText + endTag;
+    const newText = text.substring(0, start) + replacement + text.substring(end);
+    setNewPostText(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + startTag.length + selectedText.length + endTag.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 50);
+  };
 
   // Realtime System Configuration Sync states
   const [hypeBoardMode, setHypeBoardMode] = useState<
@@ -495,6 +680,7 @@ export function BoardPage() {
     memoryActive,
     handleCreatePost,
     handleLikePost,
+    handleDeletePost,
   } = useBoardRealtime("memory", user);
 
   // Live chat — new hook (only active when on hype tab)
@@ -675,11 +861,24 @@ export function BoardPage() {
           imageUrl = publicUrlData.publicUrl;
         } else {
           console.error("Upload Error", uploadError);
-          toaster.create({ title: "Image upload failed", type: "error" });
+          const isBucketError = uploadError.message?.toLowerCase().includes("bucket not found") || 
+                                JSON.stringify(uploadError).toLowerCase().includes("bucket not found");
+          toaster.create({
+            title: "Image upload failed",
+            description: isBucketError 
+              ? "Storage bucket 'board_media' not found. Please create it as a 'Public' bucket in your Supabase dashboard." 
+              : uploadError.message,
+            type: "error",
+          });
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Compression/Upload Error", err);
-        toaster.create({ title: "Image upload failed", type: "error" });
+        const errorObject = err as Error;
+        toaster.create({
+          title: "Image upload failed",
+          description: errorObject?.message || "Check your network or server status.",
+          type: "error",
+        });
       } finally {
         setIsUploadingImage(false);
       }
@@ -736,7 +935,7 @@ export function BoardPage() {
       px={{ base: 4, md: 16 }}
       pt={{ base: 2, md: 28 }}
       pb={{ base: 4, md: 20 }}
-      minH="100vh"
+      minH={{ base: "auto", md: "100vh" }}
     >
       {/* Page Header */}
       <VStack
@@ -1176,7 +1375,7 @@ export function BoardPage() {
         </Box>
       ) : (
         /* ═══ MEMORY BOARD (Memory Tab) ═══════════════════════════════════ */
-        <Box maxW="4xl" mx="auto" w="100%">
+        <Box maxW="4xl" mx="auto" w="100%" h="auto" maxH="none" minH="auto">
           {/* 1. Governance Configuration Panel for Moderator / Admin */}
           {(user?.role === "moderator" ||
             (user?.role as string) === "superadmin" ||
@@ -1323,8 +1522,8 @@ export function BoardPage() {
                     w="100%"
                     css={{
                       "&::-webkit-scrollbar": { display: "none" },
-                      "-ms-overflow-style": "none",
-                      "scrollbar-width": "none",
+                      msOverflowStyle: "none",
+                      scrollbarWidth: "none",
                     }}
                   >
                     {categories.map((cat) => (
@@ -1419,10 +1618,129 @@ export function BoardPage() {
                         </Box>
                       )}
                       <Box flex={1}>
+                        {user && (
+                          <Flex align="center" gap={3} mb={2} flexWrap="wrap">
+                            <Flex align="center" gap={1.5}>
+                              <Text fontSize="xs" fontWeight="700" color="fg.muted" mr={1}>
+                                Handcraft Accents:
+                              </Text>
+                              <HStack gap={1.5} mr={1}>
+                                {[
+                                  { name: 'yellow', value: '#FBD38D', label: 'Yellow' },
+                                  { name: 'pink', value: '#FFB6C1', label: 'Pink' },
+                                  { name: 'blue', value: '#ADD8E6', label: 'Blue' },
+                                  { name: 'green', value: '#98FB98', label: 'Green' }
+                                ].map((c) => {
+                                  const isSelected = activeColor === c.name;
+                                  return (
+                                    <Button
+                                      key={c.name}
+                                      type="button"
+                                      variant="ghost"
+                                      p={0}
+                                      minW="16px"
+                                      w="16px"
+                                      h="16px"
+                                      borderRadius="full"
+                                      bg={c.value}
+                                      border={isSelected ? "2px solid" : "1px solid"}
+                                      borderColor={isSelected ? "accent.solid" : "rgba(0,0,0,0.15)"}
+                                      cursor="pointer"
+                                      onClick={() => setActiveColor(c.name as 'yellow' | 'pink' | 'blue' | 'green')}
+                                      title={c.label}
+                                      aria-label={`Select active color ${c.label}`}
+                                      transform={isSelected ? "scale(1.2)" : "none"}
+                                      transition="all 0.2s"
+                                    />
+                                  );
+                                })}
+                              </HStack>
+                            </Flex>
+                            <HStack gap={1.5}>
+                              <Button
+                                type="button"
+                                size="2xs"
+                                variant="ghost"
+                                border="1px dashed"
+                                borderColor="border.subtle"
+                                borderRadius="md"
+                                bg="rgba(251, 211, 141, 0.15)"
+                                color="fg.default"
+                                fontSize="2xs"
+                                fontWeight="600"
+                                px={2}
+                                h="24px"
+                                cursor="pointer"
+                                onClick={() => insertMarkupTag('h')}
+                                _hover={{ bg: "rgba(251, 211, 141, 0.35)", borderColor: "accent.solid" }}
+                              >
+                                Highlight
+                              </Button>
+                              <Button
+                                type="button"
+                                size="2xs"
+                                variant="ghost"
+                                border="1px dashed"
+                                borderColor="border.subtle"
+                                borderRadius="md"
+                                bg="rgba(173, 216, 230, 0.15)"
+                                color="fg.default"
+                                fontSize="2xs"
+                                fontWeight="600"
+                                px={2}
+                                h="24px"
+                                cursor="pointer"
+                                onClick={() => insertMarkupTag('u')}
+                                _hover={{ bg: "rgba(173, 216, 230, 0.35)", borderColor: "accent.solid" }}
+                              >
+                                Underline
+                              </Button>
+                              <Button
+                                type="button"
+                                size="2xs"
+                                variant="ghost"
+                                border="1px dashed"
+                                borderColor="border.subtle"
+                                borderRadius="md"
+                                bg="rgba(255, 182, 193, 0.15)"
+                                color="fg.default"
+                                fontSize="2xs"
+                                fontWeight="600"
+                                px={2}
+                                h="24px"
+                                cursor="pointer"
+                                onClick={() => insertMarkupTag('c')}
+                                _hover={{ bg: "rgba(255, 182, 193, 0.35)", borderColor: "accent.solid" }}
+                              >
+                                Circle
+                              </Button>
+                              <Button
+                                type="button"
+                                size="2xs"
+                                variant="ghost"
+                                border="1px dashed"
+                                borderColor="border.subtle"
+                                borderRadius="md"
+                                bg="rgba(152, 251, 152, 0.15)"
+                                color="fg.default"
+                                fontSize="2xs"
+                                fontWeight="600"
+                                px={2}
+                                h="24px"
+                                cursor="pointer"
+                                onClick={() => insertMarkupTag('s')}
+                                _hover={{ bg: "rgba(152, 251, 152, 0.35)", borderColor: "accent.solid" }}
+                              >
+                                Cross-out
+                              </Button>
+                            </HStack>
+                          </Flex>
+                        )}
                         <label htmlFor="board-composer" className="sr-only">
                           Pin something new
                         </label>
                         <Textarea
+                          ref={textareaRef}
                           id="board-composer"
                           placeholder={
                             !user
@@ -1433,15 +1751,60 @@ export function BoardPage() {
                           onChange={(e) => setNewPostText(e.target.value)}
                           disabled={!user || submitting}
                           maxLength={150}
-                          variant="flushed"
                           resize="none"
                           fontSize={{ base: "sm", md: "md" }}
                           color="fg.default"
-                          _focus={{ borderColor: "brand.solid" }}
-                          minH="60px"
-                          p={0}
+                          fontFamily="'Mali', sans-serif"
+                          bg="bg.surface"
+                          border="1px dashed"
+                          borderColor="border.subtle"
+                          borderRadius="lg"
+                          p={3}
+                          _focus={{ borderColor: "accent.solid", boxShadow: "sm" }}
+                          minH="80px"
                           mb={2}
                         />
+
+                        {/* Live Handcrafted Preview Block */}
+                        {user && (
+                          <Box mt={2} mb={3}>
+                            <Text fontSize="2xs" fontWeight="700" color="fg.muted" mb={1} textTransform="uppercase" letterSpacing="0.05em">
+                              Handcrafted Preview:
+                            </Text>
+                            <Box
+                              p={4}
+                              bg="#FFFDF6" // Cozy warm cream notebook color
+                              border="1px dashed"
+                              borderColor="rgba(124, 86, 63, 0.25)"
+                              borderRadius="lg"
+                              fontFamily="'Mali', sans-serif"
+                              fontSize="sm"
+                              minH="60px"
+                              position="relative"
+                              boxShadow="inner"
+                              pl="36px"
+                              _before={{
+                                content: '""',
+                                position: "absolute",
+                                top: 0,
+                                left: "20px",
+                                bottom: 0,
+                                width: "1px",
+                                borderLeft: "1px solid rgba(220, 100, 100, 0.35)", // Red notebook line margin
+                              }}
+                            >
+                              {newPostText.trim() === "" ? (
+                                <Text color="fg.subtle" fontStyle="italic" fontSize="xs">
+                                  Your cozy handwritten post preview will render here...
+                                </Text>
+                              ) : (
+                                <Box style={{ display: 'inline', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                  {renderParsedAccents(parseAccents(newPostText))}
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+                        )}
 
                         {user && (
                           <VStack align="start" gap={2} my={3} w="100%">
@@ -1450,7 +1813,9 @@ export function BoardPage() {
                               fontWeight="700"
                               color="fg.muted"
                             >
-                              Select a Tag (Required):
+                              <RoughNotation type="highlight" color="#FBD38D" show={true} padding={2} iterations={1}>
+                                Select a Tag (Required):
+                              </RoughNotation>
                             </Text>
                             <HStack
                               gap={2}
@@ -1459,8 +1824,8 @@ export function BoardPage() {
                               w="100%"
                               css={{
                                 "&::-webkit-scrollbar": { display: "none" },
-                                "-ms-overflow-style": "none",
-                                "scrollbar-width": "none",
+                                msOverflowStyle: "none",
+                                scrollbarWidth: "none",
                               }}
                             >
                               {[
@@ -1557,13 +1922,15 @@ export function BoardPage() {
                               </Text>
                             )}
                             <Button
-                              bg="accent.solid"
-                              color="white"
+                              bg="bg.surface"
+                              color="#2D3748"
+                              border="1px solid"
+                              borderColor="border.subtle"
                               px={{ base: 4, md: 6 }}
                               py={{ base: 1.5, md: 2 }}
                               borderRadius="xl"
                               fontSize={{ base: "xs", md: "sm" }}
-                              fontWeight="600"
+                              fontWeight="700"
                               cursor="pointer"
                               onClick={handleSubmitPost}
                               loading={submitting || isUploadingImage}
@@ -1571,12 +1938,14 @@ export function BoardPage() {
                                 !user || !newPostText.trim() || !selectedTag
                               }
                               _hover={{
-                                boxShadow:
-                                  "0 4px 14px color-mix(in srgb, var(--chakra-colors-accent-solid) 25%, transparent)",
+                                bg: "bg.hero",
+                                boxShadow: "sm",
                               }}
                               minH={{ base: "36px", md: "44px" }}
                             >
-                              Pin it!
+                              <RoughNotation type="highlight" color="#FBD38D" show={true} padding={4}>
+                                Pin it!
+                              </RoughNotation>
                             </Button>
                           </HStack>
                         </Flex>
@@ -1603,74 +1972,75 @@ export function BoardPage() {
                       </Text>
                     </Flex>
                   ) : (
-                    <Box
-                      position="relative"
-                      css={{
-                        columnCount: { base: 1, sm: 2, md: 3 },
-                        columnGap: "24px",
-                        "& > div": {
-                          breakInside: "avoid",
-                          marginBottom: "24px",
-                        },
+                    <VirtuosoGrid
+                      data={visiblePosts}
+                      useWindowScroll
+                      endReached={() => {
+                        if (hasMore && !isFetchingMore) {
+                          handleLoadMore();
+                        }
                       }}
-                    >
-                      <AnimatePresence mode="popLayout">
-                        {visiblePosts.map((post, i) =>
-                          i >= prevVisibleCount ? (
-                            <motion.div
-                              key={post.id}
-                              layout
-                              initial={
-                                shouldReduceMotion
-                                  ? { opacity: 0 }
-                                  : { y: 20, opacity: 0 }
-                              }
-                              animate={{ y: 0, opacity: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              transition={
-                                shouldReduceMotion
-                                  ? { duration: 0.2 }
-                                  : {
-                                      type: "spring",
-                                      stiffness: 300,
-                                      damping: 20,
-                                      delay: (i - prevVisibleCount) * 0.05,
-                                    }
-                              }
-                              style={{ height: "100%" }}
-                            >
-                              <MemoryCard
-                                post={post}
-                                index={i}
-                                onLike={handleLikePost}
-                                currentUserRole={user?.role}
-                                onInspectUser={handleInspectUser}
-                              />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key={post.id}
-                              layout
-                              style={{ height: "100%" }}
-                            >
-                              <MemoryCard
-                                post={post}
-                                index={i}
-                                onLike={handleLikePost}
-                                currentUserRole={user?.role}
-                                onInspectUser={handleInspectUser}
-                              />
-                            </motion.div>
-                          ),
-                        )}
-                      </AnimatePresence>
-                    </Box>
+                      components={{
+                        List: forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
+                          <Box
+                            ref={ref}
+                            style={style}
+                            {...props}
+                            display="grid"
+                            gridTemplateColumns={{ base: "repeat(1, 1fr)", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }}
+                            gap={{ base: 3, md: 6 }}
+                            w="100%"
+                            mx="auto"
+                          >
+                            {children}
+                          </Box>
+                        )),
+                        Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+                          <Box {...props} w="100%" display="flex" justifyContent="center">
+                            {children}
+                          </Box>
+                        )
+                      }}
+                      itemContent={(index, post) => (
+                        <motion.div
+                          key={post.id}
+                          layout
+                          initial={
+                            shouldReduceMotion
+                              ? { opacity: 0 }
+                              : { y: 20, opacity: 0 }
+                          }
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={
+                            shouldReduceMotion
+                              ? { duration: 0.2 }
+                              : {
+                                  type: "spring",
+                                  stiffness: 300,
+                                  damping: 20,
+                                  delay: (index - prevVisibleCount) * 0.05,
+                                }
+                          }
+                          style={{ width: "100%" }}
+                        >
+                          <MemoryCard
+                            post={post}
+                            index={index}
+                            onLike={handleLikePost}
+                            onDelete={handleDeletePost}
+                            currentUserRole={user?.role}
+                            onInspectUser={handleInspectUser}
+                          />
+                        </motion.div>
+                      )}
+                    />
                   )}
                 </VStack>
               </Box>
 
-              {/* Load More */}
-              {(hasMore || isFetchingMore) && (
+              {/* Load More Spinner (Infinite scroll triggers fetching) */}
+              {isFetchingMore && (
                 <Flex
                   justify="center"
                   py={12}
@@ -1678,59 +2048,7 @@ export function BoardPage() {
                   zIndex={1}
                   minH="60px"
                 >
-                  <AnimatePresence mode="wait">
-                    {isFetchingMore ? (
-                      <motion.div
-                        key="loader"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <JellyScrollLoader />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="button"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Button
-                          type="button"
-                          onClick={handleLoadMore}
-                          display="inline-flex"
-                          alignItems="center"
-                          gap={2}
-                          bg="bg.surface"
-                          border="1px solid"
-                          borderColor="border.subtle"
-                          px={{ base: 6, md: 8 }}
-                          py={3}
-                          borderRadius="full"
-                          fontSize="sm"
-                          fontWeight="600"
-                          color="fg.default"
-                          cursor="pointer"
-                          transition="all 0.2s"
-                          _hover={{
-                            bg: "bg.hero",
-                            boxShadow: "var(--shadow-card-hover)",
-                          }}
-                          minH="44px"
-                        >
-                          Load More Memories
-                          <Box
-                            className="material-symbols-outlined"
-                            fontSize="md"
-                          >
-                            expand_more
-                          </Box>
-                        </Button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <JellyScrollLoader />
                 </Flex>
               )}
             </>
@@ -2631,7 +2949,7 @@ const MemoryCard = memo(function MemoryCard({
     onLike(post.id);
   };
 
-  const rotations = [-2, 1.5, -1, 2, -0.5];
+  const rotations = [-1, 1, -1.2, 0.8, -0.7, 1.1];
   const rotation = rotations[index % rotations.length];
 
   const isAnon = post.is_anonymous;
@@ -2664,6 +2982,9 @@ const MemoryCard = memo(function MemoryCard({
 
   return (
     <Box
+      w="100%"
+      minW="100%"
+      overflow="hidden"
       bg={
         isStaff
           ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-white))"
@@ -2676,10 +2997,12 @@ const MemoryCard = memo(function MemoryCard({
       }
       borderColor={isStaff ? undefined : "border.default"}
       borderRadius="xl"
-      p={{ base: 4, md: 5 }}
+      px={{ base: 4.5, md: 6 }}
+      py={{ base: 4, md: 5 }}
+      pb={5}
       position="relative"
       mb="24px"
-      transform={{ base: "none", md: `rotate(${rotation}deg)` }}
+      transform={{ base: `rotate(${rotation * 0.6}deg)`, md: `rotate(${rotation}deg)` }}
       transition="all 0.3s var(--ease-out-quart)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.5)}s both`}
       _hover={{
@@ -2690,14 +3013,15 @@ const MemoryCard = memo(function MemoryCard({
     >
       <Box
         position="absolute"
-        top={-2}
+        top={0}
         left="50%"
-        transform="translateX(-50%)"
-        w={4}
-        h={4}
-        borderRadius="full"
-        bg={index % 2 === 0 ? "var(--c-state-pin-a)" : "var(--c-state-pin-b)"}
-        boxShadow="0 2px 4px color-mix(in srgb, var(--chakra-colors-fg-default) 20%, transparent)"
+        transform="translateX(-50%) rotate(-3deg) translateY(-10px)"
+        w="60px"
+        h="20px"
+        bg="rgba(255, 223, 137, 0.7)"
+        borderLeft="1px dashed rgba(0,0,0,0.15)"
+        borderRight="1px dashed rgba(0,0,0,0.15)"
+        boxShadow="0 1px 3px rgba(0, 0, 0, 0.05)"
         zIndex={2}
       />
       <Flex
@@ -2755,6 +3079,23 @@ const MemoryCard = memo(function MemoryCard({
             {getRelativeTime(post.createdAt)}
           </Text>
         </VStack>
+        {post.tags && post.tags.length > 0 && (
+          <Box
+            px={2.5}
+            py={0.5}
+            borderRadius="md"
+            fontSize="2xs"
+            fontWeight="700"
+            fontFamily="'Mali', sans-serif"
+            bg="rgba(124, 86, 63, 0.08)"
+            color="var(--c-chocolate)"
+            border="1px dashed rgba(124, 86, 63, 0.25)"
+            transform="rotate(-2deg)"
+            alignSelf="center"
+          >
+            {post.tags.join(", ")}
+          </Box>
+        )}
       </Flex>
       <Text
         fontSize="sm"
@@ -2762,9 +3103,16 @@ const MemoryCard = memo(function MemoryCard({
         lineHeight={1.6}
         mb={3}
         fontStyle={index % 3 === 0 ? "italic" : "normal"}
-        fontFamily={index % 3 === 0 ? "heading" : "body"}
+        fontFamily="'Mali', sans-serif"
+        wordBreak="break-word"
+        whiteSpace="pre-wrap"
+        overflowWrap="anywhere"
+        display="block"
+        w="100%"
       >
-        {post.content}
+        <span style={{ display: 'block', width: '100%', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+          {renderParsedAccents(parseAccents(post.content))}
+        </span>
       </Text>
       {post.image_url && (
         <Box
