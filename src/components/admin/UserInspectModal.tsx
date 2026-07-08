@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { FiAlertTriangle } from "react-icons/fi";
 import {
   Dialog,
   Button,
@@ -441,7 +442,10 @@ export function UserInspectModal({
                             mb={2}
                             textTransform="uppercase"
                           >
-                            🚨 Admin Overrides
+                            <Box display="flex" alignItems="center" gap={2}>
+                              <FiAlertTriangle size={18} color="var(--chakra-colors-red-500)" />
+                              Admin Overrides
+                            </Box>
                           </Text>
                           <VStack align="stretch" gap={3}>
                             <Button

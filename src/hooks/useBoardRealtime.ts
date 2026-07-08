@@ -82,7 +82,7 @@ export function useBoardRealtime(
         });
 
         toaster.create({
-          title: activeTab === "hype" ? "🔥 Hype posted!" : "📌 Memory pinned!",
+          title: activeTab === "hype" ? "Hype posted!" : "Memory pinned!",
           description: "Your message is live on the board.",
           type: "success",
         });

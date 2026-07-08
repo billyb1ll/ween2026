@@ -361,24 +361,25 @@ export function HomePage() {
           mx="auto"
           maxW="100%"
           overflow="visible"
-          my={-8}
+          my={-12}
           display={{ base: "none", md: "block" }}
         >
           <svg
             width="100%"
-            height="80"
-            viewBox="0 0 1200 80"
+            height="140"
+            viewBox="0 0 1200 140"
             fill="none"
             preserveAspectRatio="xMidYMid meet"
             className="svg-block"
             aria-hidden="true"
           >
             <motion.path
-              d="M 100 40 C 300 10, 500 70, 700 40 C 900 10, 1000 70, 1100 40"
+              d="M 100 100 Q 350 100, 550 100 C 600 100, 620 70, 600 40 C 580 50, 570 80, 550 100 C 500 100, 480 70, 500 40 C 520 50, 530 80, 550 100 C 570 80, 570 40, 550 15 C 530 40, 530 80, 550 100 Q 750 100, 1100 100"
               stroke="var(--c-chocolate)"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
+              strokeLinejoin="round"
               style={{ pathLength }}
             />
           </svg>

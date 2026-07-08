@@ -1269,7 +1269,7 @@ export function AdminDashboardPage() {
 
       toaster.create({
         title: "Hype Board Mode Updated",
-        description: `Mode set to: ${mode === "active" ? "🟢 ACTIVE" : mode === "slow_3s" ? "🟡 SLOW MODE (3s)" : "🔴 READ ONLY"}`,
+        description: `Mode set to: ${mode === "active" ? "ACTIVE" : mode === "slow_3s" ? "SLOW MODE (3s)" : "READ ONLY"}`,
         type: "success",
       });
     } catch (err) {
@@ -3245,7 +3245,7 @@ export function AdminDashboardPage() {
                         Bio / Intro Phrase (Staff Intro)
                       </Text>
                       <Input
-                        placeholder="e.g. Apple, Recreation Staff of Baan 7, nice to meet you all! 🧡"
+                        placeholder="e.g. Apple, Recreation Staff of Baan 7, nice to meet you all!"
                         aria-label="Bio / Intro Phrase (Staff Intro)"
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}

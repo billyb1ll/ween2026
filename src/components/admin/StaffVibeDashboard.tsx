@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiShield, FiGrid, FiSearch, FiCpu } from "react-icons/fi";
 import {
   Box,
   Flex,
@@ -108,7 +109,10 @@ export function StaffVibeDashboard() {
             fontWeight="bold"
             textAlign="center"
           >
-            🕵️‍♂️ Staff Vibe Check Control Center
+            <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
+              <FiShield size={20} />
+              Staff Vibe Check Control Center
+            </Box>
           </Heading>
           <Text fontSize="xs" color="var(--c-muted)" textAlign="center">
             Monitor students trying to guess your profile and manage the secret clues you leak to the swipe pool!
@@ -125,7 +129,10 @@ export function StaffVibeDashboard() {
         boxShadow="var(--shadow-card)"
       >
         <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={4} fontWeight="bold">
-          📌 My Spy Metrics Grid
+          <Box display="flex" alignItems="center" gap={2}>
+            <FiGrid size={16} />
+            My Spy Metrics Grid
+          </Box>
         </Heading>
 
         {isMetricsLoading ? (
@@ -203,7 +210,10 @@ export function StaffVibeDashboard() {
         boxShadow="var(--shadow-card)"
       >
         <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={3} fontWeight="bold">
-          🔍 Top Detectives (Live Student Tracker)
+          <Box display="flex" alignItems="center" gap={2}>
+            <FiSearch size={16} />
+            Top Detectives (Live Student Tracker)
+          </Box>
         </Heading>
 
         {isDetectivesLoading ? (
@@ -264,7 +274,10 @@ export function StaffVibeDashboard() {
         boxShadow="var(--shadow-card)"
       >
         <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={3} fontWeight="bold">
-          🧠 Intel Clue Controller
+          <Box display="flex" alignItems="center" gap={2}>
+            <FiCpu size={16} />
+            Intel Clue Controller
+          </Box>
         </Heading>
 
         <VStack align="stretch" gap={4}>
