@@ -213,7 +213,9 @@ export function AdminDashboardPage() {
   const { data: missionsData } = useAdminMissions(isModerator);
   const { data: logsData } = useAdminAuditLogs(isModerator);
   const { data: configsData = [] } = useAdminConfigs(!!user);
-  const updateUserProfileRpc = useUpdateUserProfileRpcMutation(user?.student_id || "");
+  const updateUserProfileRpc = useUpdateUserProfileRpcMutation(
+    user?.student_id || "",
+  );
 
   useEffect(() => {
     if (usersData) {
@@ -243,12 +245,18 @@ export function AdminDashboardPage() {
     if (configsData.length > 0) {
       const memory = configsData.find((c) => c.key === "enable_memory_board");
       const vibecheck = configsData.find((c) => c.key === "vibecheck_enabled");
-      const emergency = configsData.find((c) => c.key === "emergency_announcement");
+      const emergency = configsData.find(
+        (c) => c.key === "emergency_announcement",
+      );
       const strikes = configsData.find((c) => c.key === "max_allowed_strikes");
-      const baseCool = configsData.find((c) => c.key === "base_cooldown_minutes");
+      const baseCool = configsData.find(
+        (c) => c.key === "base_cooldown_minutes",
+      );
       const maxCool = configsData.find((c) => c.key === "max_cooldown_minutes");
       const hypeMode = configsData.find((c) => c.key === "hype_board_mode");
-      const globalMute = configsData.find((c) => c.key === "global_mute_active");
+      const globalMute = configsData.find(
+        (c) => c.key === "global_mute_active",
+      );
       const ticker = configsData.find((c) => c.key === "ticker_text");
 
       Promise.resolve().then(() => {
@@ -261,7 +269,8 @@ export function AdminDashboardPage() {
         if (strikes) setMaxStrikes(strikes.int_value ?? 5);
         if (baseCool) setBaseCooldown(baseCool.int_value ?? 1);
         if (maxCool) setMaxCooldown(maxCool.int_value ?? 30);
-        if (hypeMode?.text_value) setHypeBoardMode(hypeMode.text_value as HypeBoardMode);
+        if (hypeMode?.text_value)
+          setHypeBoardMode(hypeMode.text_value as HypeBoardMode);
         if (globalMute) setGlobalMuteActive(globalMute.value);
         if (ticker) {
           setTickerActive(ticker.value);
@@ -323,22 +332,22 @@ export function AdminDashboardPage() {
     });
 
     const labelMap: Record<string, string> = {
-      "โสต": "Media & Audio โสต",
-      "สันทนาการ": "Recreation สันทนาการ",
-      "พี่กลุ่ม": "Group Leader พี่กลุ่ม",
-      "ประธาน": "President ประธาน",
-      "เลขา": "Secretary เลขา",
-      "เหรัญญิก": "Treasurer เหรัญญิก",
-      "ประสานงาน": "Coordinator ประสานงาน",
-      "Timer": "Timer โพย/เวลา",
+      โสต: "Media & Audio โสต",
+      สันทนาการ: "Recreation สันทนาการ",
+      พี่กลุ่ม: "Group Leader พี่กลุ่ม",
+      ประธาน: "President ประธาน",
+      เลขา: "Secretary เลขา",
+      เหรัญญิก: "Treasurer เหรัญญิก",
+      ประสานงาน: "Coordinator ประสานงาน",
+      Timer: "Timer โพย/เวลา",
       "Creative & Art": "Creative & Art ฝ่ายสร้างสรรค์",
-      "สวัสดิการและพัสดุ": "Welfare & Supplies สวัสดิการและพัสดุ",
-      "พยาบาล": "Medical Team พยาบาล",
-      "สถานที่": "Logistics & Venue สถานที่",
-      "ทะเบียน": "Registration ทะเบียน",
-      "staff": "General Staff",
-      "media_admin": "Media Admin",
-      "moderator": "Moderator",
+      สวัสดิการและพัสดุ: "Welfare & Supplies สวัสดิการและพัสดุ",
+      พยาบาล: "Medical Team พยาบาล",
+      สถานที่: "Logistics & Venue สถานที่",
+      ทะเบียน: "Registration ทะเบียน",
+      staff: "General Staff",
+      media_admin: "Media Admin",
+      moderator: "Moderator",
     };
 
     return Object.keys(counts).map((k) => {
@@ -353,7 +362,9 @@ export function AdminDashboardPage() {
   }, [whitelistedUsers]);
 
   const selectedTargetItem = useMemo(() => {
-    return staffPositionsCollection.find((item) => item.value === newMissionTarget);
+    return staffPositionsCollection.find(
+      (item) => item.value === newMissionTarget,
+    );
   }, [staffPositionsCollection, newMissionTarget]);
   const maxAvailableCount = selectedTargetItem ? selectedTargetItem.count : 20;
 
@@ -365,7 +376,7 @@ export function AdminDashboardPage() {
     const q = newMissionFilterQuery.toLowerCase().trim();
     if (!q) return staffPositionsCollection;
     return staffPositionsCollection.filter((item) =>
-      item.label.toLowerCase().includes(q)
+      item.label.toLowerCase().includes(q),
     );
   }, [staffPositionsCollection, newMissionFilterQuery]);
 
@@ -492,7 +503,9 @@ export function AdminDashboardPage() {
         },
         (payload) => {
           queryClient.invalidateQueries({ queryKey: ["admin_users"] });
-          const studentId = (payload.new as DBUser | null)?.student_id || (payload.old as { student_id: string } | null)?.student_id;
+          const studentId =
+            (payload.new as DBUser | null)?.student_id ||
+            (payload.old as { student_id: string } | null)?.student_id;
           if (studentId) {
             if (highlightTimeoutRef.current)
               clearTimeout(highlightTimeoutRef.current);
@@ -1152,18 +1165,18 @@ export function AdminDashboardPage() {
 
     try {
       await updateUserProfileRpc.mutateAsync({
-        pinHash:       user.pin_hash || "",
-        targetId:      inspectUser.student_id,
-        newRole:       editRole,
-        nickname:      editNickname,
-        faculty:       editFaculty,
-        major:         editMajor,
+        pinHash: user.pin_hash || "",
+        targetId: inspectUser.student_id,
+        newRole: editRole,
+        nickname: editNickname,
+        faculty: editFaculty,
+        major: editMajor,
         housePosition: editHousePosition,
       });
 
       toaster.create({
         title: "User Profile Updated!",
-        type:  "success",
+        type: "success",
       });
       setInspectUser(null);
       triggerRefresh();
@@ -1171,7 +1184,7 @@ export function AdminDashboardPage() {
       console.error(err);
       toaster.create({
         title: "Error updating user profile",
-        type:  "error",
+        type: "error",
       });
     }
   };
@@ -1186,10 +1199,12 @@ export function AdminDashboardPage() {
     if (key === "vibecheck_enabled") setVibecheckEnabled(newVal);
 
     try {
-      const { error } = await supabase
-        .from("system_config")
-        .update({ value: newVal })
-        .eq("key", key);
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: user?.pin_hash,
+        p_key: key,
+        p_value: newVal,
+      });
 
       if (error) throw error;
 
@@ -1463,7 +1478,6 @@ export function AdminDashboardPage() {
     }
   };
 
-
   // Handle Event Config Update
   const handleUpdateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1615,20 +1629,22 @@ export function AdminDashboardPage() {
   const handleSaveGamePenalties = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.from("system_config").upsert(
-        [
-          { key: "max_allowed_strikes", value: true, int_value: maxStrikes },
-          {
-            key: "base_cooldown_minutes",
-            value: true,
-            int_value: baseCooldown,
-          },
-          { key: "max_cooldown_minutes", value: true, int_value: maxCooldown },
-        ],
-        { onConflict: "key" },
-      );
+      const updates = [
+        { key: "max_allowed_strikes", int_value: maxStrikes },
+        { key: "base_cooldown_minutes", int_value: baseCooldown },
+        { key: "max_cooldown_minutes", int_value: maxCooldown },
+      ];
 
-      if (error) throw error;
+      for (const update of updates) {
+        const { error } = await supabase.rpc("admin_update_system_config", {
+          p_admin_id: user?.student_id,
+          p_admin_pin: user?.pin_hash,
+          p_key: update.key,
+          p_value: true,
+          p_int_value: update.int_value,
+        });
+        if (error) throw error;
+      }
 
       await logAuditAction(
         "game_penalties_update",
@@ -1659,11 +1675,19 @@ export function AdminDashboardPage() {
     if (!newMissionTarget) return;
     setNewMissionError("");
 
-    const sortedMissions = [...missions].sort((a, b) => a.sequence_order - b.sequence_order);
+    const sortedMissions = [...missions].sort(
+      (a, b) => a.sequence_order - b.sequence_order,
+    );
     const lastMission = sortedMissions[sortedMissions.length - 1];
 
-    if (lastMission && lastMission.target_role === newMissionTarget && newMissionCount <= lastMission.required_count) {
-      setNewMissionError("Invalid Sequence: Cannot create consecutive missions with identical or lower card targets for the same role.");
+    if (
+      lastMission &&
+      lastMission.target_role === newMissionTarget &&
+      newMissionCount <= lastMission.required_count
+    ) {
+      setNewMissionError(
+        "Invalid Sequence: Cannot create consecutive missions with identical or lower card targets for the same role.",
+      );
       return;
     }
 
@@ -1875,9 +1899,7 @@ export function AdminDashboardPage() {
               px={6}
               py={1.5}
               h="36px"
-              bg={
-                activeTab === "moderator" ? "accent.solid" : "transparent"
-              }
+              bg={activeTab === "moderator" ? "accent.solid" : "transparent"}
               color={activeTab === "moderator" ? "white" : "fg.muted"}
               boxShadow={activeTab === "moderator" ? "sm" : "none"}
               _hover={{
@@ -2124,11 +2146,7 @@ export function AdminDashboardPage() {
                       borderRadius="lg"
                       bg="rgba(0,0,0,0.02)"
                     >
-                      <Text
-                        fontSize="xs"
-                        color="fg.muted"
-                        fontStyle="italic"
-                      >
+                      <Text fontSize="xs" color="fg.muted" fontStyle="italic">
                         Enter announcement text above to view live preview...
                       </Text>
                     </Box>
@@ -2229,11 +2247,7 @@ export function AdminDashboardPage() {
                       >
                         breaking_news
                       </Box>
-                      <Text
-                        fontWeight="700"
-                        color="accent.solid"
-                        fontSize="sm"
-                      >
+                      <Text fontWeight="700" color="accent.solid" fontSize="sm">
                         Global Marquee Ticker
                       </Text>
                     </Flex>
@@ -2382,11 +2396,7 @@ export function AdminDashboardPage() {
                       >
                         {globalMuteActive ? "volume_off" : "volume_up"}
                       </Box>
-                      <Text
-                        fontWeight="700"
-                        color="accent.solid"
-                        fontSize="sm"
-                      >
+                      <Text fontWeight="700" color="accent.solid" fontSize="sm">
                         Instant Panic Mute
                       </Text>
                       {globalMuteActive && (
@@ -2498,7 +2508,11 @@ export function AdminDashboardPage() {
                       h="44px"
                       bg="bg.canvas"
                       borderRadius="xl"
-                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                      _focus={{
+                        borderColor: "accent.solid",
+                        boxShadow:
+                          "0 0 0 2px var(--chakra-colors-accent-muted)",
+                      }}
                       required
                     />
                   </VStack>
@@ -2513,7 +2527,11 @@ export function AdminDashboardPage() {
                       h="44px"
                       bg="bg.canvas"
                       borderRadius="xl"
-                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                      _focus={{
+                        borderColor: "accent.solid",
+                        boxShadow:
+                          "0 0 0 2px var(--chakra-colors-accent-muted)",
+                      }}
                       required
                     />
                   </VStack>
@@ -2559,14 +2577,19 @@ export function AdminDashboardPage() {
                   <Table.Root size="sm">
                     <Table.Header bg="bg.canvas">
                       <Table.Row>
-                        <Table.ColumnHeader fontFamily="heading">Seq Order</Table.ColumnHeader>
+                        <Table.ColumnHeader fontFamily="heading">
+                          Seq Order
+                        </Table.ColumnHeader>
                         <Table.ColumnHeader fontFamily="heading">
                           Target Position / Role
                         </Table.ColumnHeader>
                         <Table.ColumnHeader fontFamily="heading">
                           Required Card Count
                         </Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" fontFamily="heading">
+                        <Table.ColumnHeader
+                          textAlign="right"
+                          fontFamily="heading"
+                        >
                           Actions
                         </Table.ColumnHeader>
                       </Table.Row>
@@ -2690,7 +2713,8 @@ export function AdminDashboardPage() {
                           fontSize="sm"
                           _focus={{
                             borderColor: "accent.solid",
-                            boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)",
+                            boxShadow:
+                              "0 0 0 2px var(--chakra-colors-accent-muted)",
                           }}
                         />
                         <Combobox.Trigger
@@ -2723,7 +2747,12 @@ export function AdminDashboardPage() {
                             overflowY="auto"
                             py={1}
                           >
-                            <Combobox.Empty fontSize="sm" p={3} textAlign="center" color="fg.muted">
+                            <Combobox.Empty
+                              fontSize="sm"
+                              p={3}
+                              textAlign="center"
+                              color="fg.muted"
+                            >
                               No results found
                             </Combobox.Empty>
                             {targetCollection.items.map((item) => (
@@ -2736,7 +2765,10 @@ export function AdminDashboardPage() {
                                 fontSize="sm"
                                 transition="background 0.2s"
                                 _hover={{ bg: "rgba(73, 98, 104, 0.08)" }}
-                                _selected={{ bg: "accent.solid", color: "white" }}
+                                _selected={{
+                                  bg: "accent.solid",
+                                  color: "white",
+                                }}
                               >
                                 {item.label}
                                 <Combobox.ItemIndicator />
@@ -2764,7 +2796,11 @@ export function AdminDashboardPage() {
                       bg="white"
                       borderRadius="lg"
                       border="1.5px solid var(--chakra-colors-border-default)"
-                      _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                      _focus={{
+                        borderColor: "accent.solid",
+                        boxShadow:
+                          "0 0 0 2px var(--chakra-colors-accent-muted)",
+                      }}
                       maxW="90px"
                     />
                   </VStack>
@@ -2809,11 +2845,7 @@ export function AdminDashboardPage() {
                   </Heading>
                   <Flex gap={4} flexWrap="wrap">
                     <VStack align="start" gap={1} flex={1} minW="140px">
-                      <Text
-                        fontSize="xs"
-                        fontWeight="700"
-                        color="fg.muted"
-                      >
+                      <Text fontSize="xs" fontWeight="700" color="fg.muted">
                         Max Allowed Strikes
                       </Text>
                       <Input
@@ -2825,15 +2857,15 @@ export function AdminDashboardPage() {
                         bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                        _focus={{
+                          borderColor: "accent.solid",
+                          boxShadow:
+                            "0 0 0 2px var(--chakra-colors-accent-muted)",
+                        }}
                       />
                     </VStack>
                     <VStack align="start" gap={1} flex={1} minW="140px">
-                      <Text
-                        fontSize="xs"
-                        fontWeight="700"
-                        color="fg.muted"
-                      >
+                      <Text fontSize="xs" fontWeight="700" color="fg.muted">
                         Base Cooldown (minutes)
                       </Text>
                       <Input
@@ -2845,15 +2877,15 @@ export function AdminDashboardPage() {
                         bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                        _focus={{
+                          borderColor: "accent.solid",
+                          boxShadow:
+                            "0 0 0 2px var(--chakra-colors-accent-muted)",
+                        }}
                       />
                     </VStack>
                     <VStack align="start" gap={1} flex={1} minW="140px">
-                      <Text
-                        fontSize="xs"
-                        fontWeight="700"
-                        color="fg.muted"
-                      >
+                      <Text fontSize="xs" fontWeight="700" color="fg.muted">
                         Max Cooldown ceiling (minutes)
                       </Text>
                       <Input
@@ -2865,7 +2897,11 @@ export function AdminDashboardPage() {
                         bg="bg.canvas"
                         h="40px"
                         borderRadius="lg"
-                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)" }}
+                        _focus={{
+                          borderColor: "accent.solid",
+                          boxShadow:
+                            "0 0 0 2px var(--chakra-colors-accent-muted)",
+                        }}
                       />
                     </VStack>
                   </Flex>
@@ -2966,11 +3002,21 @@ export function AdminDashboardPage() {
                 <Table.Root size="sm" variant="line">
                   <Table.Header bg="bg.canvas">
                     <Table.Row>
-                      <Table.ColumnHeader fontFamily="heading">Timestamp</Table.ColumnHeader>
-                      <Table.ColumnHeader fontFamily="heading">Moderator</Table.ColumnHeader>
-                      <Table.ColumnHeader fontFamily="heading">Action</Table.ColumnHeader>
-                      <Table.ColumnHeader fontFamily="heading">Target</Table.ColumnHeader>
-                      <Table.ColumnHeader fontFamily="heading">Details</Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">
+                        Timestamp
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">
+                        Moderator
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">
+                        Action
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">
+                        Target
+                      </Table.ColumnHeader>
+                      <Table.ColumnHeader fontFamily="heading">
+                        Details
+                      </Table.ColumnHeader>
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
@@ -3023,7 +3069,12 @@ export function AdminDashboardPage() {
                               letterSpacing="wider"
                             >
                               {log.action_type.includes("panic_mute") && (
-                                <Box as={FiAlertTriangle} display="inline-block" mr={1} verticalAlign="middle" />
+                                <Box
+                                  as={FiAlertTriangle}
+                                  display="inline-block"
+                                  mr={1}
+                                  verticalAlign="middle"
+                                />
                               )}
                               {log.action_type}
                             </Badge>
@@ -3129,11 +3180,7 @@ export function AdminDashboardPage() {
                   <Text fontWeight="600" color="accent.solid">
                     Synced Image Records
                   </Text>
-                  <Text
-                    fontSize="sm"
-                    fontWeight="700"
-                    color="accent.solid"
-                  >
+                  <Text fontSize="sm" fontWeight="700" color="accent.solid">
                     {immichStatus.totalImages} images
                   </Text>
                 </Flex>
@@ -3175,7 +3222,7 @@ export function AdminDashboardPage() {
                 </Text>
               </Box>
             </Box>
-            
+
             <MediaUploader />
             <AlbumMappingAdmin />
           </VStack>
@@ -3200,7 +3247,12 @@ export function AdminDashboardPage() {
                   borderRadius="xl"
                   boxShadow="sm"
                 >
-                  <Heading size="md" color="gray.700" fontFamily="heading" mb={4}>
+                  <Heading
+                    size="md"
+                    color="gray.700"
+                    fontFamily="heading"
+                    mb={4}
+                  >
                     My VibeCheck Profile (Staff Card)
                   </Heading>
 
@@ -3331,10 +3383,7 @@ export function AdminDashboardPage() {
                                     Slot {idx + 1} (Empty)
                                   </Text>
                                   {isUploading ? (
-                                    <Spinner
-                                      size="xs"
-                                      color="brand.solid"
-                                    />
+                                    <Spinner size="xs" color="brand.solid" />
                                   ) : (
                                     <Flex gap={2}>
                                       <Button
@@ -3396,7 +3445,12 @@ export function AdminDashboardPage() {
                   borderRadius="xl"
                   boxShadow="sm"
                 >
-                  <Heading size="md" color="gray.700" fontFamily="heading" mb={2}>
+                  <Heading
+                    size="md"
+                    color="gray.700"
+                    fontFamily="heading"
+                    mb={2}
+                  >
                     Live Hype & Memory Board Moderation Tracker
                   </Heading>
                   <Text fontSize="xs" color="fg.muted" mb={4}>
@@ -3425,9 +3479,15 @@ export function AdminDashboardPage() {
                             <Table.ColumnHeader fontFamily="heading">
                               Post Details & Comments
                             </Table.ColumnHeader>
-                            <Table.ColumnHeader fontFamily="heading">Author</Table.ColumnHeader>
-                            <Table.ColumnHeader fontFamily="heading">Type</Table.ColumnHeader>
-                            <Table.ColumnHeader fontFamily="heading">Actions</Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Author
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Type
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Actions
+                            </Table.ColumnHeader>
                           </Table.Row>
                         </Table.Header>
                         <Table.Body>
@@ -3614,165 +3674,182 @@ export function AdminDashboardPage() {
             />
             <Dialog.Positioner zIndex={1000} px={4}>
               <Dialog.Content
-              bg="bg.canvas"
-              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
-              color="fg.default"
-              borderRadius={{ base: "t-3xl", md: "2xl" }}
-              width={{ base: "100%", md: "560px" }}
-              maxH={{ base: "92vh", md: "80vh" }}
-              p={6}
-              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
-              display="flex"
-              flexDirection="column"
-              position="relative"
-            >
-              <Box
-                as="form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await handleBatchUpsert();
+                bg="bg.canvas"
+                border={{
+                  base: "none",
+                  md: "2px solid var(--chakra-colors-accent-solid)",
                 }}
+                color="fg.default"
+                borderRadius={{ base: "t-3xl", md: "2xl" }}
+                width={{ base: "100%", md: "560px" }}
+                maxH={{ base: "92vh", md: "80vh" }}
+                p={6}
+                boxShadow={{ base: "none", md: "var(--shadow-card)" }}
                 display="flex"
                 flexDirection="column"
-                height="100%"
-                width="100%"
+                position="relative"
               >
-                <Dialog.Header p={0} mb={2}>
-                  <Dialog.Title
-                    fontSize="xl"
-                    fontWeight="bold"
-                    color="accent.solid"
-                    fontFamily="heading"
-                  >
-                    CSV Upload Preview & Duplicate Validation
-                  </Dialog.Title>
-                </Dialog.Header>
-                <Dialog.Body
-                  p={0}
-                  flex={1}
-                  overflowY="auto"
+                <Box
+                  as="form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await handleBatchUpsert();
+                  }}
                   display="flex"
                   flexDirection="column"
-                  mb={4}
+                  height="100%"
+                  width="100%"
                 >
-                  <Text fontSize="xs" color="fg.subtle" mb={4}>
-                    Highlighting duplicates in orange. Conflict values will be
-                    updated/overwritten upon upsert.
-                  </Text>
-
-                  <Box
-                    overflowY="auto"
+                  <Dialog.Header p={0} mb={2}>
+                    <Dialog.Title
+                      fontSize="xl"
+                      fontWeight="bold"
+                      color="accent.solid"
+                      fontFamily="heading"
+                    >
+                      CSV Upload Preview & Duplicate Validation
+                    </Dialog.Title>
+                  </Dialog.Header>
+                  <Dialog.Body
+                    p={0}
                     flex={1}
+                    overflowY="auto"
+                    display="flex"
+                    flexDirection="column"
                     mb={4}
-                    border="1px solid"
-                    borderColor="border.subtle"
-                    borderRadius="xl"
-                    p={3}
                   >
-                    <Table.Root size="sm" variant="line">
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.ColumnHeader fontFamily="heading">Student ID</Table.ColumnHeader>
-                          <Table.ColumnHeader fontFamily="heading">Nickname</Table.ColumnHeader>
-                          <Table.ColumnHeader fontFamily="heading">Faculty</Table.ColumnHeader>
-                          <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
-                          <Table.ColumnHeader fontFamily="heading">Validation</Table.ColumnHeader>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {csvRecords.map((row, idx) => {
-                          const dup = isDuplicate(row.student_id);
-                          return (
-                            <Table.Row
-                              key={idx}
-                              bg={
-                                dup ? "rgba(235, 150, 40, 0.08)" : "transparent"
-                              }
-                            >
-                              <Table.Cell fontWeight="600">
-                                {row.student_id}
-                              </Table.Cell>
-                              <Table.Cell>{row.nickname || "-"}</Table.Cell>
-                              <Table.Cell>{row.faculty || "-"}</Table.Cell>
-                              <Table.Cell>
-                                <Badge colorPalette="gray">{row.role}</Badge>
-                              </Table.Cell>
-                              <Table.Cell>
-                                {dup ? (
-                                  <Badge colorPalette="orange">
-                                    Duplicate (Will Update)
-                                  </Badge>
-                                ) : (
-                                  <Badge colorPalette="green">New Record</Badge>
-                                )}
-                              </Table.Cell>
-                            </Table.Row>
-                          );
-                        })}
-                      </Table.Body>
-                    </Table.Root>
-                  </Box>
-                </Dialog.Body>
+                    <Text fontSize="xs" color="fg.subtle" mb={4}>
+                      Highlighting duplicates in orange. Conflict values will be
+                      updated/overwritten upon upsert.
+                    </Text>
 
-                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                  <Dialog.CloseTrigger asChild>
+                    <Box
+                      overflowY="auto"
+                      flex={1}
+                      mb={4}
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      borderRadius="xl"
+                      p={3}
+                    >
+                      <Table.Root size="sm" variant="line">
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Student ID
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Nickname
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Faculty
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Role
+                            </Table.ColumnHeader>
+                            <Table.ColumnHeader fontFamily="heading">
+                              Validation
+                            </Table.ColumnHeader>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {csvRecords.map((row, idx) => {
+                            const dup = isDuplicate(row.student_id);
+                            return (
+                              <Table.Row
+                                key={idx}
+                                bg={
+                                  dup
+                                    ? "rgba(235, 150, 40, 0.08)"
+                                    : "transparent"
+                                }
+                              >
+                                <Table.Cell fontWeight="600">
+                                  {row.student_id}
+                                </Table.Cell>
+                                <Table.Cell>{row.nickname || "-"}</Table.Cell>
+                                <Table.Cell>{row.faculty || "-"}</Table.Cell>
+                                <Table.Cell>
+                                  <Badge colorPalette="gray">{row.role}</Badge>
+                                </Table.Cell>
+                                <Table.Cell>
+                                  {dup ? (
+                                    <Badge colorPalette="orange">
+                                      Duplicate (Will Update)
+                                    </Badge>
+                                  ) : (
+                                    <Badge colorPalette="green">
+                                      New Record
+                                    </Badge>
+                                  )}
+                                </Table.Cell>
+                              </Table.Row>
+                            );
+                          })}
+                        </Table.Body>
+                      </Table.Root>
+                    </Box>
+                  </Dialog.Body>
+
+                  <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                    <Dialog.CloseTrigger asChild>
+                      <Button
+                        variant="outline"
+                        h="44px"
+                        py={2}
+                        borderRadius="xl"
+                        cursor="pointer"
+                      >
+                        Cancel
+                      </Button>
+                    </Dialog.CloseTrigger>
                     <Button
-                      variant="outline"
+                      type="submit"
+                      bg="accent.solid"
+                      color="white"
+                      loading={upserting}
                       h="44px"
                       py={2}
+                      px={6}
                       borderRadius="xl"
                       cursor="pointer"
+                      _hover={{
+                        bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
+                      }}
                     >
-                      Cancel
+                      Batch Upsert ({csvRecords.length} records)
                     </Button>
-                  </Dialog.CloseTrigger>
-                  <Button
-                    type="submit"
-                    bg="accent.solid"
-                    color="white"
-                    loading={upserting}
-                    h="44px"
-                    py={2}
-                    px={6}
-                    borderRadius="xl"
-                    cursor="pointer"
-                    _hover={{
-                      bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
-                    }}
-                  >
-                    Batch Upsert ({csvRecords.length} records)
-                  </Button>
-                </Dialog.Footer>
-              </Box>
-              <Dialog.CloseTrigger
-                position="absolute"
-                top={4}
-                right={4}
-                asChild
-              >
-                <Button
-                  variant="ghost"
-                  w="44px"
-                  h="44px"
-                  minW="44px"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  color="fg.muted"
-                  p={0}
+                  </Dialog.Footer>
+                </Box>
+                <Dialog.CloseTrigger
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  asChild
                 >
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    fontSize="20px"
+                  <Button
+                    variant="ghost"
+                    w="44px"
+                    h="44px"
+                    minW="44px"
+                    borderRadius="full"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    color="fg.muted"
+                    p={0}
                   >
-                    close
-                  </Box>
-                </Button>
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="20px"
+                    >
+                      close
+                    </Box>
+                  </Button>
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
             </Dialog.Positioner>
           </Portal>
         </Dialog.Root>
@@ -3815,118 +3892,121 @@ export function AdminDashboardPage() {
             />
             <Dialog.Positioner zIndex={2200} px={4}>
               <Dialog.Content
-              bg="bg.canvas"
-              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
-              color="fg.default"
-              borderRadius={{ base: "t-3xl", md: "2xl" }}
-              width={{ base: "100%", md: "560px" }}
-              maxH={{ base: "92vh", md: "80vh" }}
-              p={6}
-              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
-              display="flex"
-              flexDirection="column"
-              position="relative"
-            >
-              <Box
-                as="form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await handleRemoveWhitelist(userToDelete);
-                  setUserToDelete(null);
+                bg="bg.canvas"
+                border={{
+                  base: "none",
+                  md: "2px solid var(--chakra-colors-accent-solid)",
                 }}
+                color="fg.default"
+                borderRadius={{ base: "t-3xl", md: "2xl" }}
+                width={{ base: "100%", md: "560px" }}
+                maxH={{ base: "92vh", md: "80vh" }}
+                p={6}
+                boxShadow={{ base: "none", md: "var(--shadow-card)" }}
                 display="flex"
                 flexDirection="column"
-                height="100%"
-                width="100%"
-                gap="12px"
+                position="relative"
               >
-                <Dialog.Header p={0}>
-                  <Dialog.Title
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="red.600"
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    fontFamily="heading"
-                  >
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="20px"
+                <Box
+                  as="form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await handleRemoveWhitelist(userToDelete);
+                    setUserToDelete(null);
+                  }}
+                  display="flex"
+                  flexDirection="column"
+                  height="100%"
+                  width="100%"
+                  gap="12px"
+                >
+                  <Dialog.Header p={0}>
+                    <Dialog.Title
+                      fontSize="md"
+                      fontWeight="bold"
+                      color="red.600"
+                      display="flex"
+                      alignItems="center"
+                      gap={2}
+                      fontFamily="heading"
                     >
-                      warning
-                    </Box>
-                    Confirm Whitelist Removal
-                  </Dialog.Title>
-                </Dialog.Header>
-                <Dialog.Body p={0} overflowY="auto">
-                  <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                    Are you sure you want to remove user{" "}
-                    <strong>{userToDelete}</strong>? This action will revoke
-                    their whitelist status and soft-deactivate their profile.
-                  </Text>
-                </Dialog.Body>
-                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                  <Dialog.CloseTrigger asChild>
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="20px"
+                      >
+                        warning
+                      </Box>
+                      Confirm Whitelist Removal
+                    </Dialog.Title>
+                  </Dialog.Header>
+                  <Dialog.Body p={0} overflowY="auto">
+                    <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                      Are you sure you want to remove user{" "}
+                      <strong>{userToDelete}</strong>? This action will revoke
+                      their whitelist status and soft-deactivate their profile.
+                    </Text>
+                  </Dialog.Body>
+                  <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                    <Dialog.CloseTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        borderColor="border.subtle"
+                        borderRadius="xl"
+                        cursor="pointer"
+                        h="40px"
+                        px={4}
+                        py={1.5}
+                      >
+                        Cancel
+                      </Button>
+                    </Dialog.CloseTrigger>
                     <Button
+                      type="submit"
                       size="sm"
-                      variant="outline"
-                      borderColor="border.subtle"
+                      bg="red.600"
+                      _hover={{ bg: "red.700" }}
+                      color="white"
                       borderRadius="xl"
                       cursor="pointer"
                       h="40px"
                       px={4}
                       py={1.5}
                     >
-                      Cancel
+                      Confirm Delete
                     </Button>
-                  </Dialog.CloseTrigger>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    bg="red.600"
-                    _hover={{ bg: "red.700" }}
-                    color="white"
-                    borderRadius="xl"
-                    cursor="pointer"
-                    h="40px"
-                    px={4}
-                    py={1.5}
-                  >
-                    Confirm Delete
-                  </Button>
-                </Dialog.Footer>
-              </Box>
-              <Dialog.CloseTrigger
-                position="absolute"
-                top={4}
-                right={4}
-                asChild
-              >
-                <Button
-                  variant="ghost"
-                  w="44px"
-                  h="44px"
-                  minW="44px"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  color="fg.muted"
-                  p={0}
+                  </Dialog.Footer>
+                </Box>
+                <Dialog.CloseTrigger
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  asChild
                 >
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    fontSize="20px"
+                  <Button
+                    variant="ghost"
+                    w="44px"
+                    h="44px"
+                    minW="44px"
+                    borderRadius="full"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    cursor="pointer"
+                    color="fg.muted"
+                    p={0}
                   >
-                    close
-                  </Box>
-                </Button>
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="20px"
+                    >
+                      close
+                    </Box>
+                  </Button>
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
             </Dialog.Positioner>
           </Portal>
         </Dialog.Root>
@@ -3967,7 +4047,9 @@ export function AdminDashboardPage() {
             <Button
               size="sm"
               bg="red.600"
-              _hover={{ bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)" }}
+              _hover={{
+                bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)",
+              }}
               color="white"
               borderRadius="xl"
               onClick={() => setIsBulkDeleteOpen(true)}
@@ -3998,123 +4080,126 @@ export function AdminDashboardPage() {
             />
             <Dialog.Positioner zIndex={2200} px={4}>
               <Dialog.Content
-              bg="bg.canvas"
-              border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
-              color="fg.default"
-              borderRadius={{ base: "t-3xl", md: "2xl" }}
-              width={{ base: "100%", md: "560px" }}
-              maxH={{ base: "92vh", md: "80vh" }}
-              p={6}
-              boxShadow={{ base: "none", md: "var(--shadow-card)" }}
-              display="flex"
-              flexDirection="column"
-              position="relative"
-            >
-              <Box
-                as="form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  await handleBulkDeleteConfirm();
-                  setIsBulkDeleteOpen(false);
+                bg="bg.canvas"
+                border={{
+                  base: "none",
+                  md: "2px solid var(--chakra-colors-accent-solid)",
                 }}
+                color="fg.default"
+                borderRadius={{ base: "t-3xl", md: "2xl" }}
+                width={{ base: "100%", md: "560px" }}
+                maxH={{ base: "92vh", md: "80vh" }}
+                p={6}
+                boxShadow={{ base: "none", md: "var(--shadow-card)" }}
                 display="flex"
                 flexDirection="column"
-                height="100%"
-                width="100%"
-                gap="12px"
+                position="relative"
               >
-                <Dialog.Header p={0}>
-                  <Dialog.Title
-                    fontSize="md"
-                    fontWeight="bold"
-                    color="red.600"
+                <Box
+                  as="form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    await handleBulkDeleteConfirm();
+                    setIsBulkDeleteOpen(false);
+                  }}
+                  display="flex"
+                  flexDirection="column"
+                  height="100%"
+                  width="100%"
+                  gap="12px"
+                >
+                  <Dialog.Header p={0}>
+                    <Dialog.Title
+                      fontSize="md"
+                      fontWeight="bold"
+                      color="red.600"
+                      display="flex"
+                      alignItems="center"
+                      gap={2}
+                      fontFamily="heading"
+                    >
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="20px"
+                      >
+                        warning
+                      </Box>
+                      Confirm Bulk Removal
+                    </Dialog.Title>
+                  </Dialog.Header>
+                  <Dialog.Body p={0} overflowY="auto">
+                    <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                      Are you sure you want to remove{" "}
+                      <strong>{selectedStudentIds.length}</strong> selected
+                      users? This action will revoke their whitelist status,
+                      soft-deactivate their profiles, and revert their roles to
+                      student.
+                    </Text>
+                  </Dialog.Body>
+                  <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
+                    <Dialog.CloseTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        borderColor="border.subtle"
+                        borderRadius="xl"
+                        onClick={() => setIsBulkDeleteOpen(false)}
+                        cursor="pointer"
+                        h="40px"
+                        px={4}
+                        py={1.5}
+                      >
+                        Cancel
+                      </Button>
+                    </Dialog.CloseTrigger>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      bg="red.600"
+                      _hover={{
+                        bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)",
+                      }}
+                      color="white"
+                      borderRadius="xl"
+                      cursor="pointer"
+                      h="40px"
+                      px={4}
+                      py={1.5}
+                    >
+                      Confirm Bulk Delete
+                    </Button>
+                  </Dialog.Footer>
+                </Box>
+                <Dialog.CloseTrigger
+                  position="absolute"
+                  top={4}
+                  right={4}
+                  asChild
+                >
+                  <Button
+                    variant="ghost"
+                    w="44px"
+                    h="44px"
+                    minW="44px"
+                    borderRadius="full"
                     display="flex"
                     alignItems="center"
-                    gap={2}
-                    fontFamily="heading"
+                    justifyContent="center"
+                    cursor="pointer"
+                    color="fg.muted"
+                    p={0}
                   >
                     <Box
                       as="span"
                       className="material-symbols-outlined"
                       fontSize="20px"
                     >
-                      warning
+                      close
                     </Box>
-                    Confirm Bulk Removal
-                  </Dialog.Title>
-                </Dialog.Header>
-                <Dialog.Body p={0} overflowY="auto">
-                  <Text fontSize="xs" color="fg.muted" lineHeight="tall">
-                    Are you sure you want to remove{" "}
-                    <strong>{selectedStudentIds.length}</strong> selected users?
-                    This action will revoke their whitelist status,
-                    soft-deactivate their profiles, and revert their roles to
-                    student.
-                  </Text>
-                </Dialog.Body>
-                <Dialog.Footer p={0} justifyContent="flex-end" gap={3}>
-                  <Dialog.CloseTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      borderColor="border.subtle"
-                      borderRadius="xl"
-                      onClick={() => setIsBulkDeleteOpen(false)}
-                      cursor="pointer"
-                      h="40px"
-                      px={4}
-                      py={1.5}
-                    >
-                      Cancel
-                    </Button>
-                  </Dialog.CloseTrigger>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    bg="red.600"
-                    _hover={{
-                      bg: "color-mix(in srgb, var(--chakra-colors-red-500) 85%, black)",
-                    }}
-                    color="white"
-                    borderRadius="xl"
-                    cursor="pointer"
-                    h="40px"
-                    px={4}
-                    py={1.5}
-                  >
-                    Confirm Bulk Delete
                   </Button>
-                </Dialog.Footer>
-              </Box>
-              <Dialog.CloseTrigger
-                position="absolute"
-                top={4}
-                right={4}
-                asChild
-              >
-                <Button
-                  variant="ghost"
-                  w="44px"
-                  h="44px"
-                  minW="44px"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  color="fg.muted"
-                  p={0}
-                >
-                  <Box
-                    as="span"
-                    className="material-symbols-outlined"
-                    fontSize="20px"
-                  >
-                    close
-                  </Box>
-                </Button>
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
             </Dialog.Positioner>
           </Portal>
         </Dialog.Root>

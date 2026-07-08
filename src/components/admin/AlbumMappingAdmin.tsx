@@ -4,6 +4,7 @@ import { immich } from "../../lib/immich";
 import { useAlbumMappings } from "../../config/album-mapping";
 import type { AlbumMapping } from "../../config/album-mapping";
 import { supabase } from "../../lib/supabase";
+import { useUser } from "../../context/UserContext";
 import { toaster } from "../ui/toaster";
 import { FiTrash2, FiPlus, FiSave } from "react-icons/fi";
 
@@ -15,6 +16,7 @@ export function AlbumMappingAdmin() {
   const [immichAlbums, setImmichAlbums] = useState<{ id: string; albumName: string }[]>([]);
   const [fetchingAlbums, setFetchingAlbums] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { user } = useUser();
 
   useEffect(() => {
     if (!loading) {
@@ -57,13 +59,13 @@ export function AlbumMappingAdmin() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase.from("system_config").upsert([
-        {
-          key: "immich_album_mapping",
-          value: true,
-          text_value: JSON.stringify(localMappings),
-        }
-      ]);
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: user?.pin_hash,
+        p_key: "immich_album_mapping",
+        p_value: true,
+        p_text_value: JSON.stringify(localMappings),
+      });
 
       if (error) throw error;
       
