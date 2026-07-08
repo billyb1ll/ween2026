@@ -1,35 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { RealtimeChannel } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { useState, useEffect, useCallback } from "react";
 import { toaster } from "../components/ui/toaster";
 import type { User } from "../context/UserContext";
+import {
+  useBoardPosts,
+  useSystemConfigs,
+  useCreatePostMutation,
+  useLikePostMutation,
+  useDeletePostMutation,
+} from "./useBoardQueries";
+import type { DBPost, BoardTab } from "./useBoardQueriesTypes";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export type BoardTab = "hype" | "memory";
-
-export interface DBPost {
-  id: number;
-  content: string;
-  createdAt: string;
-  likes: number;
-  comment_count: number;
-  tags: string[];
-  is_anonymous: boolean;
-  is_hidden: boolean;
-  student_id: string;
-  type: BoardTab;
-  liked_by: string[];
-  image_url: string | null;
-  is_pinned?: boolean;
-  author: {
-    student_id: string;
-    nickname: string | null;
-    avatar_color: string;
-    role: string;
-    profile_pic_url: string | null;
-  };
-}
+export type { BoardTab, DBPost };
 
 export interface UseBoardRealtimeReturn {
   posts: DBPost[];
@@ -47,312 +28,34 @@ export interface UseBoardRealtimeReturn {
   handleDeletePost: (postId: number) => Promise<void>;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapPost(p: any): DBPost {
-  let cc = 0;
-  if (Array.isArray(p.comment_count)) {
-    cc = p.comment_count[0]?.count ?? 0;
-  } else if (p.comment_count !== undefined && p.comment_count !== null) {
-    cc = Number(p.comment_count);
-  }
-  if (isNaN(cc)) {
-    cc = 0;
-  }
-
-  return {
-    id: Number(p.id),
-    content: p.content,
-    createdAt: p.created_at,
-    likes: p.likes ?? 0,
-    comment_count: cc,
-    tags: Array.isArray(p.tags) ? p.tags : p.tags ? [p.tags] : ["orientation"],
-    is_anonymous: p.is_anonymous ?? false,
-    is_hidden: p.is_hidden ?? false,
-    student_id: p.student_id,
-    type: p.type as BoardTab,
-    liked_by: Array.isArray(p.liked_by) ? p.liked_by : [],
-    image_url: p.image_url ?? null,
-    is_pinned: p.is_pinned ?? false,
-    author: {
-      student_id: p.author?.student_id ?? "",
-      nickname: p.author?.nickname ?? "Guest Whitelist",
-      avatar_color: p.author?.avatar_color ?? "#496268",
-      role: p.author?.role ?? "student",
-      profile_pic_url: p.author?.profile_pic_url ?? null,
-    },
-  };
-}
-
-// ─── Hook ────────────────────────────────────────────────────────────────────
-
 export function useBoardRealtime(
   activeTab: BoardTab,
   user: User | null,
 ): UseBoardRealtimeReturn {
-  const userId = user?.student_id;
-  const [posts, setPosts] = useState<DBPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const { data: posts = [], isLoading } = useBoardPosts(activeTab);
+  const { data: configs } = useSystemConfigs();
+
+  const createPostMutation = useCreatePostMutation(activeTab);
+  const likePostMutation = useLikePostMutation(activeTab);
+  const deletePostMutation = useDeletePostMutation(activeTab);
+
   const [hypeActive, setHypeActive] = useState(true);
   const [memoryActive, setMemoryActive] = useState(true);
-  const [isPolling, setIsPolling] = useState(false);
 
-  const [isDocumentVisible, setIsDocumentVisible] = useState(
-    typeof document !== "undefined" ? document.visibilityState === "visible" : true
-  );
-
+  // Sync board toggles config
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsDocumentVisible(document.visibilityState === "visible");
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
-
-  // Keep a ref to the stream channel to send broadcasts from callbacks
-  const channelRef = useRef<RealtimeChannel | null>(null);
-
-  // Track optimistic like origins so we don't double-apply realtime UPDATE
-  const pendingLikes = useRef<Set<number>>(new Set());
-  const throttledLikes = useRef<Set<number>>(new Set());
-
-  // Reusable posts fetching function
-  const fetchPosts = useCallback(async (showLoadingSpinner = false) => {
-    if (showLoadingSpinner) {
-      setLoading(true);
-    }
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .select(
-          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)",
-        )
-        .eq("type", activeTab)
-        .eq("is_hidden", false)
-        .order("is_pinned", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setPosts((data ?? []).map(mapPost));
-    } catch (err) {
-      console.error("[Board] fetchPosts error:", err);
-    } finally {
-      if (showLoadingSpinner) {
-        setLoading(false);
-      }
-    }
-  }, [activeTab]);
-
-  // ── Initial fetch ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    let active = true;
-
-    const fetchInitial = async () => {
-      setLoading(true);
-      try {
-        // Feature toggles
-        const { data: configData } = await supabase
-          .from("system_config")
-          .select("*");
-        if (!active) return;
-
-        if (configData) {
-          const hype = configData.find((c) => c.key === "enable_hype_board");
-          const memory = configData.find(
-            (c) => c.key === "enable_memory_board",
-          );
-          if (hype) setHypeActive(hype.value);
-          if (memory) setMemoryActive(memory.value);
-        }
-
-        await fetchPosts(false);
-      } catch (err) {
-        console.error("[Board] Initial fetch error:", err);
-        toaster.create({
-          title: "Error loading posts",
-          description: "Could not fetch board entries. Please try refreshing.",
-          type: "error",
-        });
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    fetchInitial();
-    return () => {
-      active = false;
-    };
-  }, [activeTab, fetchPosts]); // Re-fetch when tab switches
-
-  // ── Realtime subscription ─────────────────────────────────────────────────
-  useEffect(() => {
-    let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    const channel = supabase.channel(`board:${activeTab}:stream`, {
-      config: { private: true },
-    });
-    channelRef.current = channel;
-
-    // Handshake Timeout Setup: activate polling if subscription fails to connect in 4 seconds
-    connectionTimeout = setTimeout(() => {
-      if (channelRef.current && channelRef.current.state !== "joined") {
-        console.warn(`[Realtime Board Fallback - Tab ${activeTab}]: Connection handshake timed out. Activating REST polling.`);
-        setIsPolling(true);
-      }
-    }, 4000);
-
-    channel
-      // ── Broadcast: new post ──
-      .on("broadcast", { event: "new_post" }, (payload) => {
-        if (!payload.payload?.post) return;
-        const incoming = mapPost(payload.payload.post);
-        setPosts((prev) => {
-          if (prev.some((p) => p.id === incoming.id)) return prev;
-          return [incoming, ...prev];
-        });
-      })
-      // ── Broadcast: like update ──
-      .on("broadcast", { event: "post_liked" }, (payload) => {
-        const { postId, likes, liked_by } = payload.payload || {};
-        if (!postId) return;
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  likes: likes ?? p.likes,
-                  liked_by: Array.isArray(liked_by) ? liked_by : p.liked_by,
-                }
-              : p,
-          ),
-        );
-      })
-      // ── Broadcast: pin update ──
-      .on("broadcast", { event: "post_pinned" }, (payload) => {
-        const { postId, is_pinned } = payload.payload || {};
-        if (!postId) return;
-        setPosts((prev) =>
-          prev.map((p) => (p.id === postId ? { ...p, is_pinned } : p)),
-        );
-      })
-      // ── Broadcast: delete update ──
-      .on("broadcast", { event: "post_deleted" }, (payload) => {
-        const { postId } = payload.payload || {};
-        if (!postId) return;
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
-      })
-      // ── system_config ──
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "system_config" },
-        (payload) => {
-          const record = (payload.new || payload.old) as {
-            key?: string;
-            value?: boolean;
-          } | null;
-          if (!record) return;
-          const { key, value } = record;
-          if (key === "enable_hype_board") setHypeActive(value ?? true);
-          if (key === "enable_memory_board") setMemoryActive(value ?? true);
-        },
-      )
-      .subscribe((status, err) => {
-        if (err) {
-          console.error(`[Realtime Board Error - Tab ${activeTab}]:`, err);
-        }
-        console.log(`[Realtime Board Status - Tab ${activeTab}]:`, status);
-
-        if (status === "SUBSCRIBED") {
-          if (connectionTimeout) clearTimeout(connectionTimeout);
-          setIsPolling(false);
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          if (connectionTimeout) clearTimeout(connectionTimeout);
-          console.warn(`[Realtime Board Fallback - Tab ${activeTab}]: Channel status ${status}. Activating REST polling.`);
-          setIsPolling(true);
-        }
+    if (configs) {
+      const hype = configs.find((c) => c.key === "enable_hype_board");
+      const memory = configs.find((c) => c.key === "enable_memory_board");
+      
+      // Update state asynchronously to avoid synchronous cascading renders
+      Promise.resolve().then(() => {
+        if (hype) setHypeActive(hype.value);
+        if (memory) setMemoryActive(memory.value);
       });
-
-    // ── Global comment counter channel ─────────────────────────────────────
-    const commentChannel = supabase
-      .channel("global-comment-counts-" + activeTab, {
-        config: { private: true },
-      })
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "post_comments" },
-        (payload) => {
-          const postId = Number(payload.new.post_id);
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === postId
-                ? { ...p, comment_count: p.comment_count + 1 }
-                : p,
-            ),
-          );
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "post_comments" },
-        (payload) => {
-          const commentId = payload.old.id;
-          console.log("[Realtime global comment delete] ID:", commentId);
-          const postId = payload.old.post_id
-            ? Number(payload.old.post_id)
-            : null;
-          if (!postId) return;
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === postId
-                ? { ...p, comment_count: Math.max(0, p.comment_count - 1) }
-                : p,
-            ),
-          );
-        },
-      )
-      .subscribe();
-
-    return () => {
-      if (connectionTimeout) clearTimeout(connectionTimeout);
-      supabase.removeChannel(channel);
-      supabase.removeChannel(commentChannel);
-      channelRef.current = null;
-    };
-  }, [activeTab, userId]);
-
-  // ── Failover Polling Effect ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isPolling) return;
-
-    if (!isDocumentVisible) {
-      console.log(`[Eco Mode - Tab ${activeTab}] Tab hidden. Suspending polling.`);
-      return;
     }
+  }, [configs]);
 
-    // Immediately fetch once when returning to visible state
-    Promise.resolve().then(() => {
-      fetchPosts(false);
-    });
-
-    // Stagger polling intervals between 30 to 45 seconds to prevent query grouping
-    const intervalTime = Math.floor(Math.random() * 15000) + 30000;
-    console.warn(`[Eco Mode - Tab ${activeTab}] Connection limit reached or unauthenticated. Falling back to staggered polling every ${Math.round(intervalTime / 1000)}s.`);
-
-    const interval = setInterval(async () => {
-      await fetchPosts(false);
-    }, intervalTime);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [isPolling, isDocumentVisible, fetchPosts, activeTab]);
-
-  // ── Create post ───────────────────────────────────────────────────────────
   const handleCreatePost = useCallback(
     async (
       content: string,
@@ -369,65 +72,28 @@ export function useBoardRealtime(
         return;
       }
 
-      setSubmitting(true);
       try {
-        const { data, error } = await supabase
-          .from("posts")
-          .insert({
-            content: content.trim(),
-            student_id: user.student_id,
-            tags,
-            type: activeTab,
-            is_anonymous: isAnon,
-            image_url: imageUrl || null,
-          })
-          .select(
-            "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)",
-          )
-          .single();
+        await createPostMutation.mutateAsync({
+          content,
+          tags,
+          isAnon,
+          imageUrl,
+          userId: user.student_id,
+        });
 
-        if (error) throw error;
-
-        if (data) {
-          const incoming = mapPost(data);
-          // Broadcast to other clients
-          channelRef.current
-            ?.send({
-              type: "broadcast",
-              event: "new_post",
-              payload: {
-                post: data,
-                session_token: localStorage.getItem("baan7_session_token"),
-              },
-            })
-            .catch((err) =>
-              console.error("[Realtime] Broadcast new_post error:", err),
-            );
-
-          // Optimistic prepend — realtime INSERT will arrive shortly, dedup guard prevents double
-          setPosts((prev) => {
-            if (prev.some((p) => p.id === incoming.id)) return prev;
-            return [incoming, ...prev];
-          });
-
-          toaster.create({
-            title:
-              activeTab === "hype" ? "🔥 Hype posted!" : "📌 Memory pinned!",
-            description: "Your message is live on the board.",
-            type: "success",
-          });
-        }
+        toaster.create({
+          title: activeTab === "hype" ? "🔥 Hype posted!" : "📌 Memory pinned!",
+          description: "Your message is live on the board.",
+          type: "success",
+        });
       } catch (err) {
         console.error("[Board] Post creation error:", err);
         toaster.create({ title: "Error posting message", type: "error" });
-      } finally {
-        setSubmitting(false);
       }
     },
-    [user, activeTab],
+    [user, activeTab, createPostMutation]
   );
 
-  // ── Like post (optimistic & idempotent toggle) ─────────────────────────────
   const handleLikePost = useCallback(
     async (postId: number) => {
       if (!user) {
@@ -439,25 +105,7 @@ export function useBoardRealtime(
         return;
       }
 
-      if (throttledLikes.current.has(postId)) {
-        toaster.create({
-          title: "Slow down!",
-          description: "Please wait a moment before liking this post again.",
-          type: "warning",
-        });
-        return;
-      }
-      throttledLikes.current.add(postId);
-      setTimeout(() => {
-        throttledLikes.current.delete(postId);
-      }, 1500);
-
-      let match: DBPost | undefined;
-      setPosts((prev) => {
-        match = prev.find((p) => p.id === postId);
-        return prev;
-      });
-
+      const match = posts.find((p) => p.id === postId);
       if (!match) return;
 
       const hasLiked = match.liked_by.includes(user.student_id);
@@ -468,61 +116,19 @@ export function useBoardRealtime(
         ? Math.max(0, match.likes - 1)
         : match.likes + 1;
 
-      // Optimistic local update
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? { ...p, likes: nextLikes, liked_by: nextLikedBy }
-            : p,
-        ),
-      );
-
-      // 0ms Optimistic Synchronization: Shoot rapid broadcast payload immediately before updating relational tables statically
-      channelRef.current
-        ?.send({
-          type: "broadcast",
-          event: "post_liked",
-          payload: {
-            postId,
-            likes: nextLikes,
-            liked_by: nextLikedBy,
-            session_token: localStorage.getItem("baan7_session_token"),
-          },
-        })
-        .catch((err) =>
-          console.error("[Realtime] Broadcast post_liked error:", err),
-        );
-
-      // Mark as self-originated so the realtime UPDATE won't double-apply
-      pendingLikes.current.add(postId);
-
       try {
-        const { error } = await supabase
-          .from("posts")
-          .update({
-            likes: nextLikes,
-            liked_by: nextLikedBy,
-          })
-          .eq("id", postId);
-
-        if (error) throw error;
+        await likePostMutation.mutateAsync({
+          postId,
+          nextLikes,
+          nextLikedBy,
+        });
       } catch (err) {
-        console.error("[Board] Like error:", err);
-        // Rollback optimistic update
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === postId
-              ? { ...p, likes: match!.likes, liked_by: match!.liked_by }
-              : p,
-          ),
-        );
-        pendingLikes.current.delete(postId);
+        console.error("[Board] Like mutation error:", err);
       }
     },
-    [user],
+    [user, posts, likePostMutation]
   );
 
-  // ── Delete post secure RPC call ──
   const handleDeletePost = useCallback(
     async (postId: number) => {
       if (!user) {
@@ -535,43 +141,24 @@ export function useBoardRealtime(
       }
 
       try {
-        const { error } = await supabase.rpc("delete_post_secure", {
-          p_post_id: postId,
-          p_student_id: user.student_id,
-          p_pin_hash: user.pin_hash || "",
+        await deletePostMutation.mutateAsync({
+          postId,
+          userId: user.student_id,
+          pinHash: user.pin_hash || "",
         });
-
-        if (error) throw error;
-
-        // Broadcast to other clients
-        channelRef.current
-          ?.send({
-            type: "broadcast",
-            event: "post_deleted",
-            payload: {
-              postId,
-              session_token: localStorage.getItem("baan7_session_token"),
-            },
-          })
-          .catch((err) =>
-            console.error("[Realtime] Broadcast post_deleted error:", err),
-          );
-
-        // Local update
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
         toaster.create({ title: "Post Deleted!", type: "success" });
       } catch (err) {
-        console.error("[Board] Delete post error:", err);
+        console.error("[Board] Delete mutation error:", err);
         toaster.create({ title: "Failed to delete post", type: "error" });
       }
     },
-    [user],
+    [user, deletePostMutation]
   );
 
   return {
     posts,
-    loading,
-    submitting,
+    loading: isLoading,
+    submitting: createPostMutation.isPending,
     hypeActive,
     memoryActive,
     handleCreatePost,

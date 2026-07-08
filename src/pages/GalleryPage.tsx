@@ -55,13 +55,18 @@ export function GalleryPage() {
         }
 
         if (album) {
-          // If we got the album via getById, it already contains the assets!
-          if (album.assets && album.assets.length > 0) {
-            setPhotos(album.assets);
-          } else {
-            // fallback if it doesn't have assets included
-            const fullAlbum = await immich.albums.getById(album.id);
-            setPhotos(fullAlbum.assets || []);
+          try {
+            const assets = await immich.albums.getAssets(album.id);
+            setPhotos(assets);
+          } catch (err) {
+            console.error("Error fetching album assets:", err);
+            // fallback if getAssets fails
+            if (album.assets && album.assets.length > 0) {
+              setPhotos(album.assets);
+            } else {
+              const fullAlbum = await immich.albums.getById(album.id);
+              setPhotos(fullAlbum.assets || []);
+            }
           }
         }
       } catch (err) {

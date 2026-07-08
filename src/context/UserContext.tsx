@@ -1,7 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../utils/crypto";
+import { useActiveSession, useClaimedFaceStatus, useUpdateProfileMutation, userQueryKeys } from "../hooks/useUserQueries";
 
 export interface User {
   student_id: string;
@@ -55,109 +57,25 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [hasClaimedFace, setHasClaimedFace] = useState<boolean>(false);
+  const queryClient = useQueryClient();
+  const [sessionToken, setSessionToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("baan7_session_token");
+    } catch {
+      return null;
+    }
+  });
+
+  const { data: user, isLoading: sessionLoading } = useActiveSession(sessionToken);
+  const { data: hasClaimedFace } = useClaimedFaceStatus(user?.student_id);
+  const updateProfileMutation = useUpdateProfileMutation();
 
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;
-    if (!studentId) {
-      setHasClaimedFace(false);
-      return;
+    if (studentId) {
+      await queryClient.invalidateQueries({ queryKey: userQueryKeys.claimedFace(studentId) });
     }
-
-    try {
-      const { data, error } = await supabase
-        .from("user_faces")
-        .select("immich_person_id")
-        .eq("student_id", studentId);
-
-      if (error) throw error;
-      setHasClaimedFace(!!(data && data.length > 0));
-    } catch (err) {
-      console.error("Error checking claimed faces:", err);
-      setHasClaimedFace(false);
-    }
-  }, [user?.student_id]);
-
-  useEffect(() => {
-    let active = true;
-    if (user) {
-      const run = async () => {
-        const studentId = user.student_id;
-        try {
-          const { data, error } = await supabase
-            .from("user_faces")
-            .select("immich_person_id")
-            .eq("student_id", studentId);
-
-          if (error) throw error;
-          if (active) {
-            setHasClaimedFace(!!(data && data.length > 0));
-          }
-        } catch (err) {
-          console.error("Error in claimed face check:", err);
-          if (active) {
-            setHasClaimedFace(false);
-          }
-        }
-      };
-      run();
-    } else {
-      Promise.resolve().then(() => {
-        if (active) {
-          setHasClaimedFace(false);
-        }
-      });
-    }
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    let active = true;
-    const restoreSession = async () => {
-      const savedToken = localStorage.getItem("baan7_session_token");
-      if (savedToken) {
-        try {
-          const { data, error } = await supabase
-            .from("user_sessions")
-            .select("student_id, expires_at, users (*)")
-            .eq("session_token", savedToken)
-            .maybeSingle();
-
-          if (!active) return;
-
-          if (error || !data || !data.users) {
-            console.error("Session restore failed or expired:", error);
-            localStorage.removeItem("baan7_session_token");
-          } else {
-            const expiresAt = new Date(data.expires_at);
-            if (expiresAt < new Date()) {
-              console.log("Session token expired, deleting on-demand");
-              await supabase
-                .from("user_sessions")
-                .delete()
-                .eq("session_token", savedToken);
-              localStorage.removeItem("baan7_session_token");
-            } else {
-              setUser(data.users as unknown as User);
-            }
-          }
-        } catch (err) {
-          console.error("Session restore failed:", err);
-          if (active) localStorage.removeItem("baan7_session_token");
-        }
-      }
-      if (active) setLoading(false);
-    };
-
-    restoreSession();
-    return () => {
-      active = false;
-    };
-  }, []);
+  }, [user?.student_id, queryClient]);
 
   const checkStudentId = async (studentId: string) => {
     try {
@@ -216,9 +134,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         return false;
       }
 
-      setUser(data as User);
-      localStorage.removeItem("baan7_student_id"); // remove legacy key
+      localStorage.removeItem("baan7_student_id");
       localStorage.setItem("baan7_session_token", sessionData.session_token);
+      
+      // Update local React state and invalidate queries to fetch fresh profile
+      setSessionToken(sessionData.session_token);
+      await queryClient.invalidateQueries({ queryKey: userQueryKeys.session(sessionData.session_token) });
       return true;
     } catch (err) {
       console.error("Login error:", err);
@@ -262,9 +183,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         return false;
       }
 
-      setUser(data as User);
-      localStorage.removeItem("baan7_student_id"); // remove legacy key
+      localStorage.removeItem("baan7_student_id");
       localStorage.setItem("baan7_session_token", sessionData.session_token);
+
+      // Update state and refresh
+      setSessionToken(sessionData.session_token);
+      await queryClient.invalidateQueries({ queryKey: userQueryKeys.session(sessionData.session_token) });
       return true;
     } catch (err) {
       console.error("PIN registration error:", err);
@@ -287,34 +211,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!user) return false;
 
     try {
-      const updates: Partial<User> = {
-        nickname: profile.nickname,
-        faculty: profile.faculty,
-        major: profile.major || null,
-        ig: profile.ig || null,
-        bio: profile.bio || null,
-        profile_pic_url: profile.profilePicUrl || null,
-        photo_pool: profile.photoPool || [],
-        house_position: profile.housePosition || null,
-        immich_asset_id: profile.immichAssetId || null,
-      };
-
-      if (profile.avatarColor) {
-        updates.avatar_color = profile.avatarColor;
-      }
-
-      const { data, error } = await supabase
-        .from("users")
-        .update(updates)
-        .eq("student_id", user.student_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (!data) return false;
-
-      setUser(data as User);
+      await updateProfileMutation.mutateAsync({
+        studentId: user.student_id,
+        profile,
+      });
       return true;
     } catch (err) {
       console.error("Update profile error:", err);
@@ -335,7 +235,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) throw error;
       if (!data) return false;
 
-      setUser(data as User);
+      // Update query client cache
+      queryClient.setQueryData(userQueryKeys.session(sessionToken || ""), data);
       return true;
     } catch (err) {
       console.error("Accept ToS error:", err);
@@ -344,7 +245,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const logout = async () => {
-    const savedToken = localStorage.getItem("baan7_session_token");
+    const savedToken = sessionToken;
     if (savedToken) {
       try {
         await supabase
@@ -355,18 +256,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Logout DB cleanup failed:", err);
       }
     }
-    setUser(null);
+    
+    // Clear tokens and local query caches
     localStorage.removeItem("baan7_session_token");
     localStorage.removeItem("baan7_student_id");
+    queryClient.removeQueries({ queryKey: ["user_session"] });
+    if (user?.student_id) {
+      queryClient.removeQueries({ queryKey: userQueryKeys.claimedFace(user.student_id) });
+    }
+    setSessionToken(null);
   };
 
+  const loading = sessionToken ? sessionLoading : false;
 
   return (
     <UserContext.Provider
       value={{
-        user,
+        user: user || null,
         loading,
-        hasClaimedFace,
+        hasClaimedFace: !!hasClaimedFace,
         refreshClaimedFaceStatus,
         checkStudentId,
         login,

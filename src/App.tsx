@@ -1,6 +1,7 @@
 import { Box } from '@chakra-ui/react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { UserProvider, useUser } from './context/UserContext'
@@ -117,13 +118,24 @@ function AppContent() {
   )
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      staleTime: 5000,
+    },
+  },
+})
+
 function App() {
   return (
-    <UserProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </UserProvider>
+    <QueryClientProvider client={queryClient}>
+      <UserProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </UserProvider>
+    </QueryClientProvider>
   )
 }
 export default App

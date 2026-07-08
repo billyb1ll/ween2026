@@ -14,8 +14,9 @@ import {
   Dialog,
   Skeleton,
   Switch,
+  Portal,
 } from "@chakra-ui/react";
-import React, { useState, useEffect, useRef, memo, useCallback, forwardRef } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser, type User } from "../context/UserContext";
 import { motion, useReducedMotion } from "framer-motion";
@@ -25,7 +26,7 @@ import {
   type BoardTab,
 } from "../hooks/useBoardRealtime";
 import { useLiveChat, type ChatMessage } from "../hooks/useLiveChat";
-import { Virtuoso, type VirtuosoHandle, VirtuosoGrid } from "react-virtuoso";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -33,6 +34,51 @@ import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
 
 import { RoughNotation } from "react-rough-notation";
+
+// ─── Sentinel for Infinite Scroll ──────────────────────────────────────────
+
+interface SentinelProps {
+  onLoadMore: () => void;
+  hasMore: boolean;
+  isLoading: boolean;
+}
+
+const Sentinel = memo(function Sentinel({
+  onLoadMore,
+  hasMore,
+  isLoading,
+}: SentinelProps) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) {
+        observer.unobserve(currentSentinel);
+      }
+      observer.disconnect();
+    };
+  }, [onLoadMore, hasMore, isLoading]);
+
+  return (
+    <Box ref={sentinelRef} h="1px" w="100%" pointerEvents="none" opacity={0} />
+  );
+});
 
 // ─── Static sidebar data ──────────────────────────────────────────────────────
 
@@ -74,55 +120,58 @@ interface ParsedElement {
 const parseAccents = (text: string): ParsedElement[] => {
   const parseNested = (txt: string): ParsedElement[] => {
     if (!txt) return [];
-    
+
     // Match any opening tag: [h], [h-color], [u], [u-color], [c], [c-color], [s], [s-color]
     const openTagRegex = /\[(h|u|c|s)(?:-(yellow|pink|blue|green))?\]/;
     const match = openTagRegex.exec(txt);
-    
+
     if (!match) {
-      return [{ type: 'text', content: txt }];
+      return [{ type: "text", content: txt }];
     }
-    
+
     const startIdx = match.index;
     const fullOpenTag = match[0];
     const tagType = match[1];
     const tagColor = match[2];
-    
+
     // Find matching close tag
-    const closeTagRegex = new RegExp(`\\[\\/(?:${tagType}|${tagType}-${tagColor || 'yellow|pink|blue|green'})\\]`, 'g');
+    const closeTagRegex = new RegExp(
+      `\\[\\/(?:${tagType}|${tagType}-${tagColor || "yellow|pink|blue|green"})\\]`,
+      "g",
+    );
     closeTagRegex.lastIndex = startIdx + fullOpenTag.length;
-    
+
     const closeMatch = closeTagRegex.exec(txt);
     if (!closeMatch) {
       const plainPart = txt.substring(0, startIdx + fullOpenTag.length);
       return [
-        { type: 'text', content: plainPart },
-        ...parseNested(txt.substring(startIdx + fullOpenTag.length))
+        { type: "text", content: plainPart },
+        ...parseNested(txt.substring(startIdx + fullOpenTag.length)),
       ];
     }
-    
+
     const closeIdx = closeMatch.index;
     const fullCloseTag = closeMatch[0];
-    
+
     const innerText = txt.substring(startIdx + fullOpenTag.length, closeIdx);
     const beforeText = txt.substring(0, startIdx);
     const afterText = txt.substring(closeIdx + fullCloseTag.length);
-    
+
     const result: ParsedElement[] = [];
     if (beforeText) {
       result.push(...parseNested(beforeText));
     }
-    
+
     result.push({
       type: tagType,
       color: tagColor,
-      content: parseNested(innerText)
+      content: parseNested(innerText),
     });
-    
+
     if (afterText) {
       result.push(...parseNested(afterText));
     }
-    
+
     return result;
   };
 
@@ -131,43 +180,51 @@ const parseAccents = (text: string): ParsedElement[] => {
 const renderParsedAccents = (elements: ParsedElement[]): React.ReactNode => {
   return elements.map((part, index) => {
     const key = `${part.type}-${index}`;
-    if (part.type === 'text') {
+    if (part.type === "text") {
       return <span key={key}>{part.content as string}</span>;
     }
 
-    let notationType: 'highlight' | 'underline' | 'circle' | 'strike-through' = 'highlight';
-    let color = 'rgba(251, 211, 141, 0.5)'; // default yellow
+    let notationType: "highlight" | "underline" | "circle" | "strike-through" =
+      "highlight";
+    let color = "rgba(251, 211, 141, 0.5)"; // default yellow
 
-    const resolvedColor = part.color || 'yellow'; // default to yellow if not specified
-    
-    if (part.type === 'h') {
-      notationType = 'highlight';
-      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.5)';
-      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.5)';
-      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.5)';
-      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.5)';
-    } else if (part.type === 'u') {
-      notationType = 'underline';
-      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.85)';
-      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.85)';
-      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.85)';
-      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.85)';
-    } else if (part.type === 'c') {
-      notationType = 'circle';
-      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.8)';
-      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.8)';
-      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.8)';
-      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.8)';
-    } else if (part.type === 's') {
-      notationType = 'strike-through';
-      if (resolvedColor === 'yellow') color = 'rgba(251, 211, 141, 0.7)';
-      else if (resolvedColor === 'pink') color = 'rgba(255, 182, 193, 0.7)';
-      else if (resolvedColor === 'blue') color = 'rgba(173, 216, 230, 0.7)';
-      else if (resolvedColor === 'green') color = 'rgba(152, 251, 152, 0.7)';
+    const resolvedColor = part.color || "yellow"; // default to yellow if not specified
+
+    if (part.type === "h") {
+      notationType = "highlight";
+      if (resolvedColor === "yellow") color = "rgba(251, 211, 141, 0.5)";
+      else if (resolvedColor === "pink") color = "rgba(255, 182, 193, 0.5)";
+      else if (resolvedColor === "blue") color = "rgba(173, 216, 230, 0.5)";
+      else if (resolvedColor === "green") color = "rgba(152, 251, 152, 0.5)";
+    } else if (part.type === "u") {
+      notationType = "underline";
+      if (resolvedColor === "yellow") color = "rgba(251, 211, 141, 0.85)";
+      else if (resolvedColor === "pink") color = "rgba(255, 182, 193, 0.85)";
+      else if (resolvedColor === "blue") color = "rgba(173, 216, 230, 0.85)";
+      else if (resolvedColor === "green") color = "rgba(152, 251, 152, 0.85)";
+    } else if (part.type === "c") {
+      notationType = "circle";
+      if (resolvedColor === "yellow") color = "rgba(251, 211, 141, 0.8)";
+      else if (resolvedColor === "pink") color = "rgba(255, 182, 193, 0.8)";
+      else if (resolvedColor === "blue") color = "rgba(173, 216, 230, 0.8)";
+      else if (resolvedColor === "green") color = "rgba(152, 251, 152, 0.8)";
+    } else if (part.type === "s") {
+      notationType = "strike-through";
+      if (resolvedColor === "yellow") color = "rgba(251, 211, 141, 0.7)";
+      else if (resolvedColor === "pink") color = "rgba(255, 182, 193, 0.7)";
+      else if (resolvedColor === "blue") color = "rgba(173, 216, 230, 0.7)";
+      else if (resolvedColor === "green") color = "rgba(152, 251, 152, 0.7)";
     }
 
     return (
-      <span key={key} style={{ display: 'inline', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+      <span
+        key={key}
+        style={{
+          display: "inline",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
         <RoughNotation
           type={notationType}
           color={color}
@@ -175,7 +232,13 @@ const renderParsedAccents = (elements: ParsedElement[]): React.ReactNode => {
           strokeWidth={2.5}
           animationDuration={800}
         >
-          <span style={{ fontWeight: 600, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <span
+            style={{
+              fontWeight: 600,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
             {renderParsedAccents(part.content as ParsedElement[])}
           </span>
         </RoughNotation>
@@ -490,9 +553,11 @@ export function BoardPage() {
   const [chatInput, setChatInput] = useState("");
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [activeColor, setActiveColor] = useState<'yellow' | 'pink' | 'blue' | 'green'>('yellow');
+  const [activeColor, setActiveColor] = useState<
+    "yellow" | "pink" | "blue" | "green"
+  >("yellow");
 
-  const insertMarkupTag = (tagType: 'h' | 'u' | 'c' | 's') => {
+  const insertMarkupTag = (tagType: "h" | "u" | "c" | "s") => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -500,18 +565,32 @@ export function BoardPage() {
     const end = textarea.selectionEnd;
     const text = textarea.value;
 
-    const startTag = activeColor === 'yellow' ? `[${tagType}]` : `[${tagType}-${activeColor}]`;
-    const endTag = activeColor === 'yellow' ? `[/${tagType}]` : `[/${tagType}-${activeColor}]`;
+    const startTag =
+      activeColor === "yellow" ? `[${tagType}]` : `[${tagType}-${activeColor}]`;
+    const endTag =
+      activeColor === "yellow"
+        ? `[/${tagType}]`
+        : `[/${tagType}-${activeColor}]`;
 
     const selectedText = text.substring(start, end);
 
     // Check if selectedText is already wrapped by this tag (any color)
-    const openTagPattern = new RegExp(`^\\[${tagType}(?:-(yellow|pink|blue|green))?\\]`);
-    const closeTagPattern = new RegExp(`\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]$`);
+    const openTagPattern = new RegExp(
+      `^\\[${tagType}(?:-(yellow|pink|blue|green))?\\]`,
+    );
+    const closeTagPattern = new RegExp(
+      `\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]$`,
+    );
 
-    if (openTagPattern.test(selectedText) && closeTagPattern.test(selectedText)) {
-      const strippedText = selectedText.replace(openTagPattern, '').replace(closeTagPattern, '');
-      const newText = text.substring(0, start) + strippedText + text.substring(end);
+    if (
+      openTagPattern.test(selectedText) &&
+      closeTagPattern.test(selectedText)
+    ) {
+      const strippedText = selectedText
+        .replace(openTagPattern, "")
+        .replace(closeTagPattern, "");
+      const newText =
+        text.substring(0, start) + strippedText + text.substring(end);
       setNewPostText(newText);
       setTimeout(() => {
         textarea.focus();
@@ -523,15 +602,22 @@ export function BoardPage() {
     // Check if surrounding text contains the tags
     const beforeStr = text.substring(0, start);
     const afterStr = text.substring(end);
-    
-    const surroundingOpenPattern = new RegExp(`\\[${tagType}(?:-(yellow|pink|blue|green))?\\]$`);
-    const surroundingClosePattern = new RegExp(`^\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]`);
-    
+
+    const surroundingOpenPattern = new RegExp(
+      `\\[${tagType}(?:-(yellow|pink|blue|green))?\\]$`,
+    );
+    const surroundingClosePattern = new RegExp(
+      `^\\[\\/${tagType}(?:-(yellow|pink|blue|green))?\\]`,
+    );
+
     const openMatch = beforeStr.match(surroundingOpenPattern);
     const closeMatch = afterStr.match(surroundingClosePattern);
-    
+
     if (openMatch && closeMatch) {
-      const newBefore = beforeStr.substring(0, beforeStr.length - openMatch[0].length);
+      const newBefore = beforeStr.substring(
+        0,
+        beforeStr.length - openMatch[0].length,
+      );
       const newAfter = afterStr.substring(closeMatch[0].length);
       const newText = newBefore + selectedText + newAfter;
       setNewPostText(newText);
@@ -545,12 +631,14 @@ export function BoardPage() {
 
     // Wrap with new tag
     const replacement = startTag + selectedText + endTag;
-    const newText = text.substring(0, start) + replacement + text.substring(end);
+    const newText =
+      text.substring(0, start) + replacement + text.substring(end);
     setNewPostText(newText);
 
     setTimeout(() => {
       textarea.focus();
-      const newCursorPos = start + startTag.length + selectedText.length + endTag.length;
+      const newCursorPos =
+        start + startTag.length + selectedText.length + endTag.length;
       textarea.setSelectionRange(newCursorPos, newCursorPos);
     }, 50);
   };
@@ -861,12 +949,15 @@ export function BoardPage() {
           imageUrl = publicUrlData.publicUrl;
         } else {
           console.error("Upload Error", uploadError);
-          const isBucketError = uploadError.message?.toLowerCase().includes("bucket not found") || 
-                                JSON.stringify(uploadError).toLowerCase().includes("bucket not found");
+          const isBucketError =
+            uploadError.message?.toLowerCase().includes("bucket not found") ||
+            JSON.stringify(uploadError)
+              .toLowerCase()
+              .includes("bucket not found");
           toaster.create({
             title: "Image upload failed",
-            description: isBucketError 
-              ? "Storage bucket 'board_media' not found. Please create it as a 'Public' bucket in your Supabase dashboard." 
+            description: isBucketError
+              ? "Storage bucket 'board_media' not found. Please create it as a 'Public' bucket in your Supabase dashboard."
               : uploadError.message,
             type: "error",
           });
@@ -876,7 +967,8 @@ export function BoardPage() {
         const errorObject = err as Error;
         toaster.create({
           title: "Image upload failed",
-          description: errorObject?.message || "Check your network or server status.",
+          description:
+            errorObject?.message || "Check your network or server status.",
           type: "error",
         });
       } finally {
@@ -1621,15 +1713,36 @@ export function BoardPage() {
                         {user && (
                           <Flex align="center" gap={3} mb={2} flexWrap="wrap">
                             <Flex align="center" gap={1.5}>
-                              <Text fontSize="xs" fontWeight="700" color="fg.muted" mr={1}>
+                              <Text
+                                fontSize="xs"
+                                fontWeight="700"
+                                color="fg.muted"
+                                mr={1}
+                              >
                                 Handcraft Accents:
                               </Text>
                               <HStack gap={1.5} mr={1}>
                                 {[
-                                  { name: 'yellow', value: '#FBD38D', label: 'Yellow' },
-                                  { name: 'pink', value: '#FFB6C1', label: 'Pink' },
-                                  { name: 'blue', value: '#ADD8E6', label: 'Blue' },
-                                  { name: 'green', value: '#98FB98', label: 'Green' }
+                                  {
+                                    name: "yellow",
+                                    value: "#FBD38D",
+                                    label: "Yellow",
+                                  },
+                                  {
+                                    name: "pink",
+                                    value: "#FFB6C1",
+                                    label: "Pink",
+                                  },
+                                  {
+                                    name: "blue",
+                                    value: "#ADD8E6",
+                                    label: "Blue",
+                                  },
+                                  {
+                                    name: "green",
+                                    value: "#98FB98",
+                                    label: "Green",
+                                  },
                                 ].map((c) => {
                                   const isSelected = activeColor === c.name;
                                   return (
@@ -1643,13 +1756,29 @@ export function BoardPage() {
                                       h="16px"
                                       borderRadius="full"
                                       bg={c.value}
-                                      border={isSelected ? "2px solid" : "1px solid"}
-                                      borderColor={isSelected ? "accent.solid" : "rgba(0,0,0,0.15)"}
+                                      border={
+                                        isSelected ? "2px solid" : "1px solid"
+                                      }
+                                      borderColor={
+                                        isSelected
+                                          ? "accent.solid"
+                                          : "rgba(0,0,0,0.15)"
+                                      }
                                       cursor="pointer"
-                                      onClick={() => setActiveColor(c.name as 'yellow' | 'pink' | 'blue' | 'green')}
+                                      onClick={() =>
+                                        setActiveColor(
+                                          c.name as
+                                            | "yellow"
+                                            | "pink"
+                                            | "blue"
+                                            | "green",
+                                        )
+                                      }
                                       title={c.label}
                                       aria-label={`Select active color ${c.label}`}
-                                      transform={isSelected ? "scale(1.2)" : "none"}
+                                      transform={
+                                        isSelected ? "scale(1.2)" : "none"
+                                      }
                                       transition="all 0.2s"
                                     />
                                   );
@@ -1671,8 +1800,11 @@ export function BoardPage() {
                                 px={2}
                                 h="24px"
                                 cursor="pointer"
-                                onClick={() => insertMarkupTag('h')}
-                                _hover={{ bg: "rgba(251, 211, 141, 0.35)", borderColor: "accent.solid" }}
+                                onClick={() => insertMarkupTag("h")}
+                                _hover={{
+                                  bg: "rgba(251, 211, 141, 0.35)",
+                                  borderColor: "accent.solid",
+                                }}
                               >
                                 Highlight
                               </Button>
@@ -1690,8 +1822,11 @@ export function BoardPage() {
                                 px={2}
                                 h="24px"
                                 cursor="pointer"
-                                onClick={() => insertMarkupTag('u')}
-                                _hover={{ bg: "rgba(173, 216, 230, 0.35)", borderColor: "accent.solid" }}
+                                onClick={() => insertMarkupTag("u")}
+                                _hover={{
+                                  bg: "rgba(173, 216, 230, 0.35)",
+                                  borderColor: "accent.solid",
+                                }}
                               >
                                 Underline
                               </Button>
@@ -1709,8 +1844,11 @@ export function BoardPage() {
                                 px={2}
                                 h="24px"
                                 cursor="pointer"
-                                onClick={() => insertMarkupTag('c')}
-                                _hover={{ bg: "rgba(255, 182, 193, 0.35)", borderColor: "accent.solid" }}
+                                onClick={() => insertMarkupTag("c")}
+                                _hover={{
+                                  bg: "rgba(255, 182, 193, 0.35)",
+                                  borderColor: "accent.solid",
+                                }}
                               >
                                 Circle
                               </Button>
@@ -1728,8 +1866,11 @@ export function BoardPage() {
                                 px={2}
                                 h="24px"
                                 cursor="pointer"
-                                onClick={() => insertMarkupTag('s')}
-                                _hover={{ bg: "rgba(152, 251, 152, 0.35)", borderColor: "accent.solid" }}
+                                onClick={() => insertMarkupTag("s")}
+                                _hover={{
+                                  bg: "rgba(152, 251, 152, 0.35)",
+                                  borderColor: "accent.solid",
+                                }}
                               >
                                 Cross-out
                               </Button>
@@ -1760,7 +1901,10 @@ export function BoardPage() {
                           borderColor="border.subtle"
                           borderRadius="lg"
                           p={3}
-                          _focus={{ borderColor: "accent.solid", boxShadow: "sm" }}
+                          _focus={{
+                            borderColor: "accent.solid",
+                            boxShadow: "sm",
+                          }}
                           minH="80px"
                           mb={2}
                         />
@@ -1768,7 +1912,14 @@ export function BoardPage() {
                         {/* Live Handcrafted Preview Block */}
                         {user && (
                           <Box mt={2} mb={3}>
-                            <Text fontSize="2xs" fontWeight="700" color="fg.muted" mb={1} textTransform="uppercase" letterSpacing="0.05em">
+                            <Text
+                              fontSize="2xs"
+                              fontWeight="700"
+                              color="fg.muted"
+                              mb={1}
+                              textTransform="uppercase"
+                              letterSpacing="0.05em"
+                            >
                               Handcrafted Preview:
                             </Text>
                             <Box
@@ -1790,16 +1941,30 @@ export function BoardPage() {
                                 left: "20px",
                                 bottom: 0,
                                 width: "1px",
-                                borderLeft: "1px solid rgba(220, 100, 100, 0.35)", // Red notebook line margin
+                                borderLeft:
+                                  "1px solid rgba(220, 100, 100, 0.35)", // Red notebook line margin
                               }}
                             >
                               {newPostText.trim() === "" ? (
-                                <Text color="fg.subtle" fontStyle="italic" fontSize="xs">
-                                  Your cozy handwritten post preview will render here...
+                                <Text
+                                  color="fg.subtle"
+                                  fontStyle="italic"
+                                  fontSize="xs"
+                                >
+                                  Your cozy handwritten post preview will render
+                                  here...
                                 </Text>
                               ) : (
-                                <Box style={{ display: 'inline', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                  {renderParsedAccents(parseAccents(newPostText))}
+                                <Box
+                                  style={{
+                                    display: "inline",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  {renderParsedAccents(
+                                    parseAccents(newPostText),
+                                  )}
                                 </Box>
                               )}
                             </Box>
@@ -1813,7 +1978,13 @@ export function BoardPage() {
                               fontWeight="700"
                               color="fg.muted"
                             >
-                              <RoughNotation type="highlight" color="#FBD38D" show={true} padding={2} iterations={1}>
+                              <RoughNotation
+                                type="highlight"
+                                color="#FBD38D"
+                                show={true}
+                                padding={2}
+                                iterations={1}
+                              >
                                 Select a Tag (Required):
                               </RoughNotation>
                             </Text>
@@ -1943,7 +2114,12 @@ export function BoardPage() {
                               }}
                               minH={{ base: "36px", md: "44px" }}
                             >
-                              <RoughNotation type="highlight" color="#FBD38D" show={true} padding={4}>
+                              <RoughNotation
+                                type="highlight"
+                                color="#FBD38D"
+                                show={true}
+                                padding={4}
+                              >
                                 Pin it!
                               </RoughNotation>
                             </Button>
@@ -1972,69 +2148,116 @@ export function BoardPage() {
                       </Text>
                     </Flex>
                   ) : (
-                    <VirtuosoGrid
-                      data={visiblePosts}
-                      useWindowScroll
-                      endReached={() => {
-                        if (hasMore && !isFetchingMore) {
-                          handleLoadMore();
-                        }
-                      }}
-                      components={{
-                        List: forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
-                          <Box
-                            ref={ref}
-                            style={style}
-                            {...props}
-                            display="grid"
-                            gridTemplateColumns={{ base: "repeat(1, 1fr)", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }}
-                            gap={{ base: 3, md: 6 }}
-                            w="100%"
-                            mx="auto"
-                          >
-                            {children}
-                          </Box>
-                        )),
-                        Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-                          <Box {...props} w="100%" display="flex" justifyContent="center">
-                            {children}
-                          </Box>
-                        )
-                      }}
-                      itemContent={(index, post) => (
-                        <motion.div
-                          key={post.id}
-                          layout
-                          initial={
-                            shouldReduceMotion
-                              ? { opacity: 0 }
-                              : { y: 20, opacity: 0 }
+                    <VStack align="stretch" w="100%" gap={6}>
+                      <Box
+                        display="grid"
+                        gridTemplateColumns={{
+                          base: "repeat(1, 1fr)",
+                          sm: "repeat(2, 1fr)",
+                          md: "repeat(3, 1fr)",
+                        }}
+                        gridAutoRows="minmax(250px, auto)"
+                        gridAutoFlow="dense"
+                        gap={{ base: 4, md: 6 }}
+                        w="100%"
+                        mx="auto"
+                      >
+                        {visiblePosts.map((post: DBPost, index: number) => {
+                          const textLength = post.content.length;
+                          const hasImage = !!post.image_url;
+                          const isPinned = !!post.is_pinned;
+                          const isNewest = index === 0;
+
+                          let isWide = false;
+                          let isTall = false;
+
+                          if (isPinned) {
+                            isWide = true;
+                          } else if (isNewest && hasImage) {
+                            isWide = true;
+                            isTall = true;
+                          } else if (textLength > 220) {
+                            isWide = true;
+                          } else if (hasImage && textLength > 100) {
+                            isTall = true;
+                          } else {
+                            const timeHash = new Date(post.createdAt).getTime();
+                            if (timeHash % 5 === 0 && hasImage) {
+                              isWide = true;
+                            } else if (timeHash % 7 === 0 && hasImage) {
+                              isTall = true;
+                            }
                           }
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={
-                            shouldReduceMotion
-                              ? { duration: 0.2 }
-                              : {
-                                  type: "spring",
-                                  stiffness: 300,
-                                  damping: 20,
-                                  delay: (index - prevVisibleCount) * 0.05,
+
+                          const gridColumn = isWide
+                            ? { base: "span 1", md: "span 2" }
+                            : undefined;
+                          const gridRow = isTall
+                            ? { base: "span 1", md: "span 2" }
+                            : undefined;
+
+                          return (
+                            <Box
+                              key={post.id}
+                              gridColumn={gridColumn}
+                              gridRow={gridRow}
+                              w="100%"
+                              h="100%"
+                              display="flex"
+                            >
+                              <motion.div
+                                layout
+                                initial={
+                                  shouldReduceMotion
+                                    ? { opacity: 0 }
+                                    : { y: 20, opacity: 0 }
                                 }
-                          }
-                          style={{ width: "100%" }}
-                        >
-                          <MemoryCard
-                            post={post}
-                            index={index}
-                            onLike={handleLikePost}
-                            onDelete={handleDeletePost}
-                            currentUserRole={user?.role}
-                            onInspectUser={handleInspectUser}
-                          />
-                        </motion.div>
-                      )}
-                    />
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={
+                                  shouldReduceMotion
+                                    ? { duration: 0.2 }
+                                    : {
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 20,
+                                        delay: Math.min(
+                                          Math.max(
+                                            0,
+                                            index - prevVisibleCount,
+                                          ) * 0.05,
+                                          0.3,
+                                        ),
+                                      }
+                                }
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                }}
+                              >
+                                <MemoryCard
+                                  post={post}
+                                  index={index}
+                                  onLike={handleLikePost}
+                                  onDelete={handleDeletePost}
+                                  currentUserRole={user?.role}
+                                  onInspectUser={handleInspectUser}
+                                  isWide={isWide}
+                                  isTall={isTall}
+                                />
+                              </motion.div>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                      <Sentinel
+                        onLoadMore={handleLoadMore}
+                        hasMore={hasMore}
+                        isLoading={isFetchingMore}
+                      />
+                    </VStack>
                   )}
                 </VStack>
               </Box>
@@ -2062,9 +2285,10 @@ export function BoardPage() {
         onOpenChange={(e) => setIsInspectorOpen(e.open)}
         placement={{ base: "bottom", md: "center" }}
       >
-        <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
-        <Dialog.Positioner zIndex={2200} px={4}>
-          <Dialog.Content
+        <Portal>
+          <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+          <Dialog.Positioner zIndex={2200} px={4}>
+            <Dialog.Content
             width={{ base: "100%", md: "520px" }}
             bg="white"
             borderRadius="24px"
@@ -2164,9 +2388,9 @@ export function BoardPage() {
               </Button>
             </Dialog.CloseTrigger>
           </Dialog.Content>
-        </Dialog.Positioner>
+          </Dialog.Positioner>
+        </Portal>
       </Dialog.Root>
-
     </Box>
   );
 }
@@ -2650,7 +2874,6 @@ export const HypeCard = memo(function HypeCard({
       ? "accent.muted"
       : post.author.avatar_color;
 
-
   return (
     <Box
       bg="bg.surface"
@@ -2912,6 +3135,8 @@ interface MemoryCardProps {
   onDelete?: (postId: number) => Promise<void>;
   currentUserRole?: string;
   onInspectUser?: (userId: string) => void;
+  isWide?: boolean;
+  isTall?: boolean;
 }
 
 const MemoryCard = memo(function MemoryCard({
@@ -2922,6 +3147,8 @@ const MemoryCard = memo(function MemoryCard({
   onInspectUser,
   onPin,
   onDelete,
+  isWide = false,
+  isTall = false,
 }: MemoryCardProps) {
   const { user } = useUser();
   const serverLiked = !!(user && post.liked_by?.includes(user.student_id));
@@ -2982,32 +3209,38 @@ const MemoryCard = memo(function MemoryCard({
 
   return (
     <Box
+      role="group"
       w="100%"
       minW="100%"
+      h="100%"
+      display="flex"
+      flexDirection="column"
       overflow="hidden"
       bg={
         isStaff
-          ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-white))"
-          : "bg.surface"
+          ? "linear-gradient(to bottom right, #f4fcfa, #eefaf7)"
+          : "linear-gradient(to bottom right, #fdfbf7, #f7f3eb)"
       }
-      border={
-        isStaff
-          ? "1px solid color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
-          : "1px dashed"
+      border="1px solid"
+      borderColor={
+        isStaff ? "rgba(13, 148, 136, 0.2)" : "rgba(124, 86, 63, 0.15)"
       }
-      borderColor={isStaff ? undefined : "border.default"}
-      borderRadius="xl"
+      borderRadius="2xl"
       px={{ base: 4.5, md: 6 }}
       py={{ base: 4, md: 5 }}
       pb={5}
       position="relative"
-      mb="24px"
-      transform={{ base: `rotate(${rotation * 0.6}deg)`, md: `rotate(${rotation}deg)` }}
-      transition="all 0.3s var(--ease-out-quart)"
+      transform={{
+        base: `rotate(${rotation * 0.6}deg)`,
+        md: `rotate(${rotation}deg)`,
+      }}
+      transition="all 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.5)}s both`}
+      boxShadow="0 10px 25px -5px rgba(124, 86, 63, 0.05), 0 4px 10px -2px rgba(124, 86, 63, 0.02)"
       _hover={{
-        transform: "rotate(0deg) translateY(-4px)",
-        boxShadow: "var(--shadow-card-hover)",
+        transform: "rotate(0deg) translateY(-6px)",
+        boxShadow:
+          "0 22px 35px -8px rgba(124, 86, 63, 0.12), 0 8px 18px -4px rgba(124, 86, 63, 0.06)",
         zIndex: 10,
       }}
     >
@@ -3018,187 +3251,434 @@ const MemoryCard = memo(function MemoryCard({
         transform="translateX(-50%) rotate(-3deg) translateY(-10px)"
         w="60px"
         h="20px"
-        bg="rgba(255, 223, 137, 0.7)"
-        borderLeft="1px dashed rgba(0,0,0,0.15)"
-        borderRight="1px dashed rgba(0,0,0,0.15)"
-        boxShadow="0 1px 3px rgba(0, 0, 0, 0.05)"
+        bg="rgba(255, 223, 137, 0.45)"
+        backdropFilter="blur(1px)"
+        borderLeft="1px dashed rgba(124, 86, 63, 0.15)"
+        borderRight="1px dashed rgba(124, 86, 63, 0.15)"
+        boxShadow="0 1px 3px rgba(0, 0, 0, 0.03)"
         zIndex={2}
-      />
-      <Flex
-        align="center"
-        gap={2}
-        mb={3}
-        as={!isAnon && onInspectUser ? "button" : "div"}
-        role={!isAnon && onInspectUser ? "button" : undefined}
-        tabIndex={!isAnon && onInspectUser ? 0 : undefined}
-        onClick={() => {
-          if (!isAnon && onInspectUser) onInspectUser(post.author.student_id);
+        transition="all 0.3s ease"
+        _groupHover={{
+          transform: "translateX(-50%) rotate(0deg) translateY(-8px)",
+          bg: "rgba(255, 223, 137, 0.65)",
         }}
-        cursor={!isAnon && onInspectUser ? "pointer" : "default"}
-        textAlign="left"
-        _focusVisible={
-          !isAnon && onInspectUser
-            ? {
-                outline: "2px solid var(--chakra-colors-orange-500)",
-                outlineOffset: "2px",
-                borderRadius: "md",
+      />
+      {isWide && post.image_url ? (
+        <Flex
+          flexDirection={{ base: "column", md: "row" }}
+          gap={4}
+          flex={1}
+          h="100%"
+          align="stretch"
+        >
+          <Flex flexDirection="column" justify="space-between" flex={1.2}>
+            <Box>
+              <Flex
+                align="center"
+                gap={2}
+                mb={3}
+                as={!isAnon && onInspectUser ? "button" : "div"}
+                role={!isAnon && onInspectUser ? "button" : undefined}
+                tabIndex={!isAnon && onInspectUser ? 0 : undefined}
+                onClick={() => {
+                  if (!isAnon && onInspectUser)
+                    onInspectUser(post.author.student_id);
+                }}
+                cursor={!isAnon && onInspectUser ? "pointer" : "default"}
+                textAlign="left"
+                _focusVisible={
+                  !isAnon && onInspectUser
+                    ? {
+                        outline: "2px solid var(--chakra-colors-orange-500)",
+                        outlineOffset: "2px",
+                        borderRadius: "md",
+                      }
+                    : undefined
+                }
+              >
+                <UserAvatar
+                  src={
+                    !isAnon || currentUserRole === "moderator"
+                      ? post.author.profile_pic_url
+                      : null
+                  }
+                  name={displayAuthorName}
+                  avatarColor={displayAvatarColor}
+                  size="32px"
+                  fontSize="xs"
+                  fallback={displayAuthorInitials}
+                />
+                <VStack align="start" gap={0} flex={1}>
+                  <Text
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="fg.default"
+                    display="inline-flex"
+                    gap={1}
+                    flexWrap="wrap"
+                  >
+                    {displayAuthorName}
+                    {isAnon && currentUserRole === "moderator" && (
+                      <Badge
+                        colorPalette="orange"
+                        fontSize="3xs"
+                        alignSelf="center"
+                      >
+                        Anonymous (ID: {post.student_id})
+                      </Badge>
+                    )}
+                    {!isAnon && isStaff && (
+                      <Badge
+                        colorPalette="teal"
+                        fontSize="3xs"
+                        alignSelf="center"
+                      >
+                        {post.author.role}
+                      </Badge>
+                    )}
+                  </Text>
+                  <Text fontSize="2xs" color="fg.subtle">
+                    {getRelativeTime(post.createdAt)}
+                  </Text>
+                </VStack>
+                {post.tags && post.tags.length > 0 && (
+                  <Box
+                    px={2.5}
+                    py={0.5}
+                    borderRadius="md"
+                    fontSize="2xs"
+                    fontWeight="700"
+                    fontFamily="'Mali', sans-serif"
+                    bg="rgba(124, 86, 63, 0.08)"
+                    color="var(--c-chocolate)"
+                    border="1px dashed rgba(124, 86, 63, 0.25)"
+                    transform="rotate(-2deg)"
+                    alignSelf="center"
+                  >
+                    {post.tags.join(", ")}
+                  </Box>
+                )}
+              </Flex>
+              <Text
+                fontSize="sm"
+                color="fg.default"
+                lineHeight={1.6}
+                mb={3}
+                fontStyle={index % 3 === 0 ? "italic" : "normal"}
+                fontFamily="'Mali', sans-serif"
+                wordBreak="break-word"
+                whiteSpace="pre-wrap"
+                overflowWrap="anywhere"
+                display="block"
+                w="100%"
+              >
+                <Box
+                  as="span"
+                  display="block"
+                  w="100%"
+                  whiteSpace="pre-wrap"
+                  wordBreak="break-word"
+                  overflowWrap="anywhere"
+                >
+                  {renderParsedAccents(parseAccents(post.content))}
+                </Box>
+              </Text>
+            </Box>
+            <Flex gap={3} align="center" mt="auto">
+              <Button
+                type="button"
+                role="group"
+                color={localLiked ? "accent.solid" : "fg.subtle"}
+                bg={{
+                  base: "transparent",
+                  md: localLiked ? "bg.hero" : "transparent",
+                }}
+                border="1px solid"
+                borderColor={localLiked ? "accent.solid" : "border.subtle"}
+                h={{ base: "40px", md: "32px" }}
+                w={{ base: "40px", md: "auto" }}
+                minW={{ base: "40px", md: "auto" }}
+                px={{ base: 0, md: 3 }}
+                borderRadius="full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLike();
+                }}
+                disabled={!user}
+                _hover={{
+                  bg: "bg.hero",
+                  color: "accent.solid",
+                  borderColor: "accent.solid",
+                }}
+              >
+                <Box
+                  className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+                  fontSize="sm"
+                  transition="transform 0.2s"
+                  _groupHover={{ transform: "scale(1.1)" }}
+                >
+                  favorite
+                </Box>
+                <Text
+                  fontSize="xs"
+                  fontWeight="600"
+                  ml={1}
+                  display={{ base: "none", md: "block" }}
+                >
+                  {localLikesCount > 0 ? localLikesCount : "Like"}
+                </Text>
+              </Button>
+              <Button
+                type="button"
+                aria-label={
+                  showComments ? "Collapse comments" : "Expand comments"
+                }
+                aria-expanded={showComments}
+                onClick={() => setShowComments(!showComments)}
+                color="fg.subtle"
+                bg="transparent"
+                border="none"
+                p={1}
+                minH="44px"
+                minW="44px"
+                display="flex"
+                alignItems="center"
+                gap={1}
+              >
+                <Box className="material-symbols-outlined" fontSize="md">
+                  chat_bubble
+                </Box>
+                <Text fontSize="2xs" fontWeight="600">
+                  {post.comment_count}
+                </Text>
+              </Button>
+            </Flex>
+          </Flex>
+          <Box
+            borderRadius="lg"
+            overflow="hidden"
+            boxShadow="sm"
+            w={{ base: "100%", md: "45%" }}
+            minH="180px"
+            alignSelf="stretch"
+          >
+            <Image
+              src={post.image_url}
+              alt={`Memory board photo shared by ${isAnon ? "Anonymous" : post.author.nickname || "User"}`}
+              w="100%"
+              h="100%"
+              objectFit="cover"
+              loading="lazy"
+            />
+          </Box>
+        </Flex>
+      ) : (
+        /* Standard layout (for tall or normal cards) */
+        <Flex flexDirection="column" justify="space-between" flex={1} h="100%">
+          <Box flex={1} display="flex" flexDirection="column">
+            <Flex
+              align="center"
+              gap={2}
+              mb={3}
+              as={!isAnon && onInspectUser ? "button" : "div"}
+              role={!isAnon && onInspectUser ? "button" : undefined}
+              tabIndex={!isAnon && onInspectUser ? 0 : undefined}
+              onClick={() => {
+                if (!isAnon && onInspectUser)
+                  onInspectUser(post.author.student_id);
+              }}
+              cursor={!isAnon && onInspectUser ? "pointer" : "default"}
+              textAlign="left"
+              _focusVisible={
+                !isAnon && onInspectUser
+                  ? {
+                      outline: "2px solid var(--chakra-colors-orange-500)",
+                      outlineOffset: "2px",
+                      borderRadius: "md",
+                    }
+                  : undefined
               }
-            : undefined
-        }
-      >
-        <UserAvatar
-          src={(!isAnon || currentUserRole === "moderator") ? post.author.profile_pic_url : null}
-          name={displayAuthorName}
-          avatarColor={displayAvatarColor}
-          size="32px"
-          fontSize="xs"
-          fallback={displayAuthorInitials}
-        />
-        <VStack align="start" gap={0} flex={1}>
-          <Text
-            fontSize="xs"
-            fontWeight="700"
-            color="fg.default"
-            display="inline-flex"
-            gap={1}
-            flexWrap="wrap"
-          >
-            {displayAuthorName}
-            {isAnon && currentUserRole === "moderator" && (
-              <Badge colorPalette="orange" fontSize="3xs" alignSelf="center">
-                Anonymous (ID: {post.student_id})
-              </Badge>
+            >
+              <UserAvatar
+                src={
+                  !isAnon || currentUserRole === "moderator"
+                    ? post.author.profile_pic_url
+                    : null
+                }
+                name={displayAuthorName}
+                avatarColor={displayAvatarColor}
+                size="32px"
+                fontSize="xs"
+                fallback={displayAuthorInitials}
+              />
+              <VStack align="start" gap={0} flex={1}>
+                <Text
+                  fontSize="xs"
+                  fontWeight="700"
+                  color="fg.default"
+                  display="inline-flex"
+                  gap={1}
+                  flexWrap="wrap"
+                >
+                  {displayAuthorName}
+                  {isAnon && currentUserRole === "moderator" && (
+                    <Badge
+                      colorPalette="orange"
+                      fontSize="3xs"
+                      alignSelf="center"
+                    >
+                      Anonymous (ID: {post.student_id})
+                    </Badge>
+                  )}
+                  {!isAnon && isStaff && (
+                    <Badge
+                      colorPalette="teal"
+                      fontSize="3xs"
+                      alignSelf="center"
+                    >
+                      {post.author.role}
+                    </Badge>
+                  )}
+                </Text>
+                <Text fontSize="2xs" color="fg.subtle">
+                  {getRelativeTime(post.createdAt)}
+                </Text>
+              </VStack>
+              {post.tags && post.tags.length > 0 && (
+                <Box
+                  px={2.5}
+                  py={0.5}
+                  borderRadius="md"
+                  fontSize="2xs"
+                  fontWeight="700"
+                  fontFamily="'Mali', sans-serif"
+                  bg="rgba(124, 86, 63, 0.08)"
+                  color="var(--c-chocolate)"
+                  border="1px dashed rgba(124, 86, 63, 0.25)"
+                  transform="rotate(-2deg)"
+                  alignSelf="center"
+                >
+                  {post.tags.join(", ")}
+                </Box>
+              )}
+            </Flex>
+            <Text
+              fontSize="sm"
+              color="fg.default"
+              lineHeight={1.6}
+              mb={3}
+              fontStyle={index % 3 === 0 ? "italic" : "normal"}
+              fontFamily="'Mali', sans-serif"
+              wordBreak="break-word"
+              whiteSpace="pre-wrap"
+              overflowWrap="anywhere"
+              display="block"
+              w="100%"
+            >
+              <Box
+                as="span"
+                display="block"
+                w="100%"
+                whiteSpace="pre-wrap"
+                wordBreak="break-word"
+                overflowWrap="anywhere"
+              >
+                {renderParsedAccents(parseAccents(post.content))}
+              </Box>
+            </Text>
+            {post.image_url && (
+              <Box
+                mb={3}
+                borderRadius="lg"
+                overflow="hidden"
+                boxShadow="sm"
+                maxH={isTall ? "none" : "240px"}
+                flex={isTall ? 1 : undefined}
+                display={isTall ? "flex" : "block"}
+                minH={isTall ? "180px" : undefined}
+              >
+                <Image
+                  src={post.image_url}
+                  alt={`Memory board photo shared by ${isAnon ? "Anonymous" : post.author.nickname || "User"}`}
+                  w="100%"
+                  h="100%"
+                  objectFit="cover"
+                  loading="lazy"
+                />
+              </Box>
             )}
-            {!isAnon && isStaff && (
-              <Badge colorPalette="teal" fontSize="3xs" alignSelf="center">
-                {post.author.role}
-              </Badge>
-            )}
-          </Text>
-          <Text fontSize="2xs" color="fg.subtle">
-            {getRelativeTime(post.createdAt)}
-          </Text>
-        </VStack>
-        {post.tags && post.tags.length > 0 && (
-          <Box
-            px={2.5}
-            py={0.5}
-            borderRadius="md"
-            fontSize="2xs"
-            fontWeight="700"
-            fontFamily="'Mali', sans-serif"
-            bg="rgba(124, 86, 63, 0.08)"
-            color="var(--c-chocolate)"
-            border="1px dashed rgba(124, 86, 63, 0.25)"
-            transform="rotate(-2deg)"
-            alignSelf="center"
-          >
-            {post.tags.join(", ")}
           </Box>
-        )}
-      </Flex>
-      <Text
-        fontSize="sm"
-        color="fg.default"
-        lineHeight={1.6}
-        mb={3}
-        fontStyle={index % 3 === 0 ? "italic" : "normal"}
-        fontFamily="'Mali', sans-serif"
-        wordBreak="break-word"
-        whiteSpace="pre-wrap"
-        overflowWrap="anywhere"
-        display="block"
-        w="100%"
-      >
-        <span style={{ display: 'block', width: '100%', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-          {renderParsedAccents(parseAccents(post.content))}
-        </span>
-      </Text>
-      {post.image_url && (
-        <Box
-          mb={3}
-          borderRadius="lg"
-          overflow="hidden"
-          boxShadow="sm"
-          maxH="240px"
-        >
-          <Image
-            src={post.image_url}
-            alt={`Memory board photo shared by ${isAnon ? "Anonymous" : post.author.nickname || "User"}`}
-            w="100%"
-            h="100%"
-            objectFit="cover"
-            loading="lazy"
-          />
-        </Box>
+          <Flex gap={3} align="center">
+            <Button
+              type="button"
+              role="group"
+              color={localLiked ? "accent.solid" : "fg.subtle"}
+              bg={{
+                base: "transparent",
+                md: localLiked ? "bg.hero" : "transparent",
+              }}
+              border="1px solid"
+              borderColor={localLiked ? "accent.solid" : "border.subtle"}
+              h={{ base: "40px", md: "32px" }}
+              w={{ base: "40px", md: "auto" }}
+              minW={{ base: "40px", md: "auto" }}
+              px={{ base: 0, md: 3 }}
+              borderRadius="full"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike();
+              }}
+              disabled={!user}
+              _hover={{
+                bg: "bg.hero",
+                color: "accent.solid",
+                borderColor: "accent.solid",
+              }}
+            >
+              <Box
+                className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+                fontSize="sm"
+                transition="transform 0.2s"
+                _groupHover={{ transform: "scale(1.1)" }}
+              >
+                favorite
+              </Box>
+              <Text
+                fontSize="xs"
+                fontWeight="600"
+                ml={1}
+                display={{ base: "none", md: "block" }}
+              >
+                {localLikesCount > 0 ? localLikesCount : "Like"}
+              </Text>
+            </Button>
+            <Button
+              type="button"
+              aria-label={
+                showComments ? "Collapse comments" : "Expand comments"
+              }
+              aria-expanded={showComments}
+              onClick={() => setShowComments(!showComments)}
+              color="fg.subtle"
+              bg="transparent"
+              border="none"
+              p={1}
+              minH="44px"
+              minW="44px"
+              display="flex"
+              alignItems="center"
+              gap={1}
+            >
+              <Box className="material-symbols-outlined" fontSize="md">
+                chat_bubble
+              </Box>
+              <Text fontSize="2xs" fontWeight="600">
+                {post.comment_count}
+              </Text>
+            </Button>
+          </Flex>
+        </Flex>
       )}
-      <Flex gap={3} align="center">
-        <Button
-          type="button"
-          role="group"
-          color={localLiked ? "accent.solid" : "fg.subtle"}
-          bg={{
-            base: "transparent",
-            md: localLiked ? "bg.hero" : "transparent",
-          }}
-          border="1px solid"
-          borderColor={localLiked ? "accent.solid" : "border.subtle"}
-          h={{ base: "40px", md: "32px" }}
-          w={{ base: "40px", md: "auto" }}
-          minW={{ base: "40px", md: "auto" }}
-          px={{ base: 0, md: 3 }}
-          borderRadius="full"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleLike();
-          }}
-          disabled={!user}
-          _hover={{
-            bg: "bg.hero",
-            color: "accent.solid",
-            borderColor: "accent.solid",
-          }}
-        >
-          <Box
-            className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
-            fontSize="sm"
-            transition="transform 0.2s"
-            _groupHover={{ transform: "scale(1.1)" }}
-          >
-            favorite
-          </Box>
-          <Text
-            fontSize="xs"
-            fontWeight="600"
-            ml={1}
-            display={{ base: "none", md: "block" }}
-          >
-            {localLikesCount > 0 ? localLikesCount : "Like"}
-          </Text>
-        </Button>
-        <Button
-          type="button"
-          aria-label={showComments ? "Collapse comments" : "Expand comments"}
-          aria-expanded={showComments}
-          onClick={() => setShowComments(!showComments)}
-          color="fg.subtle"
-          bg="transparent"
-          border="none"
-          p={1}
-          minH="44px"
-          minW="44px"
-          display="flex"
-          alignItems="center"
-          gap={1}
-        >
-          <Box className="material-symbols-outlined" fontSize="md">
-            chat_bubble
-          </Box>
-          <Text fontSize="2xs" fontWeight="600">
-            {post.comment_count}
-          </Text>
-        </Button>
-      </Flex>
 
       {/* Admin Controls */}
       {currentUserRole && currentUserRole !== "student" ? (
@@ -3247,6 +3727,26 @@ const MemoryCard = memo(function MemoryCard({
           </Button>
         </HStack>
       ) : null}
+
+      {/* Decorative Modern Quote for Text-only Cards */}
+      {!post.image_url && (
+        <Box
+          position="absolute"
+          bottom={showComments ? "auto" : 4}
+          top={showComments ? 12 : "auto"}
+          right={6}
+          fontSize="9xl"
+          fontWeight="900"
+          fontFamily="Georgia, serif"
+          color="rgba(124, 86, 63, 0.04)"
+          lineHeight={0.6}
+          pointerEvents="none"
+          userSelect="none"
+          zIndex={1}
+        >
+          ”
+        </Box>
+      )}
 
       {showComments && (
         <CommentSection

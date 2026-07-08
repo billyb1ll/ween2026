@@ -114,9 +114,15 @@ export function MyMomentsPage() {
         
         let assetSet = new Set<string>();
         if (album) {
-          // fetch full album to guarantee assets are present
-          const fullAlbum = await immich.albums.getById(album.id);
-          assetSet = new Set((fullAlbum.assets || []).map(a => a.id));
+          try {
+            const assets = await immich.albums.getAssets(album.id);
+            assetSet = new Set(assets.map(a => a.id));
+          } catch (err) {
+            console.error("Error fetching album assets for filter:", err);
+            // fallback if getAssets fails
+            const fullAlbum = await immich.albums.getById(album.id);
+            assetSet = new Set((fullAlbum.assets || []).map(a => a.id));
+          }
         }
         
         setAlbumAssetsCache(prev => ({ ...prev, [selectedAlbumKey]: assetSet }));

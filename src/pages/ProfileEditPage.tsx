@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -12,14 +12,16 @@ import {
   Flex,
   Image,
   Textarea,
+  Spinner,
 } from "@chakra-ui/react";
-import { useUser } from "../context/UserContext";
+import { useUser, type User } from "../context/UserContext";
 import { useFaceClaim } from "../hooks/useFaceClaim";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
 import { STAFF_ROLES } from "../lib/constants";
 import { FacultySelect } from "../components/FacultySelect";
 import { SearchableSelect } from "../components/SearchableSelect";
+import { useWhitelistedStaff } from "../hooks/useVibeQueries";
 import { Tabs } from "@chakra-ui/react";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { immich } from "../lib/immich";
@@ -49,9 +51,13 @@ interface SuggestedAsset {
   personId?: string;
 }
 
-export function ProfileEditPage() {
+interface ProfileEditFormProps {
+  user: User;
+}
+
+function ProfileEditForm({ user }: ProfileEditFormProps) {
   const navigate = useNavigate();
-  const { user, updateProfile, refreshClaimedFaceStatus } = useUser();
+  const { updateProfile, refreshClaimedFaceStatus } = useUser();
 
   const [nickname, setNickname] = useState(user?.nickname || "");
   const [faculty, setFaculty] = useState(user?.faculty || "");
@@ -63,6 +69,9 @@ export function ProfileEditPage() {
   );
   const [profilePicUrl, setProfilePicUrl] = useState(
     user?.profile_pic_url || "",
+  );
+  const [immichAssetId, setImmichAssetId] = useState<string | null>(
+    user?.immich_asset_id || null,
   );
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -78,6 +87,19 @@ export function ProfileEditPage() {
   const { unclaimFace } = useFaceClaim();
 
   // House Position States (Option A predefined roles + custom fallback)
+  const { data: allStaff = [] } = useWhitelistedStaff();
+
+  const dynamicPositions = useMemo(() => {
+    const positions = new Set<string>();
+    allStaff.forEach((s) => {
+      if (s.house_position) {
+        positions.add(s.house_position);
+      }
+    });
+    STAFF_ROLES.forEach((r) => positions.add(r));
+    return Array.from(positions).sort();
+  }, [allStaff]);
+
   const isCustomPosition =
     user?.house_position && !STAFF_ROLES.includes(user.house_position);
   const [housePosition, setHousePosition] = useState(
@@ -198,6 +220,7 @@ export function ProfileEditPage() {
 
       if (success) {
         setProfilePicUrl(previewUrl);
+        setImmichAssetId(suggestedAsset.id);
 
         // Write B (Immich AI Feedback Loop)
         const personId = suggestedAsset.people?.[0]?.id || suggestedAsset.people?.[0]?.personId || suggestedAsset.personId;
@@ -304,6 +327,7 @@ export function ProfileEditPage() {
       } = supabase.storage.from("profiles").getPublicUrl(filePath);
 
       setProfilePicUrl(publicUrl);
+      setImmichAssetId(null);
       toaster.create({
         title: "Avatar updated!",
         description: "Successfully cropped and uploaded profile picture.",
@@ -359,6 +383,7 @@ export function ProfileEditPage() {
       profilePicUrl: profilePicUrl.trim(),
       photoPool: user?.photo_pool || [], // keep photo pool intact
       housePosition: housePosition.trim(),
+      immichAssetId: immichAssetId,
     });
     setSubmitting(false);
 
@@ -742,7 +767,7 @@ export function ProfileEditPage() {
                       }
                     }}
                     options={[
-                      ...STAFF_ROLES.map((role) => ({ value: role, primaryText: role })),
+                      ...dynamicPositions.map((role) => ({ value: role, primaryText: role })),
                       { value: "Other", primaryText: "Other..." },
                     ]}
                     placeholder="Select Position..."
@@ -966,6 +991,7 @@ export function ProfileEditPage() {
                           overflow="hidden"
                           onClick={() => {
                             setProfilePicUrl(immich.assets.thumbnailUrl(asset.id, "preview"));
+                            setImmichAssetId(asset.id);
                             setIsImmichPickerOpen(false);
                           }}
                           border="2px solid transparent"
@@ -984,6 +1010,7 @@ export function ProfileEditPage() {
                     colorPalette="red"
                     onClick={() => {
                       setProfilePicUrl("");
+                      setImmichAssetId(null);
                       if (fileInputRef.current) {
                         fileInputRef.current.value = "";
                       }
@@ -1406,4 +1433,25 @@ export function AvatarCropModal({
       </Box>
     </Box>
   );
+}
+
+export function ProfileEditPage() {
+  const { user, loading } = useUser();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [user, loading, navigate]);
+
+  if (loading || !user) {
+    return (
+      <Flex minH="90vh" align="center" justify="center" bg="bg.hero">
+        <Spinner color="var(--c-chocolate)" size="xl" />
+      </Flex>
+    );
+  }
+
+  return <ProfileEditForm user={user} />;
 }

@@ -508,6 +508,8 @@ a:hover {
   letter-spacing: 0.05em;
   display: flex;
   align-items: center;
+  -webkit-mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, white 8%, white 92%, transparent);
 }
 
 .premium-ticker-track {
@@ -581,6 +583,46 @@ a:hover {
   .my-masonry-grid_column > div {
     margin-bottom: 24px;
   }
+}
+
+.ticker-view-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background-color: #78350f;
+  color: #fef3c7;
+  margin-left: 12px;
+  height: 24px;
+  padding-left: 12px;
+  padding-right: 12px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.ticker-view-link:hover {
+  background-color: #92400e;
+}
+
+.announcement-view-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #78350f;
+  color: #fef3c7;
+  margin-left: 12px;
+  height: 20px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  opacity: 0.9;
+}
+.announcement-view-link:hover {
+  background-color: #92400e;
+  opacity: 1;
 }
 
 

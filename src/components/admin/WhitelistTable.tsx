@@ -11,6 +11,7 @@ import {
   Table,
   Badge,
   HStack,
+  NativeSelect,
 } from "@chakra-ui/react";
 import { Tooltip } from "../ui/tooltip";
 import { SearchableSelect } from "../SearchableSelect";
@@ -31,7 +32,6 @@ interface WhitelistTableProps {
   isAllSelected: boolean;
   handleSelectAll: (checked: boolean) => void;
   handleSelectUser: (id: string, checked: boolean) => void;
-  handleInlineRoleChange: (id: string, newRole: string, oldRole: string) => void;
   handleInspectUser: (u: DBUser) => void;
   setUserToDelete: (id: string | null) => void;
   handleAddWhitelist: (e: React.FormEvent) => void;
@@ -54,7 +54,6 @@ export function WhitelistTable({
   isAllSelected,
   handleSelectAll,
   handleSelectUser,
-  handleInlineRoleChange,
   handleInspectUser,
   setUserToDelete,
   handleAddWhitelist,
@@ -62,6 +61,7 @@ export function WhitelistTable({
   getRoleDescription,
 }: WhitelistTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sortMode, setSortMode] = React.useState<string>("id-asc");
 
   const filteredWhitelistedUsers = whitelistedUsers.filter((u) => {
     const roleMatch =
@@ -79,6 +79,39 @@ export function WhitelistTable({
       (u.faculty && u.faculty.toLowerCase().includes(q))
     );
   });
+
+  const sortedAndFilteredUsers = React.useMemo(() => {
+    return [...filteredWhitelistedUsers].sort((a, b) => {
+      if (sortMode === "id-asc") {
+        return a.student_id.localeCompare(b.student_id);
+      }
+      if (sortMode === "id-desc") {
+        return b.student_id.localeCompare(a.student_id);
+      }
+      if (sortMode === "name-asc") {
+        const nameA = a.nickname || "";
+        const nameB = b.nickname || "";
+        return nameA.localeCompare(nameB, "th");
+      }
+      if (sortMode === "name-desc") {
+        const nameA = a.nickname || "";
+        const nameB = b.nickname || "";
+        return nameB.localeCompare(nameA, "th");
+      }
+      if (sortMode === "faculty-asc") {
+        const facA = a.faculty || "";
+        const facB = b.faculty || "";
+        return facA.localeCompare(facB, "th");
+      }
+      if (sortMode === "status") {
+        const statusA = a.nickname ? 1 : 2;
+        const statusB = b.nickname ? 1 : 2;
+        if (statusA !== statusB) return statusA - statusB;
+        return a.student_id.localeCompare(b.student_id);
+      }
+      return 0;
+    });
+  }, [filteredWhitelistedUsers, sortMode]);
 
   return (
     <Box
@@ -256,45 +289,71 @@ export function WhitelistTable({
           </Tabs.List>
         </Tabs.Root>
 
-        {/* Search / Filter Bar */}
-        <Flex align="center" gap={3} mb={4}>
-          <Box position="relative" flex={1}>
-            <Box
-              as="span"
-              className="material-symbols-outlined"
-              position="absolute"
-              left="12px"
-              top="50%"
-              transform="translateY(-50%)"
-              fontSize="18px"
-              color="var(--c-muted)"
-              pointerEvents="none"
-            >
-              search
+        {/* Search / Filter / Sort Bar */}
+        <Flex align="center" gap={3} mb={4} flexWrap="wrap">
+          <HStack gap={2} flex={1} minW="300px">
+            <Box position="relative" flex={2}>
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                position="absolute"
+                left="12px"
+                top="50%"
+                transform="translateY(-50%)"
+                fontSize="18px"
+                color="var(--c-muted)"
+                pointerEvents="none"
+              >
+                search
+              </Box>
+              <Input
+                placeholder="Search by ID, Nickname, or Faculty..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                h="40px"
+                pl="38px"
+                borderRadius="lg"
+                border="1.5px solid var(--c-outline)"
+                bg="var(--c-white)"
+                fontSize="xs"
+                _focus={{
+                  borderColor: "var(--c-chocolate)",
+                  boxShadow: "0 0 0 2px var(--c-chocolate-light)",
+                }}
+              />
             </Box>
-            <Input
-              placeholder="Search by ID, Nickname, or Faculty..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              h="40px"
-              pl="38px"
-              borderRadius="lg"
-              border="1.5px solid var(--c-outline)"
-              bg="var(--c-white)"
-              fontSize="xs"
-              _focus={{
-                borderColor: "var(--c-chocolate)",
-                boxShadow: "0 0 0 2px var(--c-chocolate-light)",
-              }}
-            />
-          </Box>
+            <Box position="relative" flex={1}>
+              <NativeSelect.Root size="sm">
+                <NativeSelect.Field
+                  aria-label="Sort users by"
+                  title="Sort users by"
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value)}
+                  h="40px"
+                  borderRadius="8px"
+                  border="1.5px solid var(--c-outline)"
+                  bg="var(--c-white)"
+                  fontSize="12px"
+                  cursor="pointer"
+                >
+                  <option value="id-asc">Student ID (Ascending)</option>
+                  <option value="id-desc">Student ID (Descending)</option>
+                  <option value="name-asc">Nickname (A-Z)</option>
+                  <option value="name-desc">Nickname (Z-A)</option>
+                  <option value="faculty-asc">Faculty Grouping</option>
+                  <option value="status">Status (Registered vs Pending)</option>
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+            </Box>
+          </HStack>
           <Text
             fontSize="xs"
             color="fg.muted"
             whiteSpace="nowrap"
             fontWeight="600"
           >
-            {filteredWhitelistedUsers.length} results
+            {sortedAndFilteredUsers.length} results
           </Text>
         </Flex>
 
@@ -322,6 +381,9 @@ export function WhitelistTable({
                 <Table.ColumnHeader fontFamily="heading">Student ID</Table.ColumnHeader>
                 <Table.ColumnHeader fontFamily="heading">Nickname</Table.ColumnHeader>
                 <Table.ColumnHeader fontFamily="heading">Faculty</Table.ColumnHeader>
+                {whitelistRoleTab === "staff" && (
+                  <Table.ColumnHeader fontFamily="heading">House Position</Table.ColumnHeader>
+                )}
                 <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
                 <Table.ColumnHeader fontFamily="heading">Status</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="right" fontFamily="heading">
@@ -330,7 +392,7 @@ export function WhitelistTable({
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {filteredWhitelistedUsers.map((u) => (
+              {sortedAndFilteredUsers.map((u) => (
                 <Table.Row
                   key={u.student_id}
                   bg={
@@ -373,29 +435,20 @@ export function WhitelistTable({
                     )}
                   </Table.Cell>
                   <Table.Cell>{u.faculty || "-"}</Table.Cell>
+                  {whitelistRoleTab === "staff" && (
+                    <Table.Cell>{u.house_position || "-"}</Table.Cell>
+                  )}
                   <Table.Cell>
-                    <Box minW="140px">
-                      <SearchableSelect
-                        value={u.role}
-                        onChange={(val) =>
-                          handleInlineRoleChange(
-                            u.student_id,
-                            val,
-                            u.role,
-                          )
-                        }
-                        options={[
-                          { value: "student", primaryText: "Student", badge: "STUDENT" },
-                          { value: "staff", primaryText: "Staff", badge: "STAFF" },
-                          { value: "media_admin", primaryText: "Media Admin", badge: "MEDIA" },
-                          { value: "moderator", primaryText: "Moderator", badge: "MOD" },
-                        ]}
-                        placeholder="Select role"
-                        searchPlaceholder="ค้นหาบทบาท / Search role..."
-                        aria-label={`Change role for ${u.student_id}`}
-                        title={`Change role for ${u.student_id}`}
-                      />
-                    </Box>
+                    <Badge
+                      bg="var(--c-ivory)"
+                      color="var(--c-chocolate)"
+                      border="1px solid var(--c-outline)"
+                      px={2}
+                      py={1}
+                      borderRadius="md"
+                    >
+                      {getRoleDescription(u.role) || u.role}
+                    </Badge>
                   </Table.Cell>
                   <Table.Cell>
                     {u.nickname ? (

@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Box,
-  Input,
   VStack,
   HStack,
   Text,
   Badge,
-  Popover,
   Portal,
   InputGroup,
+  Combobox,
+  createListCollection,
 } from "@chakra-ui/react";
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiChevronDown } from "react-icons/fi";
 
 export interface SelectOption {
   value: string;
@@ -35,198 +35,181 @@ export function SearchableSelect({
   onChange,
   options,
   placeholder = "Select option...",
-  searchPlaceholder = "พิมพ์ค้นหา / Type to search...",
+  searchPlaceholder = "Type to search...",
   id,
   "aria-label": ariaLabel,
   title,
 }: SearchableSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [typedQuery, setTypedQuery] = useState<string | null>(null);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
+  const [filterQuery, setFilterQuery] = useState("");
 
-  const selectedOption = options.find(
-    (o) =>
-      o.value === value ||
-      o.primaryText === value ||
-      (o.secondaryText && o.secondaryText === value)
-  );
-  const displayValue =
-    typedQuery !== null
-      ? typedQuery
-      : selectedOption
-      ? selectedOption.primaryText
-      : "";
+  const stringifiedOptions = JSON.stringify(options);
+  const stableOptions = useMemo(() => {
+    return options.map(opt => ({
+      value: opt.value === "" ? "__EMPTY__" : opt.value,
+      label: opt.primaryText,
+      secondaryText: opt.secondaryText,
+      badge: opt.badge,
+      originalValue: opt.value,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stringifiedOptions]);
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    setHighlightedIndex(-1);
-    if (!open) {
-      setTypedQuery(null);
-    } else if (typedQuery === null) {
-      setTypedQuery(selectedOption ? selectedOption.primaryText : "");
-    }
-  };
-
-  const filteredOptions = options.filter((opt) => {
-    const q = (typedQuery !== null ? typedQuery : "").toLowerCase().trim();
-    if (!q) return true;
-    return (
-      opt.primaryText.toLowerCase().includes(q) ||
+  const filteredOptions = useMemo(() => {
+    const q = filterQuery.toLowerCase().trim();
+    if (!q) return stableOptions;
+    return stableOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(q) ||
       (opt.secondaryText && opt.secondaryText.toLowerCase().includes(q)) ||
       (opt.badge && opt.badge.toLowerCase().includes(q))
     );
-  });
+  }, [stableOptions, filterQuery]);
+
+  const collection = useMemo(() => {
+    return createListCollection({
+      items: filteredOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    });
+  }, [filteredOptions]);
+
+  const memoizedValue = useMemo(() => {
+    return value != null && value !== undefined ? [value === "" ? "__EMPTY__" : value] : [];
+  }, [value]);
 
   return (
     <Box position="relative" w="full">
-      <Popover.Root
-        open={isOpen}
-        onOpenChange={(e) => handleOpenChange(e.open)}
-        positioning={{ sameWidth: true, offset: { mainAxis: 4 } }}
-        autoFocus={false}
+      <Combobox.Root
+        collection={collection}
+        value={memoizedValue}
+        onValueChange={(details) => {
+          if (!details.value || details.value.length === 0) {
+            // Guard against Ark UI clearing on blur when it shouldn't.
+            if (!filterQuery.trim()) {
+              onChange("");
+            }
+            return;
+          }
+          if (details.items && details.items.length > 0) {
+             onChange(details.items[0].originalValue);
+          } else {
+             const raw = details.value[0];
+             onChange(raw === "__EMPTY__" ? "" : raw);
+          }
+        }}
+        onInputValueChange={(details) => {
+          setFilterQuery(details.inputValue);
+        }}
+        onOpenChange={(details) => {
+          if (details.open) {
+            setFilterQuery("");
+          }
+        }}
+        openOnClick
+        positioning={{ sameWidth: true }}
+        width="100%"
       >
-        <Popover.Trigger asChild>
+        <Combobox.Control position="relative" width="100%">
           <InputGroup
             startElement={<FiSearch color="gray.400" />}
             w="full"
           >
-            <Input
+            <Combobox.Input
               id={id}
               aria-label={ariaLabel}
               title={title}
               placeholder={placeholder}
-              value={displayValue}
-              onChange={(e) => {
-                setTypedQuery(e.target.value);
-                setIsOpen(true);
-                setHighlightedIndex(-1);
-              }}
-              onFocus={() => {
-                setIsOpen(true);
-                if (typedQuery === null) {
-                  setTypedQuery(selectedOption ? selectedOption.primaryText : "");
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  if (!isOpen) {
-                    setIsOpen(true);
-                  } else {
-                    setHighlightedIndex((prev) =>
-                      Math.min(prev + 1, filteredOptions.length - 1)
-                    );
-                  }
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  if (isOpen) {
-                    setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-                  }
-                } else if (e.key === "Enter") {
-                  if (isOpen && highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
-                    e.preventDefault();
-                    const selectedOpt = filteredOptions[highlightedIndex];
-                    onChange(selectedOpt.value);
-                    setTypedQuery(null);
-                    setIsOpen(false);
-                    setHighlightedIndex(-1);
-                  }
-                } else if (e.key === "Escape") {
-                  setIsOpen(false);
-                  setTypedQuery(null);
-                  setHighlightedIndex(-1);
-                }
-              }}
               borderRadius="xl"
               bg="var(--c-ivory)"
-              borderColor="var(--c-outline)"
+              h="44px"
+              w="100%"
+              border="1.5px solid var(--c-outline)"
+              pl="36px"
+              pr="36px"
+              fontSize="sm"
               _focus={{
                 borderColor: "var(--c-chocolate)",
                 boxShadow: "0 0 0 1px var(--c-chocolate)",
               }}
             />
           </InputGroup>
-        </Popover.Trigger>
-
+          <Combobox.Trigger
+            position="absolute"
+            right="10px"
+            top="50%"
+            transform="translateY(-50%)"
+            zIndex="2"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            color="fg.muted"
+            cursor="pointer"
+            bg="transparent"
+            border="none"
+            p={1}
+          >
+            <FiChevronDown />
+          </Combobox.Trigger>
+        </Combobox.Control>
         <Portal>
-          <Popover.Positioner zIndex={2000}>
-            <Popover.Content
+          <Combobox.Positioner zIndex={4000} style={{ zIndex: 9999 }}>
+            <Combobox.Content
               bg="bg.surface"
               borderRadius="xl"
               border="1px solid"
               borderColor="border.subtle"
               boxShadow="md"
-              overflow="hidden"
+              maxH="280px"
+              overflowY="auto"
+              py={1}
             >
-              <Popover.Body p={0}>
-                <Box maxH="300px" overflowY="auto">
-                  {filteredOptions.length === 0 ? (
-                    <Box p={4} textAlign="center" color="fg.muted" fontSize="sm">
-                      {searchPlaceholder.includes("ค้นหา")
-                        ? "ไม่พบข้อมูล / No results found"
-                        : "No results found"}
-                    </Box>
-                  ) : (
-                    filteredOptions.map((opt, idx) => {
-                      const isSelected = opt.value === value;
-                      const isHighlighted = idx === highlightedIndex;
-                      const isHighlightedOrSelected = isSelected || isHighlighted;
-                      return (
-                        <HStack
-                          key={opt.value}
-                          justify="space-between"
-                          p={3}
-                          cursor="pointer"
-                          transition="all 0.2s"
-                          bg={isHighlightedOrSelected ? "var(--c-chocolate)" : "transparent"}
-                          _hover={{
-                            bg: isHighlightedOrSelected
-                              ? "color-mix(in srgb, var(--c-chocolate) 90%, black)"
-                              : "rgba(73, 98, 104, 0.08)",
-                          }}
-                          onClick={() => {
-                            onChange(opt.value);
-                            setTypedQuery(null);
-                            setIsOpen(false);
-                            setHighlightedIndex(-1);
-                          }}
+              <Combobox.Empty fontSize="sm" p={3} textAlign="center" color="fg.muted">
+                {searchPlaceholder.includes("ค้นหา")
+                  ? "ไม่พบข้อมูล / No results found"
+                  : "No results found"}
+              </Combobox.Empty>
+              {collection.items.map((item) => {
+                const isSelected = item.originalValue === value;
+                return (
+                  <Combobox.Item
+                    key={item.value}
+                    item={item}
+                    cursor="pointer"
+                    px={3}
+                    py={2}
+                    fontSize="sm"
+                    transition="background 0.2s"
+                    _hover={{ bg: "rgba(73, 98, 104, 0.08)" }}
+                    _selected={{ bg: "var(--c-chocolate)", color: "white" }}
+                  >
+                    <HStack justify="space-between" w="100%">
+                      <VStack align="start" gap={0}>
+                        <Text fontWeight="medium" color={isSelected ? "white" : "fg.default"}>
+                          {item.label}
+                        </Text>
+                        {item.secondaryText && (
+                          <Text fontSize="xs" color={isSelected ? "whiteAlpha.800" : "fg.muted"}>
+                            {item.secondaryText}
+                          </Text>
+                        )}
+                      </VStack>
+                      {item.badge && (
+                        <Badge
+                          colorPalette={isSelected ? "green" : "gray"}
+                          variant={isSelected ? "solid" : "subtle"}
+                          color={isSelected ? "var(--c-chocolate)" : undefined}
+                          bg={isSelected ? "white" : undefined}
                         >
-                          <VStack align="start" gap={0}>
-                            <Text
-                              fontWeight="medium"
-                              color={isHighlightedOrSelected ? "white" : "fg.default"}
-                            >
-                              {opt.primaryText}
-                            </Text>
-                            {opt.secondaryText && (
-                              <Text
-                                fontSize="sm"
-                                color={isHighlightedOrSelected ? "whiteAlpha.800" : "fg.muted"}
-                              >
-                                {opt.secondaryText}
-                              </Text>
-                            )}
-                          </VStack>
-                          {opt.badge && (
-                            <Badge
-                              colorPalette={isHighlightedOrSelected ? "green" : "gray"}
-                              variant={isHighlightedOrSelected ? "solid" : "subtle"}
-                              color={isHighlightedOrSelected ? "var(--c-chocolate)" : undefined}
-                              bg={isHighlightedOrSelected ? "white" : undefined}
-                            >
-                              {opt.badge}
-                            </Badge>
-                          )}
-                        </HStack>
-                      );
-                    })
-                  )}
-                </Box>
-              </Popover.Body>
-            </Popover.Content>
-          </Popover.Positioner>
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </HStack>
+                  </Combobox.Item>
+                );
+              })}
+            </Combobox.Content>
+          </Combobox.Positioner>
         </Portal>
-      </Popover.Root>
+      </Combobox.Root>
     </Box>
   );
 }

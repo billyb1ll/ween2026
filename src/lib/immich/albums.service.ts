@@ -9,6 +9,8 @@ import type {
   ImmichAlbum,
   AlbumListFilters,
   BulkAlbumAssets,
+  ImmichAsset,
+  SearchResponse,
 } from "./types";
 
 export class AlbumsService {
@@ -36,6 +38,37 @@ export class AlbumsService {
   }
 
   /**
+   * Get assets in a single album by ID.
+   * Fetches all assets by paginating search results in chunks of 1000.
+   */
+  async getAssets(id: string): Promise<ImmichAsset[]> {
+    const assets: ImmichAsset[] = [];
+    let page = 1;
+    const size = 1000;
+
+    while (true) {
+      const response = await this.client.request<SearchResponse>("/api/search/metadata", {
+        method: "POST",
+        body: {
+          albumIds: [id],
+          page,
+          size,
+        },
+      });
+
+      const items = response?.assets?.items || [];
+      assets.push(...items);
+
+      if (items.length < size) {
+        break;
+      }
+      page++;
+    }
+
+    return assets;
+  }
+
+  /**
    * Find an album by exact name match.
    * Returns the first match, or null if not found.
    */
@@ -47,10 +80,15 @@ export class AlbumsService {
   /**
    * Add assets to one or more albums in bulk.
    */
-  async addAssets(payload: BulkAlbumAssets): Promise<unknown> {
-    return this.client.request("/api/albums/assets", {
-      method: "POST",
-      body: payload,
-    });
+  async addAssets(payload: BulkAlbumAssets): Promise<unknown[]> {
+    const promises = payload.albumIds.map((albumId) =>
+      this.client.request(`/api/albums/${encodeURIComponent(albumId)}/assets`, {
+        method: "PUT",
+        body: {
+          ids: payload.assetIds,
+        },
+      })
+    );
+    return Promise.all(promises);
   }
 }

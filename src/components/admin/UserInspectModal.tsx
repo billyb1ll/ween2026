@@ -11,6 +11,8 @@ import {
   HStack,
   Spinner,
   Input,
+  Portal,
+  NativeSelect,
 } from "@chakra-ui/react";
 import { Tooltip } from "../ui/tooltip";
 import { FacultySelect } from "../FacultySelect";
@@ -18,10 +20,18 @@ import { SearchableSelect } from "../SearchableSelect";
 import { STAFF_ROLES } from "../../lib/constants";
 import type { DBUser, AuditLog } from "../../pages/AdminDashboardPage";
 import { UserAvatar } from "../UserAvatar";
+import { useUser } from "../../context/UserContext";
+import {
+  useResetVibecheckMutation,
+  useSetMissionMutation,
+  useAdminMissions,
+} from "../../hooks/useAdminQueries";
+import { toaster } from "../ui/toaster";
 
 interface UserInspectModalProps {
   inspectUser: DBUser | null;
   onClose: () => void;
+  onRefreshStats?: () => void;
   inspectUserStats: {
     collectedCount: number;
     collectedFromCount: number;
@@ -51,11 +61,13 @@ interface UserInspectModalProps {
   setEditRole: (val: string) => void;
   handleEditUser: (e: React.FormEvent) => void;
   getRoleDescription: (role: string) => string;
+  dynamicPositions?: string[];
 }
 
 export function UserInspectModal({
   inspectUser,
   onClose,
+  onRefreshStats,
   inspectUserStats,
   inspectUserLogs,
   editNickname,
@@ -70,7 +82,51 @@ export function UserInspectModal({
   setEditRole,
   handleEditUser,
   getRoleDescription,
+  dynamicPositions,
 }: UserInspectModalProps) {
+  const { user } = useUser();
+  const resetVibecheckMutation = useResetVibecheckMutation(user?.student_id || "");
+  const setMissionMutation = useSetMissionMutation(user?.student_id || "");
+  const { data: missions } = useAdminMissions(user?.role === "moderator");
+
+  const [selectedMission, setSelectedMission] = React.useState<string>("");
+
+  const handleResetVibecheck = async () => {
+    if (!inspectUser || !user || !['moderator', 'media_admin'].includes(user.role)) return;
+    if (confirm(`Are you sure you want to completely wipe the VibeCheck progress for ${inspectUser.nickname || inspectUser.student_id}? This cannot be undone.`)) {
+      try {
+        await resetVibecheckMutation.mutateAsync({
+          targetId: inspectUser.student_id,
+          pinHash:  user.pin_hash || "",
+        });
+        toaster.create({ title: "VibeCheck progress reset successfully.", type: "success" });
+        onRefreshStats?.();
+      } catch (e) {
+        console.error(e);
+        toaster.create({ title: "Failed to reset progress", type: "error" });
+      }
+    }
+  };
+
+  const handleSetMission = async () => {
+    if (!inspectUser || !user || !['moderator', 'media_admin'].includes(user.role) || !selectedMission) return;
+    if (confirm(`Change active mission to ID ${selectedMission}?`)) {
+      try {
+        await setMissionMutation.mutateAsync({
+          targetId:  inspectUser.student_id,
+          missionId: Number(selectedMission),
+          pinHash:   user.pin_hash || "",
+        });
+        toaster.create({ title: "Mission updated successfully.", type: "success" });
+        setSelectedMission("");
+        onRefreshStats?.();
+      } catch (e) {
+        console.error(e);
+        toaster.create({ title: "Failed to set mission", type: "error" });
+      }
+    }
+  };
+
   // Ensure document scroll and pointer-events are unlocked on unmount
   useEffect(() => {
     return () => {
@@ -97,24 +153,25 @@ export function UserInspectModal({
       onOpenChange={onClose}
       placement={{ base: "bottom", md: "center" }}
     >
-      <Dialog.Backdrop
-        bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
-        backdropFilter="blur(4px)"
-      />
-      <Dialog.Positioner zIndex={2200} px={4}>
-        <Dialog.Content
-          bg="var(--c-ivory)"
-          border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
-          color="var(--c-ink)"
-          borderRadius={{ base: "t-3xl", md: "2xl" }}
-          width={{ base: "100%", md: "560px" }}
-          maxH={{ base: "92vh", md: "80vh" }}
-          p={6}
-          boxShadow={{ base: "none", md: "var(--shadow-card)" }}
-          display="flex"
-          flexDirection="column"
-          position="relative"
-        >
+      <Portal>
+        <Dialog.Backdrop
+          bg="color-mix(in srgb, var(--c-ink) 70%, transparent)"
+          backdropFilter="blur(4px)"
+        />
+        <Dialog.Positioner zIndex={2200} px={4}>
+          <Dialog.Content
+            bg="var(--c-ivory)"
+            border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+            color="var(--c-ink)"
+            borderRadius={{ base: "t-3xl", md: "2xl" }}
+            width={{ base: "100%", md: "560px" }}
+            maxH={{ base: "92vh", md: "80vh" }}
+            p={6}
+            boxShadow={{ base: "none", md: "var(--shadow-card)" }}
+            display="flex"
+            flexDirection="column"
+            position="relative"
+          >
           <Dialog.Header p={0} mb={3}>
             <Dialog.Title
               fontSize="md"
@@ -366,6 +423,66 @@ export function UserInspectModal({
                             </Flex>
                           </Box>
                         )}
+
+                      {/* Admin Overrides */}
+                      {user?.role === "moderator" && (
+                        <Box
+                          mt={2}
+                          p={3}
+                          bg="red.50"
+                          borderRadius="lg"
+                          border="1px dashed"
+                          borderColor="red.300"
+                        >
+                          <Text
+                            fontSize="xs"
+                            fontWeight="700"
+                            color="red.700"
+                            mb={2}
+                            textTransform="uppercase"
+                          >
+                            🚨 Admin Overrides
+                          </Text>
+                          <VStack align="stretch" gap={3}>
+                            <Button
+                              size="sm"
+                              bg="red.600"
+                              color="white"
+                              onClick={handleResetVibecheck}
+                              loading={resetVibecheckMutation.isPending}
+                              _hover={{ bg: "red.700" }}
+                            >
+                              Reset All Progress (Wipe Data)
+                            </Button>
+
+                            <HStack>
+                              <SearchableSelect
+                                id="admin-set-mission"
+                                value={selectedMission}
+                                onChange={(val) => setSelectedMission(val)}
+                                options={
+                                  missions?.map((m) => ({
+                                    value: m.id.toString(),
+                                    primaryText: `M${m.sequence_order}: ${m.required_count}x ${m.target_role}`,
+                                  })) || []
+                                }
+                                placeholder="Select mission..."
+                                aria-label="Set Mission"
+                              />
+                              <Button
+                                size="sm"
+                                bg="var(--c-chocolate)"
+                                color="white"
+                                onClick={handleSetMission}
+                                loading={setMissionMutation.isPending}
+                                disabled={!selectedMission}
+                              >
+                                Set Mission
+                              </Button>
+                            </HStack>
+                          </VStack>
+                        </Box>
+                      )}
                     </>
                   ) : (
                     <Spinner size="xs" color="var(--c-lagoon)" />
@@ -458,22 +575,27 @@ export function UserInspectModal({
                         House Position (Staff Assignment)
                       </label>
                     </Box>
-                    <SearchableSelect
-                      id="inspect-house-position"
-                      value={editHousePosition}
-                      onChange={(val) => setEditHousePosition(val)}
-                      options={[
-                        { value: "", primaryText: "None / Unknown" },
-                        ...STAFF_ROLES.map((role) => ({
-                          value: role,
-                          primaryText: role,
-                        })),
-                      ]}
-                      placeholder="Select position..."
-                      searchPlaceholder="ค้นหาตำแหน่ง / Search position..."
-                      aria-label="House Position"
-                      title="House Position"
-                    />
+                    <NativeSelect.Root size="sm">
+                      <NativeSelect.Field
+                        id="inspect-house-position"
+                        aria-label="House Position"
+                        title="House Position"
+                        value={editHousePosition}
+                        onChange={(e) => setEditHousePosition(e.target.value)}
+                        h="38px"
+                        borderRadius="8px"
+                        border="1.5px solid var(--c-outline)"
+                        bg="var(--c-white)"
+                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        cursor="pointer"
+                      >
+                        <option value="">None / Unknown</option>
+                        {(dynamicPositions || STAFF_ROLES).map((role) => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
                   </Box>
                 )}
                 <Box>
@@ -487,21 +609,27 @@ export function UserInspectModal({
                     <label htmlFor="inspect-role">System Role</label>
                   </Box>
                   <Tooltip label={getRoleDescription(editRole)}>
-                    <SearchableSelect
-                      id="inspect-role"
-                      value={editRole}
-                      onChange={(val) => setEditRole(val)}
-                      options={[
-                        { value: "student", primaryText: "Student", badge: "STUDENT" },
-                        { value: "staff", primaryText: "Staff", badge: "STAFF" },
-                        { value: "media_admin", primaryText: "Media Admin", badge: "MEDIA" },
-                        { value: "moderator", primaryText: "Moderator", badge: "MOD" },
-                      ]}
-                      placeholder="Select role..."
-                      searchPlaceholder="ค้นหาบทบาท / Search role..."
-                      aria-label="System Role"
-                      title="System Role"
-                    />
+                    <NativeSelect.Root size="sm">
+                      <NativeSelect.Field
+                        id="inspect-role"
+                        aria-label="System Role"
+                        title="System Role"
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        h="38px"
+                        borderRadius="8px"
+                        border="1.5px solid var(--c-outline)"
+                        bg="var(--c-white)"
+                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        cursor="pointer"
+                      >
+                        <option value="student">Student</option>
+                        <option value="staff">Staff</option>
+                        <option value="media_admin">Media Admin</option>
+                        <option value="moderator">Moderator</option>
+                      </NativeSelect.Field>
+                      <NativeSelect.Indicator />
+                    </NativeSelect.Root>
                   </Tooltip>
                 </Box>
                 <Button
@@ -598,7 +726,8 @@ export function UserInspectModal({
             </Button>
           </Dialog.CloseTrigger>
         </Dialog.Content>
-      </Dialog.Positioner>
+        </Dialog.Positioner>
+      </Portal>
     </Dialog.Root>
   );
 }

@@ -38,7 +38,7 @@ app.get('/api/immich/albums', async (req, res) => {
     const data = await response.json()
     res.json(data)
   } catch (error) {
-    console.error('Immich proxy error (albums):', error)
+    console.error(`Immich proxy error (albums): ${error.message}`)
     res.status(500).json({ error: 'Failed to proxy to Immich' })
   }
 })
@@ -50,7 +50,35 @@ app.get('/api/immich/albums/:id', async (req, res) => {
     const data = await response.json()
     res.json(data)
   } catch (error) {
-    console.error('Immich proxy error (album by id):', error)
+    console.error(`Immich proxy error (album by id): ${error.message}`)
+    res.status(500).json({ error: 'Failed to proxy to Immich' })
+  }
+})
+
+app.get('/api/immich/albums/:id/assets', async (req, res) => {
+  try {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/albums/${req.params.id}/assets`, { headers: immichProxyHeaders })
+    if (!response.ok) return res.status(response.status).send(await response.text())
+    const data = await response.json()
+    res.json(data)
+  } catch (error) {
+    console.error(`Immich proxy error (album assets): ${error.message}`)
+    res.status(500).json({ error: 'Failed to proxy to Immich' })
+  }
+})
+
+app.put('/api/immich/albums/:id/assets', async (req, res) => {
+  try {
+    const response = await fetch(`${IMMICH_SERVER_URL}/api/albums/${req.params.id}/assets`, {
+      method: 'PUT',
+      headers: immichProxyHeaders,
+      body: JSON.stringify(req.body)
+    })
+    if (!response.ok) return res.status(response.status).send(await response.text())
+    const data = await response.json()
+    res.json(data)
+  } catch (error) {
+    console.error(`Immich proxy error (add assets to album): ${error.message}`)
     res.status(500).json({ error: 'Failed to proxy to Immich' })
   }
 })
@@ -62,7 +90,7 @@ app.get('/api/immich/people', async (req, res) => {
     const data = await response.json()
     res.json(data)
   } catch (error) {
-    console.error('Immich proxy error (people):', error)
+    console.error(`Immich proxy error (people): ${error.message}`)
     res.status(500).json({ error: 'Failed to proxy to Immich' })
   }
 })
@@ -78,7 +106,7 @@ app.post('/api/immich/search/metadata', async (req, res) => {
     const data = await response.json()
     res.json(data)
   } catch (error) {
-    console.error('Immich proxy error (search):', error)
+    console.error(`Immich proxy error (search): ${error.message}`)
     res.status(500).json({ error: 'Failed to proxy to Immich' })
   }
 })
@@ -94,7 +122,7 @@ app.put('/api/immich/people/:id', async (req, res) => {
     const data = await response.json()
     res.json(data)
   } catch (error) {
-    console.error('Immich proxy error (update person):', error)
+    console.error(`Immich proxy error (update person): ${error.message}`)
     res.status(500).json({ error: 'Failed to proxy to Immich' })
   }
 })

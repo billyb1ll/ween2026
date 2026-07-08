@@ -20,6 +20,8 @@ import type { User } from "../context/UserContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { supabase } from "../lib/supabase";
 import { UserAvatar } from "./UserAvatar";
+import { useSystemConfigs } from "../hooks/useBoardQueries";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NavItemProps {
   to: string;
@@ -190,52 +192,43 @@ export function Navbar() {
   });
   const desktopDropdownRef = useRef<HTMLDivElement>(null);
 
+  const queryClient = useQueryClient();
+  const { data: configs } = useSystemConfigs();
+
+  useEffect(() => {
+    if (configs) {
+      const tickerConfig = configs.find((c) => c.key === "ticker_text");
+      const announcementConfig = configs.find((c) => c.key === "emergency_announcement");
+      const vibecheckConfig = configs.find((c) => c.key === "vibecheck_enabled");
+
+      Promise.resolve().then(() => {
+        if (vibecheckConfig) {
+          setVibecheckEnabled(Boolean(vibecheckConfig.value));
+        }
+        if (tickerConfig) {
+          setTickerActive(Boolean(tickerConfig.value));
+          setTickerText(tickerConfig.text_value || "");
+        }
+        if (announcementConfig) {
+          if (announcementConfig.value && announcementConfig.text_value) {
+            setEmergencyAnnouncement(announcementConfig.text_value);
+          } else {
+            setEmergencyAnnouncement(null);
+          }
+        }
+      });
+    }
+  }, [configs]);
+
   // Consolidated System Configuration Sync
   useEffect(() => {
     let active = true;
-
-    const fetchInitialConfig = async () => {
-      try {
-        const { data: configs, error } = await supabase
-          .from("system_config")
-          .select("key, value, text_value")
-          .in("key", ["ticker_text", "emergency_announcement", "vibecheck_enabled"]);
-
-        if (error) throw error;
-
-        if (active && configs) {
-          const tickerConfig = configs.find((c) => c.key === "ticker_text");
-          const announcementConfig = configs.find((c) => c.key === "emergency_announcement");
-          const vibecheckConfig = configs.find((c) => c.key === "vibecheck_enabled");
-
-          if (vibecheckConfig) {
-            setVibecheckEnabled(Boolean(vibecheckConfig.value));
-          }
-
-          if (tickerConfig) {
-            setTickerActive(Boolean(tickerConfig.value));
-            setTickerText(tickerConfig.text_value || "");
-          }
-
-          if (announcementConfig) {
-            if (announcementConfig.value && announcementConfig.text_value) {
-              setEmergencyAnnouncement(announcementConfig.text_value);
-            } else {
-              setEmergencyAnnouncement(null);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch initial system config in Navbar:", err);
-      }
-    };
-
-    fetchInitialConfig();
 
     // Subscribe to Broadcast events on "live_chat:system_config_sync"
     const syncChannel = supabase.channel("live_chat:system_config_sync");
     syncChannel
       .on("broadcast", { event: "ticker_change" }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ["system_configs"] });
         if (active && payload.payload) {
           Promise.resolve().then(() => {
             setTickerActive(Boolean(payload.payload.active));
@@ -244,6 +237,7 @@ export function Navbar() {
         }
       })
       .on("broadcast", { event: "ticker_clear" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["system_configs"] });
         if (active) {
           Promise.resolve().then(() => {
             setTickerActive(false);
@@ -252,6 +246,7 @@ export function Navbar() {
         }
       })
       .on("broadcast", { event: "announcement_change" }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ["system_configs"] });
         if (active && payload.payload) {
           Promise.resolve().then(() => {
             if (payload.payload.active && payload.payload.text) {
@@ -263,6 +258,7 @@ export function Navbar() {
         }
       })
       .on("broadcast", { event: "emergency_clear" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["system_configs"] });
         if (active) {
           Promise.resolve().then(() => {
             setEmergencyAnnouncement(null);
@@ -282,6 +278,7 @@ export function Navbar() {
           table: "system_config",
         },
         (payload) => {
+          queryClient.invalidateQueries({ queryKey: ["system_configs"] });
           if (!active || !payload.new) return;
           const newRecord = payload.new as {
             key: string;
@@ -316,7 +313,7 @@ export function Navbar() {
       supabase.removeChannel(syncChannel);
       supabase.removeChannel(dbChannel);
     };
-  }, []);
+  }, [queryClient]);
   const mobileDropdownRef = useRef<HTMLDivElement>(null);
   const desktopPortalRef = useRef<HTMLDivElement>(null);
   const mobilePortalRef = useRef<HTMLDivElement>(null);
@@ -690,7 +687,8 @@ export function Navbar() {
                       as="span"
                       className="material-symbols-outlined"
                       fontSize="18px"
-                      style={{ marginRight: "8px", flexShrink: 0 }}
+                      mr="8px"
+                      flexShrink={0}
                     >
                       info
                     </Box>
@@ -702,21 +700,7 @@ export function Navbar() {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "11px",
-                          fontWeight: "700",
-                          backgroundColor: "#78350f",
-                          color: "#fef3c7",
-                          marginLeft: "12px",
-                          height: "24px",
-                          paddingLeft: "12px",
-                          paddingRight: "12px",
-                          borderRadius: "6px",
-                          textDecoration: "none",
-                        }}
+                        className="ticker-view-link"
                       >
                         View Link
                       </a>

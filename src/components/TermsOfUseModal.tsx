@@ -6,6 +6,7 @@ import {
   Text,
   Heading,
   Box,
+  Portal,
 } from "@chakra-ui/react";
 import { useUser } from "../context/UserContext";
 
@@ -33,12 +34,13 @@ export function TermsOfUseModal() {
       closeOnInteractOutside={false}
       closeOnEscape={false}
     >
-      <Dialog.Backdrop
-        bg="color-mix(in srgb, var(--c-ink) 80%, transparent)"
-        backdropFilter="blur(8px)"
-      />
-      <Dialog.Positioner zIndex={2000} px={4}>
-        <Dialog.Content
+      <Portal>
+        <Dialog.Backdrop
+          bg="color-mix(in srgb, var(--c-ink) 80%, transparent)"
+          backdropFilter="blur(8px)"
+        />
+        <Dialog.Positioner zIndex={2000} px={4}>
+          <Dialog.Content
           bg="var(--c-ivory)"
           border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
           borderRadius="2xl"
@@ -167,6 +169,7 @@ export function TermsOfUseModal() {
           </Dialog.Footer>
         </Dialog.Content>
       </Dialog.Positioner>
+      </Portal>
     </Dialog.Root>
   );
 }

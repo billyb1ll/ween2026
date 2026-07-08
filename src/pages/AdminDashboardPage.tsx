@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box,
   Flex,
@@ -17,19 +17,30 @@ import {
   SimpleGrid,
   TableScrollArea,
   Alert,
+  Portal,
+  Combobox,
+  createListCollection,
 } from "@chakra-ui/react";
 import { useUser } from "../context/UserContext";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useAdminUsers,
+  useAdminMissions,
+  useAdminAuditLogs,
+  useAdminConfigs,
+  useUpdateUserProfileRpcMutation,
+} from "../hooks/useAdminQueries";
 import { supabase } from "../lib/supabase";
 import { getImmichConfig } from "../utils/immich";
 import { compressImage } from "../utils/image";
 import { Link } from "react-router-dom";
 import { toaster } from "../components/ui/toaster";
 import Papa from "papaparse";
-import { SearchableSelect } from "../components/SearchableSelect";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiChevronDown } from "react-icons/fi";
 import { WhitelistTable } from "../components/admin/WhitelistTable";
 import { SystemControlPanel } from "../components/admin/SystemControlPanel";
 import { UserInspectModal } from "../components/admin/UserInspectModal";
+import { STAFF_ROLES } from "../lib/constants";
 import { MediaUploader } from "../components/admin/MediaUploader";
 import { AlbumMappingAdmin } from "../components/admin/AlbumMappingAdmin";
 
@@ -147,7 +158,6 @@ export function AdminDashboardPage() {
   // Game Engine & Config states
   const [missions, setMissions] = useState<VibeMission[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [staffCounts, setStaffCounts] = useState<Record<string, number>>({});
   const [emergencyText, setEmergencyText] = useState("");
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
@@ -197,6 +207,83 @@ export function AdminDashboardPage() {
     "student",
   );
 
+  const queryClient = useQueryClient();
+  const isModerator = user?.role === "moderator";
+  const { data: usersData } = useAdminUsers(isModerator);
+  const { data: missionsData } = useAdminMissions(isModerator);
+  const { data: logsData } = useAdminAuditLogs(isModerator);
+  const { data: configsData = [] } = useAdminConfigs(!!user);
+  const updateUserProfileRpc = useUpdateUserProfileRpcMutation(user?.student_id || "");
+
+  useEffect(() => {
+    if (usersData) {
+      Promise.resolve().then(() => {
+        setWhitelistedUsers(usersData);
+      });
+    }
+  }, [usersData]);
+
+  useEffect(() => {
+    if (missionsData) {
+      Promise.resolve().then(() => {
+        setMissions(missionsData);
+      });
+    }
+  }, [missionsData]);
+
+  useEffect(() => {
+    if (logsData) {
+      Promise.resolve().then(() => {
+        setAuditLogs(logsData as unknown as AuditLog[]);
+      });
+    }
+  }, [logsData]);
+
+  useEffect(() => {
+    if (configsData.length > 0) {
+      const memory = configsData.find((c) => c.key === "enable_memory_board");
+      const vibecheck = configsData.find((c) => c.key === "vibecheck_enabled");
+      const emergency = configsData.find((c) => c.key === "emergency_announcement");
+      const strikes = configsData.find((c) => c.key === "max_allowed_strikes");
+      const baseCool = configsData.find((c) => c.key === "base_cooldown_minutes");
+      const maxCool = configsData.find((c) => c.key === "max_cooldown_minutes");
+      const hypeMode = configsData.find((c) => c.key === "hype_board_mode");
+      const globalMute = configsData.find((c) => c.key === "global_mute_active");
+      const ticker = configsData.find((c) => c.key === "ticker_text");
+
+      Promise.resolve().then(() => {
+        if (memory) setEnableMemoryBoard(memory.value);
+        if (vibecheck) setVibecheckEnabled(vibecheck.value);
+        if (emergency) {
+          setEmergencyActive(emergency.value);
+          setEmergencyText(emergency.text_value || "");
+        }
+        if (strikes) setMaxStrikes(strikes.int_value ?? 5);
+        if (baseCool) setBaseCooldown(baseCool.int_value ?? 1);
+        if (maxCool) setMaxCooldown(maxCool.int_value ?? 30);
+        if (hypeMode?.text_value) setHypeBoardMode(hypeMode.text_value as HypeBoardMode);
+        if (globalMute) setGlobalMuteActive(globalMute.value);
+        if (ticker) {
+          setTickerActive(ticker.value);
+          setTickerText(ticker.text_value || "");
+        }
+      });
+    }
+  }, [configsData]);
+
+  const staffCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    whitelistedUsers.forEach((s) => {
+      if (s.role !== "student") {
+        const grp = s.house_position || s.major || s.role;
+        if (grp) {
+          counts[grp] = (counts[grp] || 0) + 1;
+        }
+      }
+    });
+    return counts;
+  }, [whitelistedUsers]);
+
   const filteredWhitelistedUsers = whitelistedUsers.filter((u) => {
     // Role tab filter
     const matchesTab =
@@ -219,7 +306,87 @@ export function AdminDashboardPage() {
 
   // Mission configurator form
   const [newMissionTarget, setNewMissionTarget] = useState("");
+  const [newMissionFilterQuery, setNewMissionFilterQuery] = useState("");
   const [newMissionCount, setNewMissionCount] = useState(1);
+  const [newMissionError, setNewMissionError] = useState("");
+
+  // Dynamic positions aggregation for combobox
+  const staffPositionsCollection = useMemo(() => {
+    const counts: Record<string, number> = {};
+    whitelistedUsers.forEach((s) => {
+      if (s.role !== "student") {
+        const grp = s.house_position || s.major || s.role;
+        if (grp) {
+          counts[grp] = (counts[grp] || 0) + 1;
+        }
+      }
+    });
+
+    const labelMap: Record<string, string> = {
+      "โสต": "Media & Audio โสต",
+      "สันทนาการ": "Recreation สันทนาการ",
+      "พี่กลุ่ม": "Group Leader พี่กลุ่ม",
+      "ประธาน": "President ประธาน",
+      "เลขา": "Secretary เลขา",
+      "เหรัญญิก": "Treasurer เหรัญญิก",
+      "ประสานงาน": "Coordinator ประสานงาน",
+      "Timer": "Timer โพย/เวลา",
+      "Creative & Art": "Creative & Art ฝ่ายสร้างสรรค์",
+      "สวัสดิการและพัสดุ": "Welfare & Supplies สวัสดิการและพัสดุ",
+      "พยาบาล": "Medical Team พยาบาล",
+      "สถานที่": "Logistics & Venue สถานที่",
+      "ทะเบียน": "Registration ทะเบียน",
+      "staff": "General Staff",
+      "media_admin": "Media Admin",
+      "moderator": "Moderator",
+    };
+
+    return Object.keys(counts).map((k) => {
+      const baseLabel = labelMap[k] || k;
+      const count = counts[k];
+      return {
+        value: k,
+        label: `${baseLabel} (${count} active)`,
+        count: count,
+      };
+    });
+  }, [whitelistedUsers]);
+
+  const selectedTargetItem = useMemo(() => {
+    return staffPositionsCollection.find((item) => item.value === newMissionTarget);
+  }, [staffPositionsCollection, newMissionTarget]);
+  const maxAvailableCount = selectedTargetItem ? selectedTargetItem.count : 20;
+
+  useEffect(() => {
+    setNewMissionCount((prev) => Math.min(prev, maxAvailableCount));
+  }, [maxAvailableCount]);
+
+  const filteredStaffPositions = useMemo(() => {
+    const q = newMissionFilterQuery.toLowerCase().trim();
+    if (!q) return staffPositionsCollection;
+    return staffPositionsCollection.filter((item) =>
+      item.label.toLowerCase().includes(q)
+    );
+  }, [staffPositionsCollection, newMissionFilterQuery]);
+
+  const targetCollection = useMemo(() => {
+    return createListCollection({
+      items: filteredStaffPositions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    });
+  }, [filteredStaffPositions]);
+
+  const dynamicPositions = useMemo(() => {
+    const positions = new Set<string>();
+    whitelistedUsers.forEach((s) => {
+      if (s.role !== "student" && s.house_position) {
+        positions.add(s.house_position);
+      }
+    });
+    STAFF_ROLES.forEach((r) => positions.add(r));
+    return Array.from(positions).sort();
+  }, [whitelistedUsers]);
 
   // CSV States
   const [csvRecords, setCsvRecords] = useState<CSVRecord[]>([]);
@@ -257,155 +424,21 @@ export function AdminDashboardPage() {
   // Refreshes dashboard data
   const triggerRefresh = async () => {
     try {
-      if (user?.role === "moderator") {
-        const { data: usersData } = await supabase
-          .from("users")
-          .select(
-            "student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color",
-          )
-          .order("created_at", { ascending: false });
-        if (usersData) setWhitelistedUsers(usersData as DBUser[]);
-
-        const { data: missionData } = await supabase
-          .from("vibe_missions")
-          .select("*")
-          .order("sequence_order", { ascending: true });
-        if (missionData) setMissions(missionData as VibeMission[]);
-
-        const { data: logData } = await supabase
-          .from("audit_logs")
-          .select("*, users(nickname)")
-          .order("created_at", { ascending: false })
-          .limit(50);
-        if (logData) setAuditLogs(logData as unknown as AuditLog[]);
-
-        const { data: staffData } = await supabase
-          .from("users")
-          .select("role, major")
-          .neq("role", "student");
-        if (staffData) {
-          const counts: Record<string, number> = {};
-          staffData.forEach((s) => {
-            const grp = s.major || s.role;
-            if (grp) {
-              counts[grp] = (counts[grp] || 0) + 1;
-            }
-          });
-          setStaffCounts(counts);
-        }
-      }
+      await queryClient.invalidateQueries({ queryKey: ["admin_users"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin_missions"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin_audit_logs"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin_configs"] });
     } catch (err) {
       console.error("Error refreshing admin dashboard data:", err);
     }
   };
 
   useEffect(() => {
+    if (!user) return;
     let active = true;
-    const fetchAdminData = async () => {
-      if (!user) return;
-      await Promise.resolve();
+    const fetchEventData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch system configs
-        const { data: configData } = await supabase
-          .from("system_config")
-          .select("*");
-        if (!active) return;
-        if (configData) {
-          const memory = configData.find(
-            (c) => c.key === "enable_memory_board",
-          );
-          if (memory) setEnableMemoryBoard(memory.value);
-
-          const vibecheck = configData.find(
-            (c) => c.key === "vibecheck_enabled",
-          );
-          if (vibecheck) setVibecheckEnabled(vibecheck.value);
-
-          const emergency = configData.find(
-            (c) => c.key === "emergency_announcement",
-          );
-          const strikes = configData.find(
-            (c) => c.key === "max_allowed_strikes",
-          );
-          const baseCool = configData.find(
-            (c) => c.key === "base_cooldown_minutes",
-          );
-          const maxCool = configData.find(
-            (c) => c.key === "max_cooldown_minutes",
-          );
-
-          if (emergency) {
-            setEmergencyActive(emergency.value);
-            setEmergencyText(emergency.text_value || "");
-          }
-          if (strikes) setMaxStrikes(strikes.int_value ?? 5);
-          if (baseCool) setBaseCooldown(baseCool.int_value ?? 1);
-          if (maxCool) setMaxCooldown(maxCool.int_value ?? 30);
-
-          // Command Center config keys
-          const hypeMode = configData.find((c) => c.key === "hype_board_mode");
-          const globalMute = configData.find(
-            (c) => c.key === "global_mute_active",
-          );
-          const ticker = configData.find((c) => c.key === "ticker_text");
-
-          if (hypeMode?.text_value)
-            setHypeBoardMode(hypeMode.text_value as HypeBoardMode);
-          if (globalMute) setGlobalMuteActive(globalMute.value);
-          if (ticker) {
-            setTickerActive(ticker.value);
-            setTickerText(ticker.text_value || "");
-          }
-        }
-
-        // 2. Fetch users list (for Moderator)
-        if (user.role === "moderator") {
-          const { data: usersData } = await supabase
-            .from("users")
-            .select(
-              "student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color",
-            )
-            .order("created_at", { ascending: false });
-          if (!active) return;
-          if (usersData) setWhitelistedUsers(usersData as DBUser[]);
-
-          // Fetch vibe missions
-          const { data: missionData } = await supabase
-            .from("vibe_missions")
-            .select("*")
-            .order("sequence_order", { ascending: true });
-          if (!active) return;
-          if (missionData) setMissions(missionData as VibeMission[]);
-
-          // Fetch audit logs
-          const { data: logData } = await supabase
-            .from("audit_logs")
-            .select("*, users(nickname)")
-            .order("created_at", { ascending: false })
-            .limit(50);
-          if (!active) return;
-          if (logData) setAuditLogs(logData as unknown as AuditLog[]);
-
-          // Staff major counts
-          const { data: staffData } = await supabase
-            .from("users")
-            .select("role, major")
-            .neq("role", "student");
-          if (!active) return;
-          if (staffData) {
-            const counts: Record<string, number> = {};
-            staffData.forEach((s) => {
-              const grp = s.major || s.role;
-              if (grp) {
-                counts[grp] = (counts[grp] || 0) + 1;
-              }
-            });
-            setStaffCounts(counts);
-          }
-        }
-
-        // 3. Simulated Immich Ping if config exists
         if (immichConfig.isConfigured && immichConfig.url) {
           setImmichStatus((prev) => ({
             ...prev,
@@ -418,12 +451,12 @@ export function AdminDashboardPage() {
           }));
         }
 
-        // 4. Fetch Next Event config
         const { data: eventData } = await supabase
           .from("event_config")
           .select("*")
           .eq("key", "next_event")
           .single();
+
         if (!active) return;
         if (eventData) {
           setEventTitle(eventData.title);
@@ -433,19 +466,13 @@ export function AdminDashboardPage() {
           setEventTime(localStr);
         }
       } catch (err) {
-        console.error("Error fetching admin data:", err);
-        if (active) {
-          toaster.create({
-            title: "Error loading admin data",
-            type: "error",
-          });
-        }
+        console.error("Error loading event config:", err);
       } finally {
         if (active) setLoading(false);
       }
     };
 
-    fetchAdminData();
+    fetchEventData();
     return () => {
       active = false;
     };
@@ -464,37 +491,15 @@ export function AdminDashboardPage() {
           table: "users",
         },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newUser = payload.new as DBUser;
-            setWhitelistedUsers((prev) => {
-              if (prev.some((u) => u.student_id === newUser.student_id))
-                return prev;
-              return [newUser, ...prev];
-            });
+          queryClient.invalidateQueries({ queryKey: ["admin_users"] });
+          const studentId = (payload.new as DBUser | null)?.student_id || (payload.old as { student_id: string } | null)?.student_id;
+          if (studentId) {
             if (highlightTimeoutRef.current)
               clearTimeout(highlightTimeoutRef.current);
-            setLastUpdatedStudentId(newUser.student_id);
+            setLastUpdatedStudentId(studentId);
             highlightTimeoutRef.current = setTimeout(() => {
               setLastUpdatedStudentId(null);
             }, 1000);
-          } else if (payload.eventType === "UPDATE") {
-            const updatedUser = payload.new as DBUser;
-            setWhitelistedUsers((prev) =>
-              prev.map((u) =>
-                u.student_id === updatedUser.student_id ? updatedUser : u,
-              ),
-            );
-            if (highlightTimeoutRef.current)
-              clearTimeout(highlightTimeoutRef.current);
-            setLastUpdatedStudentId(updatedUser.student_id);
-            highlightTimeoutRef.current = setTimeout(() => {
-              setLastUpdatedStudentId(null);
-            }, 1000);
-          } else if (payload.eventType === "DELETE") {
-            const oldUser = payload.old as { student_id: string };
-            setWhitelistedUsers((prev) =>
-              prev.filter((u) => u.student_id !== oldUser.student_id),
-            );
           }
         },
       )
@@ -505,7 +510,7 @@ export function AdminDashboardPage() {
         clearTimeout(highlightTimeoutRef.current);
       supabase.removeChannel(whitelistSubscription);
     };
-  }, [user]);
+  }, [user, queryClient]);
 
   // Staff moderation and VibeCheck data loading
   useEffect(() => {
@@ -1140,34 +1145,25 @@ export function AdminDashboardPage() {
     }
   };
 
-  // Handle Edit User Form Submit
+  // Handle Edit User Form Submit — uses SECURITY DEFINER RPC to prevent privilege escalation
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inspectUser) return;
+    if (!inspectUser || !user) return;
 
     try {
-      const { error } = await supabase
-        .from("users")
-        .update({
-          nickname: editNickname || null,
-          faculty: editFaculty || null,
-          major: editMajor || null,
-          role: editRole,
-          house_position: editHousePosition || null,
-        })
-        .eq("student_id", inspectUser.student_id);
-
-      if (error) throw error;
-
-      await logAuditAction(
-        "user_update",
-        inspectUser.student_id,
-        `Details edited: role=${editRole}, nickname="${editNickname}", faculty="${editFaculty}", major="${editMajor}", house_position="${editHousePosition}"`,
-      );
+      await updateUserProfileRpc.mutateAsync({
+        pinHash:       user.pin_hash || "",
+        targetId:      inspectUser.student_id,
+        newRole:       editRole,
+        nickname:      editNickname,
+        faculty:       editFaculty,
+        major:         editMajor,
+        housePosition: editHousePosition,
+      });
 
       toaster.create({
         title: "User Profile Updated!",
-        type: "success",
+        type:  "success",
       });
       setInspectUser(null);
       triggerRefresh();
@@ -1175,7 +1171,7 @@ export function AdminDashboardPage() {
       console.error(err);
       toaster.create({
         title: "Error updating user profile",
-        type: "error",
+        type:  "error",
       });
     }
   };
@@ -1467,64 +1463,6 @@ export function AdminDashboardPage() {
     }
   };
 
-  // ── Command Center: Inline Role Mutation ──
-  const handleInlineRoleChange = async (
-    studentId: string,
-    newRole: string,
-    oldRole: string,
-  ) => {
-    if (newRole === oldRole) return;
-
-    // Optimistic update
-    setWhitelistedUsers((prev) =>
-      prev.map((u) =>
-        u.student_id === studentId ? { ...u, role: newRole } : u,
-      ),
-    );
-
-    try {
-      const { error } = await supabase
-        .from("users")
-        .update({ role: newRole })
-        .eq("student_id", studentId);
-
-      if (error) throw error;
-
-      await logAuditAction(
-        "role_mutation",
-        studentId,
-        `Role changed: ${oldRole} → ${newRole}`,
-      );
-
-      setAuditLogs((prev) => [
-        {
-          id: Date.now(),
-          moderator_id: user?.student_id || "",
-          action_type: "role_mutation",
-          target_id: studentId,
-          details: `Role changed: ${oldRole} → ${newRole}`,
-          created_at: new Date().toISOString(),
-          users: { nickname: user?.nickname || null },
-        },
-        ...prev,
-      ]);
-
-      toaster.create({
-        title: "Role Updated",
-        description: `${studentId}: ${oldRole} → ${newRole}`,
-        type: "success",
-      });
-    } catch (err) {
-      console.error(err);
-      // Rollback
-      setWhitelistedUsers((prev) =>
-        prev.map((u) =>
-          u.student_id === studentId ? { ...u, role: oldRole } : u,
-        ),
-      );
-      toaster.create({ title: "Failed to update role", type: "error" });
-    }
-  };
 
   // Handle Event Config Update
   const handleUpdateEvent = async (e: React.FormEvent) => {
@@ -1719,6 +1657,15 @@ export function AdminDashboardPage() {
   const handleAddMission = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMissionTarget) return;
+    setNewMissionError("");
+
+    const sortedMissions = [...missions].sort((a, b) => a.sequence_order - b.sequence_order);
+    const lastMission = sortedMissions[sortedMissions.length - 1];
+
+    if (lastMission && lastMission.target_role === newMissionTarget && newMissionCount <= lastMission.required_count) {
+      setNewMissionError("Invalid Sequence: Cannot create consecutive missions with identical or lower card targets for the same role.");
+      return;
+    }
 
     try {
       const nextSeq =
@@ -1744,6 +1691,11 @@ export function AdminDashboardPage() {
       });
       setNewMissionTarget("");
       setNewMissionCount(1);
+      await queryClient.invalidateQueries({ queryKey: ["admin_missions"] });
+      await queryClient.invalidateQueries({ queryKey: ["active_missions"] });
+      await queryClient.invalidateQueries({ queryKey: ["live_chat"] });
+      await queryClient.invalidateQueries({ queryKey: ["vibe_deck"] });
+      await queryClient.invalidateQueries({ queryKey: ["vibe_status"] });
       await triggerRefresh();
       await broadcastConfigSync("vibe_quest_change", {});
     } catch (err) {
@@ -1764,48 +1716,23 @@ export function AdminDashboardPage() {
     )
       return;
     try {
-      // Find users active on this mission
-      const { data: activeUsers } = await supabase
-        .from("user_vibe_status")
-        .select("student_id")
-        .eq("current_mission_id", id);
-
-      // Delete the mission
-      const { error } = await supabase
-        .from("vibe_missions")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.rpc("admin_delete_mission_reorder", {
+        p_admin_id: user?.student_id,
+        p_mission_id: id,
+      });
 
       if (error) throw error;
 
-      // Orphaned sequence alignment fallback
-      const remaining = missions
-        .filter((m) => m.id !== id)
-        .sort((a, b) => a.sequence_order - b.sequence_order);
-      const nextMission =
-        remaining.find((m) => m.sequence_order >= seqOrder) ||
-        remaining[0] ||
-        null;
-
-      if (activeUsers && activeUsers.length > 0) {
-        for (const u of activeUsers) {
-          await supabase
-            .from("user_vibe_status")
-            .update({ current_mission_id: nextMission ? nextMission.id : null })
-            .eq("student_id", u.student_id);
-        }
-      }
-
-      await logAuditAction(
-        "mission_delete",
-        seqOrder.toString(),
-        `Deleted mission ${seqOrder}. Aligned active users to next sequence: ${nextMission ? nextMission.sequence_order : "none"}`,
-      );
       toaster.create({
         title: "Mission Removed!",
         description: "Active users progress re-aligned.",
         type: "success",
       });
+      await queryClient.invalidateQueries({ queryKey: ["admin_missions"] });
+      await queryClient.invalidateQueries({ queryKey: ["active_missions"] });
+      await queryClient.invalidateQueries({ queryKey: ["live_chat"] });
+      await queryClient.invalidateQueries({ queryKey: ["vibe_deck"] });
+      await queryClient.invalidateQueries({ queryKey: ["vibe_status"] });
       await triggerRefresh();
       await broadcastConfigSync("vibe_quest_change", {});
     } catch (err) {
@@ -2150,7 +2077,8 @@ export function AdminDashboardPage() {
                           as="span"
                           className="material-symbols-outlined"
                           fontSize="18px"
-                          style={{ marginRight: "8px", flexShrink: 0 }}
+                          mr="8px"
+                          flexShrink={0}
                         >
                           info
                         </Box>
@@ -2171,22 +2099,7 @@ export function AdminDashboardPage() {
                                   href={url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: "#78350f",
-                                    color: "#fef3c7",
-                                    marginLeft: "12px",
-                                    height: "20px",
-                                    paddingLeft: "8px",
-                                    paddingRight: "8px",
-                                    borderRadius: "6px",
-                                    fontSize: "xs",
-                                    fontWeight: "700",
-                                    textDecoration: "none",
-                                    opacity: 0.9,
-                                  }}
+                                  className="announcement-view-link"
                                 >
                                   View Link
                                 </a>
@@ -2365,12 +2278,6 @@ export function AdminDashboardPage() {
                           className="premium-ticker-container"
                           borderRadius="lg"
                           overflow="hidden"
-                          style={{
-                            WebkitMaskImage:
-                              "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                            maskImage:
-                              "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                          }}
                         >
                           <div className="premium-ticker-track">
                             <span className="premium-ticker-item">
@@ -2751,23 +2658,94 @@ export function AdminDashboardPage() {
                         Target Staff Category
                       </label>
                     </Box>
-                    <SearchableSelect
-                      value={newMissionTarget}
-                      onChange={(val) => setNewMissionTarget(val)}
-                      options={[
-                        ...Object.keys(staffCounts).map((k) => ({
-                          value: k,
-                          primaryText: `${k} (${staffCounts[k]} staff)`,
-                        })),
-                        { value: "โสต", primaryText: "Media & Audio", secondaryText: "โสต" },
-                        { value: "สันทนาการ", primaryText: "Recreation", secondaryText: "สันทนาการ" },
-                        { value: "พี่กลุ่ม", primaryText: "Group Leader", secondaryText: "พี่กลุ่ม" },
-                        { value: "staff", primaryText: "General Staff", secondaryText: "staff" },
-                        { value: "media_admin", primaryText: "Media Admin", secondaryText: "media_admin" },
-                      ]}
-                      placeholder="-- Choose Target --"
-                      searchPlaceholder="ค้นหาเป้าหมาย / Search target..."
-                    />
+                    <Combobox.Root
+                      collection={targetCollection}
+                      value={newMissionTarget ? [newMissionTarget] : []}
+                      onValueChange={(details) => {
+                        setNewMissionTarget(details.value[0] || "");
+                      }}
+                      onInputValueChange={(details) => {
+                        setNewMissionFilterQuery(details.inputValue);
+                      }}
+                      onOpenChange={(details) => {
+                        if (details.open) {
+                          setNewMissionFilterQuery("");
+                        }
+                      }}
+                      openOnClick
+                      positioning={{ sameWidth: true }}
+                      width="240px"
+                    >
+                      <Combobox.Control position="relative" width="100%">
+                        <Combobox.Input
+                          id="add-mission-target"
+                          placeholder="-- Choose Target --"
+                          borderRadius="xl"
+                          bg="white"
+                          h="38px"
+                          w="100%"
+                          border="1.5px solid var(--chakra-colors-border-default)"
+                          pl={3}
+                          pr="32px"
+                          fontSize="sm"
+                          _focus={{
+                            borderColor: "accent.solid",
+                            boxShadow: "0 0 0 2px var(--chakra-colors-accent-muted)",
+                          }}
+                        />
+                        <Combobox.Trigger
+                          position="absolute"
+                          right="8px"
+                          top="50%"
+                          transform="translateY(-50%)"
+                          zIndex="2"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          color="fg.muted"
+                          cursor="pointer"
+                          bg="transparent"
+                          border="none"
+                          p={1}
+                        >
+                          <FiChevronDown />
+                        </Combobox.Trigger>
+                      </Combobox.Control>
+                      <Portal>
+                        <Combobox.Positioner zIndex={4000}>
+                          <Combobox.Content
+                            bg="bg.surface"
+                            borderRadius="xl"
+                            border="1px solid"
+                            borderColor="border.subtle"
+                            boxShadow="md"
+                            maxH="280px"
+                            overflowY="auto"
+                            py={1}
+                          >
+                            <Combobox.Empty fontSize="sm" p={3} textAlign="center" color="fg.muted">
+                              No results found
+                            </Combobox.Empty>
+                            {targetCollection.items.map((item) => (
+                              <Combobox.Item
+                                key={item.value}
+                                item={item}
+                                cursor="pointer"
+                                px={3}
+                                py={2}
+                                fontSize="sm"
+                                transition="background 0.2s"
+                                _hover={{ bg: "rgba(73, 98, 104, 0.08)" }}
+                                _selected={{ bg: "accent.solid", color: "white" }}
+                              >
+                                {item.label}
+                                <Combobox.ItemIndicator />
+                              </Combobox.Item>
+                            ))}
+                          </Combobox.Content>
+                        </Combobox.Positioner>
+                      </Portal>
+                    </Combobox.Root>
                   </VStack>
                   <VStack align="start" gap={1}>
                     <Text fontSize="xs" fontWeight="700" color="fg.muted">
@@ -2776,11 +2754,12 @@ export function AdminDashboardPage() {
                     <Input
                       type="number"
                       min={1}
-                      max={20}
+                      max={maxAvailableCount}
                       value={newMissionCount}
-                      onChange={(e) =>
-                        setNewMissionCount(parseInt(e.target.value) || 1)
-                      }
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        setNewMissionCount(Math.min(val, maxAvailableCount));
+                      }}
                       h="38px"
                       bg="white"
                       borderRadius="lg"
@@ -2802,6 +2781,12 @@ export function AdminDashboardPage() {
                     Append Quest
                   </Button>
                 </Flex>
+
+                {newMissionError && (
+                  <Text color="red.600" fontSize="xs" fontWeight="600" mt={2}>
+                    {newMissionError}
+                  </Text>
+                )}
 
                 {/* Penalty Lockout Variable Inputs */}
                 <VStack
@@ -2918,7 +2903,6 @@ export function AdminDashboardPage() {
             isAllSelected={isAllSelected}
             handleSelectAll={handleSelectAll}
             handleSelectUser={handleSelectUser}
-            handleInlineRoleChange={handleInlineRoleChange}
             handleInspectUser={handleInspectUser}
             setUserToDelete={setUserToDelete}
             handleAddWhitelist={handleAddWhitelist}
@@ -3623,12 +3607,13 @@ export function AdminDashboardPage() {
           onOpenChange={(e) => setShowCsvModal(e.open)}
           placement={{ base: "bottom", md: "center" }}
         >
-          <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
-            backdropFilter="blur(4px)"
-          />
-          <Dialog.Positioner zIndex={1000} px={4}>
-            <Dialog.Content
+          <Portal>
+            <Dialog.Backdrop
+              bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
+              backdropFilter="blur(4px)"
+            />
+            <Dialog.Positioner zIndex={1000} px={4}>
+              <Dialog.Content
               bg="bg.canvas"
               border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
               color="fg.default"
@@ -3788,7 +3773,8 @@ export function AdminDashboardPage() {
                 </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
-          </Dialog.Positioner>
+            </Dialog.Positioner>
+          </Portal>
         </Dialog.Root>
       )}
 
@@ -3796,6 +3782,7 @@ export function AdminDashboardPage() {
       <UserInspectModal
         inspectUser={inspectUser}
         onClose={() => setInspectUser(null)}
+        onRefreshStats={() => inspectUser && handleInspectUser(inspectUser)}
         inspectUserStats={inspectUserStats}
         inspectUserLogs={inspectUserLogs}
         editNickname={editNickname}
@@ -3810,6 +3797,7 @@ export function AdminDashboardPage() {
         setEditRole={setEditRole}
         handleEditUser={handleEditUser}
         getRoleDescription={getRoleDescription}
+        dynamicPositions={dynamicPositions}
       />
 
       {/* Whitelist Remove Confirmation Dialog */}
@@ -3820,12 +3808,13 @@ export function AdminDashboardPage() {
           role="alertdialog"
           placement={{ base: "bottom", md: "center" }}
         >
-          <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
-            backdropFilter="blur(4px)"
-          />
-          <Dialog.Positioner zIndex={2200} px={4}>
-            <Dialog.Content
+          <Portal>
+            <Dialog.Backdrop
+              bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
+              backdropFilter="blur(4px)"
+            />
+            <Dialog.Positioner zIndex={2200} px={4}>
+              <Dialog.Content
               bg="bg.canvas"
               border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
               color="fg.default"
@@ -3938,7 +3927,8 @@ export function AdminDashboardPage() {
                 </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
-          </Dialog.Positioner>
+            </Dialog.Positioner>
+          </Portal>
         </Dialog.Root>
       )}
 
@@ -4001,12 +3991,13 @@ export function AdminDashboardPage() {
           role="alertdialog"
           placement={{ base: "bottom", md: "center" }}
         >
-          <Dialog.Backdrop
-            bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
-            backdropFilter="blur(4px)"
-          />
-          <Dialog.Positioner zIndex={2200} px={4}>
-            <Dialog.Content
+          <Portal>
+            <Dialog.Backdrop
+              bg="color-mix(in srgb, var(--chakra-colors-fg-default) 70%, transparent)"
+              backdropFilter="blur(4px)"
+            />
+            <Dialog.Positioner zIndex={2200} px={4}>
+              <Dialog.Content
               bg="bg.canvas"
               border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
               color="fg.default"
@@ -4124,7 +4115,8 @@ export function AdminDashboardPage() {
                 </Button>
               </Dialog.CloseTrigger>
             </Dialog.Content>
-          </Dialog.Positioner>
+            </Dialog.Positioner>
+          </Portal>
         </Dialog.Root>
       )}
     </Box>

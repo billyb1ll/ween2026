@@ -200,6 +200,7 @@ export interface PersonUpdateDto {
 // ── Search ──────────────────────────────────────────────────
 
 export interface MetadataSearchDto {
+  albumIds?: string[];
   type?: AssetType;
   isArchived?: boolean;
   isFavorite?: boolean;
