@@ -16,7 +16,7 @@ import {
   Switch,
   Portal,
 } from "@chakra-ui/react";
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser, type User } from "../context/UserContext";
 import { motion, useReducedMotion } from "framer-motion";
@@ -26,6 +26,7 @@ import {
   type BoardTab,
 } from "../hooks/useBoardRealtime";
 import { useLiveChat, type ChatMessage } from "../hooks/useLiveChat";
+import { useModeratorDeleteMessage, useModeratorBanUser } from "../hooks/useBoardQueries";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
@@ -357,14 +358,19 @@ const LiveChatBubble = memo(function LiveChatBubble({
   isStaff,
   isMe,
   onDelete,
+  onModeratorDeleteClick,
+  onModeratorBanClick,
   onInspectUser,
 }: {
   message: ChatMessage;
   isStaff: boolean;
   isMe: boolean;
   onDelete: (id: string) => Promise<void>;
+  onModeratorDeleteClick?: (id: string) => void;
+  onModeratorBanClick?: (userId: string) => void;
   onInspectUser: (userId: string) => void;
 }) {
+  if (message.is_deleted && !isStaff) return null;
   const badge = ROLE_BADGE_MAP[message.sender_role];
   const isSenderStaff = message.sender_role !== "student";
   const prefix = isSenderStaff ? "P' " : "";
@@ -459,71 +465,143 @@ const LiveChatBubble = memo(function LiveChatBubble({
             >
               {formatChatTime(message.timestamp)}
             </Text>
-            {isStaff && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="2xs"
-                p={0}
-                h={4}
-                w={4}
-                minW={4}
-                borderRadius="full"
-                color="fg.subtle"
-                opacity={0}
-                _groupHover={{ opacity: 1 }}
-                _hover={{ color: "red.500", bg: "red.50" }}
-                cursor="pointer"
-                onClick={() => {
-                  if (window.confirm("Delete this message?")) {
-                    onDelete(message.id);
-                  }
-                }}
-                aria-label="Delete message"
+            {isStaff && !message.is_deleted && (
+              <Flex
+                gap={1}
+                align="center"
               >
-                <Box className="material-symbols-outlined" fontSize="3xs">
-                  close
-                </Box>
-              </Button>
+                {isMe ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="2xs"
+                    p={0}
+                    h={5}
+                    w={5}
+                    minW={5}
+                    borderRadius="full"
+                    color="fg.subtle"
+                    _hover={{ color: "red.500", bg: "red.50" }}
+                    cursor="pointer"
+                    onClick={() => onDelete(message.id)}
+                    aria-label="Delete message"
+                    title="ลบข้อความของคุณ"
+                  >
+                    <Box className="material-symbols-outlined" fontSize="sm">
+                      close
+                    </Box>
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="2xs"
+                      p={0}
+                      h={5}
+                      w={5}
+                      minW={5}
+                      borderRadius="full"
+                      color="fg.subtle"
+                      _hover={{ color: "red.500", bg: "red.50" }}
+                      cursor="pointer"
+                      onClick={() => onModeratorDeleteClick?.(message.id)}
+                      aria-label="Moderator delete message"
+                      title="ลบข้อความนี้"
+                    >
+                      <Box className="material-symbols-outlined" fontSize="sm">
+                        delete
+                      </Box>
+                    </Button>
+                    {!isSenderStaff && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="2xs"
+                        p={0}
+                        h={5}
+                        w={5}
+                        minW={5}
+                        borderRadius="full"
+                        color="fg.subtle"
+                        _hover={{ color: "orange.500", bg: "orange.50" }}
+                        cursor="pointer"
+                        onClick={() => onModeratorBanClick?.(message.sender_id)}
+                        aria-label="Ban user"
+                        title="แบนผู้ใช้นี้"
+                      >
+                        <Box className="material-symbols-outlined" fontSize="sm">
+                          block
+                        </Box>
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Flex>
             )}
           </Flex>
 
           {/* Chat Bubble Wrapper */}
-          <Box
-            bg={
-              isMe
-                ? "accent.solid"
-                : isSenderStaff
-                  ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 6%, var(--chakra-colors-white))"
-                  : "bg.muted"
-            }
-            color={isMe ? "white" : "fg.default"}
-            border={isMe ? "none" : "1px solid"}
-            borderColor={
-              isMe
-                ? undefined
-                : isSenderStaff
-                  ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
-                  : "border.subtle"
-            }
-            px={{ base: 3.5, md: 4 }}
-            py={{ base: 2, md: 2.5 }}
-            borderRadius="xl"
-            borderBottomRightRadius={isMe ? "none" : "xl"}
-            borderBottomLeftRadius={isMe ? "xl" : "none"}
-            boxShadow="sm"
-            maxW={{ base: "85%", md: "70%" }}
-            alignSelf={isMe ? "flex-end" : "flex-start"}
-          >
-            <Text
-              fontSize={{ base: "md", md: "15px" }}
-              lineHeight="1.5"
-              whiteSpace="pre-wrap"
-              wordBreak="break-word"
+          {message.is_deleted ? (
+            <Box
+              bg="bg.muted"
+              color="fg.subtle"
+              border="1px solid"
+              borderColor="border.subtle"
+              px={{ base: 3.5, md: 4 }}
+              py={{ base: 2, md: 2.5 }}
+              borderRadius="xl"
+              borderBottomRightRadius={isMe ? "none" : "xl"}
+              borderBottomLeftRadius={isMe ? "xl" : "none"}
+              maxW={{ base: "85%", md: "70%" }}
+              alignSelf={isMe ? "flex-end" : "flex-start"}
+              opacity={0.6}
             >
-              {message.content}
-            </Text>
-          </Box>
+              <Text
+                fontSize={{ base: "sm", md: "14px" }}
+                lineHeight="1.5"
+                fontStyle="italic"
+              >
+                ข้อความนี้ถูกลบโดยสตาฟ
+              </Text>
+            </Box>
+          ) : (
+            <Box
+              bg={
+                isMe
+                  ? "accent.solid"
+                  : isSenderStaff
+                    ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 6%, var(--chakra-colors-white))"
+                    : "bg.muted"
+              }
+              color={isMe ? "white" : "fg.default"}
+              border={isMe ? "none" : "1px solid"}
+              borderColor={
+                isMe
+                  ? undefined
+                  : isSenderStaff
+                    ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
+                    : "border.subtle"
+              }
+              px={{ base: 3.5, md: 4 }}
+              py={{ base: 2, md: 2.5 }}
+              borderRadius="xl"
+              borderBottomRightRadius={isMe ? "none" : "xl"}
+              borderBottomLeftRadius={isMe ? "xl" : "none"}
+              boxShadow="sm"
+              maxW={{ base: "85%", md: "70%" }}
+              alignSelf={isMe ? "flex-end" : "flex-start"}
+            >
+              <Text
+                fontSize={{ base: "md", md: "15px" }}
+                lineHeight="1.5"
+                whiteSpace="pre-wrap"
+                wordBreak="break-word"
+              >
+                {message.content}
+              </Text>
+            </Box>
+          )}
         </VStack>
       </Flex>
     </Box>
@@ -533,7 +611,7 @@ const LiveChatBubble = memo(function LiveChatBubble({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function BoardPage() {
-  const { user, loading } = useUser();
+  const { user, loading, getAdminPin } = useUser();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<BoardTab>("hype");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -551,11 +629,19 @@ export function BoardPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [chatInput, setChatInput] = useState("");
+  const [isChatAtBottom, setIsChatAtBottom] = useState(true);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [activeColor, setActiveColor] = useState<
     "yellow" | "pink" | "blue" | "green"
   >("yellow");
+
+  // Moderation state
+  const [moderatorDeleteId, setModeratorDeleteId] = useState<string | null>(null);
+  const [moderatorBanUserId, setModeratorBanUserId] = useState<string | null>(null);
+  const [banReason, setBanReason] = useState("");
+  const moderatorDeleteMutation = useModeratorDeleteMessage(activeTab);
+  const moderatorBanMutation = useModeratorBanUser();
 
   const insertMarkupTag = (tagType: "h" | "u" | "c" | "s") => {
     const textarea = textareaRef.current;
@@ -769,7 +855,7 @@ export function BoardPage() {
     handleCreatePost,
     handleLikePost,
     handleDeletePost,
-  } = useBoardRealtime("memory", user);
+  } = useBoardRealtime("memory", user, getAdminPin());
 
   // Live chat — new hook (only active when on hype tab)
   const {
@@ -777,22 +863,29 @@ export function BoardPage() {
     loading: chatLoading,
     sending: chatSending,
     onlineCount: chatOnlineCount,
+    isMaxCapacity,
     sendMessage,
     deleteMessage,
-  } = useLiveChat("hype", user);
+  } = useLiveChat("hype", user, getAdminPin());
+
+  const isStaff = user?.role === "moderator" || user?.role === "staff";
+
+  const visibleChatMessages = useMemo(() => {
+    return chatMessages.filter((msg) => isStaff || !msg.is_deleted);
+  }, [chatMessages, isStaff]);
 
   // Auto-scroll snapping for inbound messages
   useEffect(() => {
-    if (chatMessages.length > 0 && virtuosoRef.current) {
+    if (visibleChatMessages.length > 0 && virtuosoRef.current) {
       const timer = setTimeout(() => {
         virtuosoRef.current?.scrollToIndex({
-          index: chatMessages.length - 1,
+          index: visibleChatMessages.length - 1,
           behavior: "smooth",
         });
       }, 30);
       return () => clearTimeout(timer);
     }
-  }, [chatMessages.length]);
+  }, [visibleChatMessages.length]);
 
   useEffect(() => {
     const presenceChannel: RealtimeChannel = supabase.channel(
@@ -841,10 +934,7 @@ export function BoardPage() {
     }
   }, [loading, user, navigate]);
 
-  const isStaff =
-    user?.role === "staff" ||
-    user?.role === "moderator" ||
-    user?.role === "media_admin";
+
   const isCooldownActive =
     !isStaff && hypeBoardMode === "slow_3s" && cooldownRemaining > 0;
   const effectiveHypeActive = hypeActive || isStaff;
@@ -1206,12 +1296,12 @@ export function BoardPage() {
           </Flex>
 
           {/* Chat Message List — Virtualized */}
-          <Box flex={1} overflow="hidden">
+          <Box flex={1} overflow="hidden" position="relative">
             {chatLoading ? (
               <Flex justify="center" align="center" h="100%">
                 <Spinner size="lg" color="brand.solid" />
               </Flex>
-            ) : chatMessages.length === 0 ? (
+            ) : visibleChatMessages.length === 0 ? (
               <Flex justify="center" align="center" h="100%" p={6}>
                 <VStack gap={2}>
                   <Box
@@ -1227,28 +1317,63 @@ export function BoardPage() {
                 </VStack>
               </Flex>
             ) : (
-              <Virtuoso
-                ref={virtuosoRef}
-                data={chatMessages}
-                className="live-chat-scroll"
-                followOutput={(isAtBottom) =>
-                  isAtBottom ? "smooth" : "smooth"
-                }
-                initialTopMostItemIndex={Math.max(0, chatMessages.length - 1)}
+              <>
+                <Virtuoso
+                  ref={virtuosoRef}
+                  data={visibleChatMessages}
+                  className="live-chat-scroll"
+                  followOutput={(isAtBottom) =>
+                    isAtBottom ? "smooth" : false
+                  }
+                  atBottomThreshold={100}
+                  atBottomStateChange={(bottom) => setIsChatAtBottom(bottom)}
+                initialTopMostItemIndex={Math.max(0, visibleChatMessages.length - 1)}
                 itemContent={(_index, msg) => (
                   <LiveChatBubble
                     key={msg.id}
                     message={msg}
-                    isStaff={
-                      user?.role !== "student" && user?.role !== undefined
-                    }
+                    isStaff={isStaff}
                     isMe={msg.sender_id === user?.student_id}
                     onDelete={deleteMessage}
+                    onModeratorDeleteClick={setModeratorDeleteId}
+                    onModeratorBanClick={setModeratorBanUserId}
                     onInspectUser={handleInspectUser}
                   />
                 )}
               />
-            )}
+              {/* Jump to bottom button */}
+              {!isChatAtBottom && (
+                <Button
+                  position="absolute"
+                  bottom="4"
+                  left="50%"
+                  transform="translateX(-50%)"
+                  borderRadius="full"
+                  size="sm"
+                  shadow="lg"
+                  bg="var(--c-ivory)"
+                  color="var(--c-chocolate)"
+                  borderColor="var(--c-chocolate)"
+                  borderWidth="1px"
+                  onClick={() =>
+                    virtuosoRef.current?.scrollToIndex({
+                      index: visibleChatMessages.length - 1,
+                      behavior: "smooth",
+                    })
+                  }
+                  px={4}
+                  py={2}
+                  _hover={{ bg: "var(--c-lagoon)", color: "white" }}
+                  zIndex="10"
+                >
+                  <Box className="material-symbols-outlined" fontSize="sm" mr={1}>
+                    arrow_downward
+                  </Box>
+                  Jump to latest
+                </Button>
+              )}
+            </>
+          )}
           </Box>
 
           {/* Chat Composer */}
@@ -1304,6 +1429,29 @@ export function BoardPage() {
                 </Flex>
               )}
 
+              {/* Max Capacity Warning Overlay */}
+              {isMaxCapacity && (
+                <Flex
+                  position="absolute"
+                  inset={0}
+                  bg="rgba(252, 249, 248, 0.85)"
+                  backdropFilter="blur(2px)"
+                  align="center"
+                  justify="center"
+                  zIndex={10}
+                  px={4}
+                >
+                  <Text
+                    color="fg.muted"
+                    fontWeight="600"
+                    fontSize="sm"
+                    textAlign="center"
+                  >
+                    Chat room is currently at maximum safe capacity. Messaging is temporarily optimized for stability.
+                  </Text>
+                </Flex>
+              )}
+
               <Flex gap={3} align="center">
                 {user ? (
                   <Box
@@ -1348,7 +1496,8 @@ export function BoardPage() {
                       !chatInput.trim() ||
                       chatSending ||
                       isCooldownActive ||
-                      (globalMuteActive && !isStaff)
+                      (globalMuteActive && !isStaff) ||
+                      isMaxCapacity
                     )
                       return;
                     const textToSend = chatInput.trim();
@@ -1392,7 +1541,8 @@ export function BoardPage() {
                         !user ||
                         chatSending ||
                         isCooldownActive ||
-                        (globalMuteActive && !isStaff)
+                        (globalMuteActive && !isStaff) ||
+                        isMaxCapacity
                       }
                       maxLength={200}
                       h="40px"
@@ -1437,7 +1587,8 @@ export function BoardPage() {
                       !chatInput.trim() ||
                       chatSending ||
                       isCooldownActive ||
-                      (globalMuteActive && !isStaff)
+                      (globalMuteActive && !isStaff) ||
+                      isMaxCapacity
                     }
                     loading={chatSending}
                     _hover={{
@@ -1570,7 +1721,7 @@ export function BoardPage() {
             <>
               {/* Subtle staff-only indicator banner */}
               {!isMemoryBoardActive &&
-                (user?.role === "staff" || user?.role === "media_admin") && (
+                (user?.role === "staff" || user?.role === "moderator") && (
                   <Box
                     bg="orange.50"
                     border="1px solid"
@@ -1891,7 +2042,7 @@ export function BoardPage() {
                           value={newPostText}
                           onChange={(e) => setNewPostText(e.target.value)}
                           disabled={!user || submitting}
-                          maxLength={150}
+                          maxLength={500}
                           resize="none"
                           fontSize={{ base: "sm", md: "md" }}
                           color="fg.default"
@@ -2089,7 +2240,7 @@ export function BoardPage() {
                                 color="fg.subtle"
                                 fontWeight="600"
                               >
-                                {newPostText.length} / 150
+                                {newPostText.length} / 500
                               </Text>
                             )}
                             <Button
@@ -2391,6 +2542,103 @@ export function BoardPage() {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+
+      {/* Moderation Delete Confirm Modal */}
+      <Dialog.Root
+        open={!!moderatorDeleteId}
+        onOpenChange={(details) => {
+          if (!details.open) setModeratorDeleteId(null);
+        }}
+      >
+        <Portal>
+          <Dialog.Positioner>
+            <Dialog.Content bg="bg.surface" borderRadius="2xl" p={6}>
+              <Heading size="md" mb={4}>ยืนยันการลบข้อความ</Heading>
+              <Text mb={6} color="fg.subtle">
+                คุณแน่ใจหรือไม่ว่าต้องการลบข้อความนี้? (การลบจะเป็นแบบซ่อนข้อความสำหรับนักศึกษาทั่วไป แต่สตาฟจะยังเห็นประวัติการลบ)
+              </Text>
+              <Flex gap={3} justify="flex-end">
+                <Button variant="ghost" onClick={() => setModeratorDeleteId(null)}>
+                  ยกเลิก
+                </Button>
+                <Button
+                  colorPalette="red"
+                  loading={moderatorDeleteMutation.isPending}
+                  onClick={async () => {
+                    if (moderatorDeleteId && user) {
+                      await moderatorDeleteMutation.mutateAsync({
+                        messageId: moderatorDeleteId,
+                        staffId: user.student_id,
+                        pinHash: getAdminPin(),
+                      });
+                      setModeratorDeleteId(null);
+                      toaster.create({ title: "ลบข้อความสำเร็จ", type: "success" });
+                    }
+                  }}
+                >
+                  ยืนยันลบ
+                </Button>
+              </Flex>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
+
+      {/* Moderation Ban Confirm Modal */}
+      <Dialog.Root
+        open={!!moderatorBanUserId}
+        onOpenChange={(details) => {
+          if (!details.open) {
+            setModeratorBanUserId(null);
+            setBanReason("");
+          }
+        }}
+      >
+        <Portal>
+          <Dialog.Positioner>
+            <Dialog.Content bg="bg.surface" borderRadius="2xl" p={6}>
+              <Heading size="md" mb={4}>แบนผู้ใช้งาน</Heading>
+              <Text mb={4} color="fg.subtle">
+                คุณแน่ใจหรือไม่ว่าต้องการแบนผู้ใช้นี้? ผู้ใช้จะไม่สามารถส่งข้อความได้อีก กรุณาระบุเหตุผล:
+              </Text>
+              <Input
+                placeholder="เหตุผลการแบน..."
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                mb={6}
+              />
+              <Flex gap={3} justify="flex-end">
+                <Button variant="ghost" onClick={() => {
+                  setModeratorBanUserId(null);
+                  setBanReason("");
+                }}>
+                  ยกเลิก
+                </Button>
+                <Button
+                  colorPalette="orange"
+                  loading={moderatorBanMutation.isPending}
+                  disabled={!banReason.trim()}
+                  onClick={async () => {
+                    if (moderatorBanUserId && user) {
+                      await moderatorBanMutation.mutateAsync({
+                        targetUserId: moderatorBanUserId,
+                        reason: banReason,
+                        staffId: user.student_id,
+                        pinHash: getAdminPin(),
+                      });
+                      setModeratorBanUserId(null);
+                      setBanReason("");
+                      toaster.create({ title: "แบนผู้ใช้งานสำเร็จ", type: "success" });
+                    }
+                  }}
+                >
+                  ยืนยันแบน
+                </Button>
+              </Flex>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </Box>
   );
 }
@@ -2523,7 +2771,7 @@ function CommentSection({
   avatarSize = "28px",
   avatarFontSize = "2xs",
 }: CommentSectionProps) {
-  const { user } = useUser();
+  const { user, getAdminPin } = useUser();
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
@@ -2648,7 +2896,7 @@ function CommentSection({
       const { error } = await supabase.rpc("delete_comment_secure", {
         p_comment_id: commentId,
         p_student_id: user.student_id,
-        p_pin_hash: user.pin_hash || "",
+        p_pin_hash: getAdminPin(),
       });
       if (error) throw error;
       setComments((prev) => prev.filter((c) => c.id !== commentId));
@@ -2724,7 +2972,7 @@ function CommentSection({
                           ? "red"
                           : comment.author?.role === "staff"
                             ? "orange"
-                            : comment.author?.role === "media_admin"
+                            : comment.author?.role === "moderator"
                               ? "blue"
                               : "gray"
                       }
@@ -3265,7 +3513,10 @@ const MemoryCard = memo(function MemoryCard({
       />
       {isWide && post.image_url ? (
         <Flex
-          flexDirection={{ base: "column", md: "row" }}
+          flexDirection={{
+            base: "column",
+            md: index % 2 === 0 ? "row" : "row-reverse",
+          }}
           gap={4}
           flex={1}
           h="100%"

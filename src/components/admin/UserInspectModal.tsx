@@ -85,7 +85,7 @@ export function UserInspectModal({
   getRoleDescription,
   dynamicPositions,
 }: UserInspectModalProps) {
-  const { user } = useUser();
+  const { user, getAdminPin } = useUser();
   const resetVibecheckMutation = useResetVibecheckMutation(user?.student_id || "");
   const setMissionMutation = useSetMissionMutation(user?.student_id || "");
   const { data: missions } = useAdminMissions(user?.role === "moderator");
@@ -93,12 +93,12 @@ export function UserInspectModal({
   const [selectedMission, setSelectedMission] = React.useState<string>("");
 
   const handleResetVibecheck = async () => {
-    if (!inspectUser || !user || !['moderator', 'media_admin'].includes(user.role)) return;
+    if (!inspectUser || !user || user.role !== 'moderator') return;
     if (confirm(`Are you sure you want to completely wipe the VibeCheck progress for ${inspectUser.nickname || inspectUser.student_id}? This cannot be undone.`)) {
       try {
         await resetVibecheckMutation.mutateAsync({
           targetId: inspectUser.student_id,
-          pinHash:  user.pin_hash || "",
+          pinHash: getAdminPin(),
         });
         toaster.create({ title: "VibeCheck progress reset successfully.", type: "success" });
         onRefreshStats?.();
@@ -110,13 +110,13 @@ export function UserInspectModal({
   };
 
   const handleSetMission = async () => {
-    if (!inspectUser || !user || !['moderator', 'media_admin'].includes(user.role) || !selectedMission) return;
+    if (!inspectUser || !user || user.role !== 'moderator' || !selectedMission) return;
     if (confirm(`Change active mission to ID ${selectedMission}?`)) {
       try {
         await setMissionMutation.mutateAsync({
           targetId:  inspectUser.student_id,
           missionId: Number(selectedMission),
-          pinHash:   user.pin_hash || "",
+          pinHash: getAdminPin(),
         });
         toaster.create({ title: "Mission updated successfully.", type: "success" });
         setSelectedMission("");
@@ -226,10 +226,8 @@ export function UserInspectModal({
                         inspectUser.role === "moderator"
                           ? "red"
                           : inspectUser.role === "staff"
-                            ? "teal"
-                            : inspectUser.role === "media_admin"
-                              ? "orange"
-                              : "gray"
+                            ? "orange"
+                            : "gray"
                       }
                     >
                       {inspectUser.role}
@@ -629,7 +627,7 @@ export function UserInspectModal({
                       >
                         <option value="student">Student</option>
                         <option value="staff">Staff</option>
-                        <option value="media_admin">Media Admin</option>
+
                         <option value="moderator">Moderator</option>
                       </NativeSelect.Field>
                       <NativeSelect.Indicator />

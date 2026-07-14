@@ -49,7 +49,7 @@ function mapPost(p: any): DBPost {
 
 // Map database chat message row to ChatMessage type
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapDbRow(row: any): ChatMessage {
+export function mapDbRow(row: any): ChatMessage {
   return {
     id: String(row.id),
     content: row.content,
@@ -59,6 +59,7 @@ function mapDbRow(row: any): ChatMessage {
     sender_role: row.sender?.role ?? "student",
     sender_profile_pic_url: row.sender?.profile_pic_url ?? null,
     timestamp: row.created_at,
+    is_deleted: row.is_deleted ?? false,
   };
 }
 
@@ -117,7 +118,11 @@ export function useBoardPosts(activeTab: BoardTab) {
  * Fetch live chat message list logs.
  * Sets up a PostgreSQL subscription to automatically invalidate the query on insert.
  */
-export function useLiveChatMessages(activeTab: BoardTab, userId: string | undefined) {
+export function useLiveChatMessages(
+  activeTab: BoardTab,
+  userId: string | undefined,
+  pollInterval: number | false = 25000
+) {
   return useQuery<ChatMessage[]>({
     queryKey: boardQueryKeys.chat(activeTab),
     queryFn: async () => {
@@ -139,7 +144,7 @@ export function useLiveChatMessages(activeTab: BoardTab, userId: string | undefi
       return (data ?? []).map(mapDbRow).reverse();
     },
     enabled: !!userId,
-    refetchInterval: 25000, // Conservative background polling for 250+ scaling
+    refetchInterval: pollInterval,
   });
 }
 
@@ -352,6 +357,48 @@ export function useDeleteChatTextMutation(activeTab: BoardTab) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: boardQueryKeys.chat(activeTab) });
+    },
+  });
+}
+
+/**
+ * Mutation to moderate (soft delete) a chat message.
+ */
+export function useModeratorDeleteMessage(activeTab: BoardTab) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, staffId, pinHash }: { messageId: string; staffId: string; pinHash: string }) => {
+      const { error } = await supabase.rpc("moderation_delete_message", {
+        p_message_id: messageId,
+        p_staff_id: staffId,
+        p_pin_hash: pinHash,
+      });
+
+      if (error) throw error;
+      return messageId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.chat(activeTab) });
+    },
+  });
+}
+
+/**
+ * Mutation to ban a user from live chat.
+ */
+export function useModeratorBanUser() {
+  return useMutation({
+    mutationFn: async ({ targetUserId, reason, staffId, pinHash }: { targetUserId: string; reason: string; staffId: string; pinHash: string }) => {
+      const { error } = await supabase.rpc("moderation_ban_user", {
+        p_target_user_id: targetUserId,
+        p_reason: reason,
+        p_staff_id: staffId,
+        p_pin_hash: pinHash,
+      });
+
+      if (error) throw error;
+      return targetUserId;
     },
   });
 }

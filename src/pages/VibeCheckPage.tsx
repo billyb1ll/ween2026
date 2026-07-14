@@ -317,7 +317,7 @@ const ProfileCardView = ({ profile }: { profile: StaffProfile }) => (
 );
 
 export function VibeCheckPage() {
-  const { user, loading: authLoading } = useUser();
+  const { user, loading: authLoading, getAdminPin } = useUser();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -468,7 +468,7 @@ export function VibeCheckPage() {
     if (!loading && !vibecheckEnabled) {
       if (user?.role === "student") {
         navigate("/", { replace: true });
-      } else if (user && ["staff", "media_admin", "moderator"].includes(user.role)) {
+      } else if (user && ["staff", "moderator"].includes(user.role)) {
         toaster.create({
           title: "ระบบ Vibe Check ถูกปิดใช้งานชั่วคราว",
           type: "warning",
@@ -495,7 +495,7 @@ export function VibeCheckPage() {
         const data = await swipeCardMutation.mutateAsync({
           staffId: activeStaffId,
           direction,
-          pinHash: user.pin_hash || "",
+          pinHash: getAdminPin(),
         });
 
         if (data.status === "collected" || data.status === "skipped" || data.status === "mission_cleared") {
@@ -541,7 +541,7 @@ export function VibeCheckPage() {
       x.stop();
       x.set(0);
     },
-    [deck, currentIndex, user, currentMission, x, swipeCardMutation, queryClient]
+    [deck, currentIndex, user, currentMission, x, swipeCardMutation, queryClient, getAdminPin]
   );
 
   const handleSwipeAction = useCallback(

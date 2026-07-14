@@ -217,9 +217,8 @@ export function WhitelistTable({
                 onChange={(val) => setNewRole(val)}
                 options={[
                   { value: "student", primaryText: "Student (Freshman)", badge: "STUDENT" },
-                  { value: "staff", primaryText: "Staff (Orientation Staff)", badge: "STAFF" },
-                  { value: "media_admin", primaryText: "Media Admin (AV Control)", badge: "MEDIA" },
-                  { value: "moderator", primaryText: "Moderator", badge: "MOD" },
+                  { value: "staff", primaryText: "Staff (General Ops)", badge: "STAFF" },
+                  { value: "moderator", primaryText: "Moderator (Full Access)", badge: "MOD" },
                 ]}
                 placeholder="Select Role..."
                 searchPlaceholder="พิมพ์ค้นหาบทบาท / Type to search..."

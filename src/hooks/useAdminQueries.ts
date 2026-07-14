@@ -5,7 +5,7 @@ export interface DBUser {
   student_id: string;
   nickname: string | null;
   faculty: string | null;
-  role: "moderator" | "media_admin" | "staff" | "student";
+  role: "moderator" | "staff" | "student";
   created_at: string;
   major: string | null;
   house_position: string | null;
@@ -171,53 +171,6 @@ export function useLogAuditActionMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.auditLogs() });
-    },
-  });
-}
-
-/**
- * Mutation to update user details (role config, nickname, etc.).
- */
-export function useUpdateUserAdminMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      studentId,
-      nickname,
-      faculty,
-      major,
-      role,
-      housePosition,
-    }: {
-      studentId: string;
-      nickname: string | null;
-      faculty: string | null;
-      major: string | null;
-      role: string;
-      housePosition: string | null;
-    }) => {
-      const { data, error } = await supabase
-        .from("users")
-        .update({
-          nickname,
-          faculty,
-          major,
-          role,
-          house_position: housePosition,
-        })
-        .eq("student_id", studentId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Update user admin error:", error);
-        throw error;
-      }
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.users() });
     },
   });
 }
@@ -419,6 +372,63 @@ export function useDeleteMissionReorderMutation(adminId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.missions() });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.auditLogs() });
+    },
+  });
+}
+
+/**
+ * Fetch all banned users for moderation
+ */
+export function useAdminBannedUsers() {
+  return useQuery({
+    queryKey: ["admin_banned_users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("banned_users")
+        .select(`
+          target_user_id,
+          reason,
+          created_at,
+          staff_id
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Fetch banned users error:", error);
+        throw error;
+      }
+      return data || [];
+    },
+  });
+}
+
+/**
+ * Mutation to unban a user
+ */
+export function useUnbanUserMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      targetUserId,
+      staffId,
+      pinHash,
+    }: {
+      targetUserId: string;
+      staffId: string;
+      pinHash: string;
+    }) => {
+      const { error } = await supabase.rpc("moderation_unban_user", {
+        p_target_user_id: targetUserId,
+        p_staff_id: staffId,
+        p_pin_hash: pinHash,
+      });
+
+      if (error) throw error;
+      return targetUserId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin_banned_users"] });
     },
   });
 }

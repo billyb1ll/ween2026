@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Box,
   Button,
@@ -17,6 +18,7 @@ import { toaster } from "../components/ui/toaster";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, checkStudentId, login, registerPin, loading } = useUser();
 
   const userRef = useRef(user);
@@ -161,7 +163,25 @@ export function LoginPage() {
     }
 
     setSubmitting(true);
-    const success = await registerPin(studentId.trim(), pin);
+    let success = false;
+    try {
+      success = await registerPin(studentId.trim(), pin);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message?.includes("PROFILE_ALREADY_CLAIMED")) {
+        toaster.create({
+          title: "Profile Taken",
+          description: "This profile was recently claimed by someone else.",
+          type: "error",
+        });
+        queryClient.invalidateQueries();
+        setAuthStage("id");
+        setPin("");
+        setConfirmPin("");
+        setStudentId("");
+        setSubmitting(false);
+        return;
+      }
+    }
     setSubmitting(false);
 
     if (success) {

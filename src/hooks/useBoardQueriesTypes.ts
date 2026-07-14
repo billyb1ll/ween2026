@@ -32,4 +32,5 @@ export interface ChatMessage {
   sender_role: string;
   sender_profile_pic_url: string | null;
   timestamp: string;
+  is_deleted?: boolean;
 }

@@ -29,6 +29,8 @@ import {
   useAdminAuditLogs,
   useAdminConfigs,
   useUpdateUserProfileRpcMutation,
+  useAdminBannedUsers,
+  useUnbanUserMutation,
 } from "../hooks/useAdminQueries";
 import { supabase } from "../lib/supabase";
 import { getImmichConfig } from "../utils/immich";
@@ -117,8 +119,93 @@ interface Comment {
 
 type HypeBoardMode = "active" | "slow_3s" | "read_only";
 
+function BannedUsersAdmin() {
+  const { user, getAdminPin } = useUser();
+  const { data: bannedUsers = [], isLoading } = useAdminBannedUsers();
+  const unbanMutation = useUnbanUserMutation();
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  const handleUnban = async (targetId: string) => {
+    try {
+      await unbanMutation.mutateAsync({
+        targetUserId: targetId,
+        staffId: user?.student_id || "",
+        pinHash: getAdminPin(), 
+      });
+      
+      toaster.create({
+        title: "User Unbanned",
+        description: `Successfully unbanned ${targetId}.`,
+        type: "success",
+      });
+      setSelectedUser(null);
+    } catch (err: unknown) {
+      toaster.create({
+        title: "Unban Failed",
+        description: err instanceof Error ? err.message : "An unexpected error occurred.",
+        type: "error",
+      });
+    }
+  };
+
+  return (
+    <Box bg="white" p={6} borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+      <Heading size="md" mb={4}>Banned Users</Heading>
+      
+      {isLoading ? (
+        <Spinner />
+      ) : bannedUsers.length === 0 ? (
+        <Text color="fg.muted">No banned users.</Text>
+      ) : (
+        <Table.Root size="sm">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeader>Target User ID</Table.ColumnHeader>
+              <Table.ColumnHeader>Banned By</Table.ColumnHeader>
+              <Table.ColumnHeader>Reason</Table.ColumnHeader>
+              <Table.ColumnHeader>Date</Table.ColumnHeader>
+              <Table.ColumnHeader textAlign="right">Action</Table.ColumnHeader>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {bannedUsers.map((b: { target_user_id: string; staff_id: string; reason: string; created_at: string }) => (
+              <Table.Row key={b.target_user_id}>
+                <Table.Cell>{b.target_user_id}</Table.Cell>
+                <Table.Cell>{b.staff_id}</Table.Cell>
+                <Table.Cell>{b.reason}</Table.Cell>
+                <Table.Cell>{new Date(b.created_at).toLocaleString()}</Table.Cell>
+                <Table.Cell textAlign="right">
+                  <HStack justify="flex-end">
+                    {selectedUser === b.target_user_id ? (
+                      <>
+                        <Button 
+                          size="xs" 
+                          colorScheme="red"
+                          loading={unbanMutation.isPending}
+                          onClick={() => handleUnban(b.target_user_id)}
+                        >
+                          Confirm Unban
+                        </Button>
+                        <Button size="xs" variant="ghost" onClick={() => setSelectedUser(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button size="xs" variant="outline" onClick={() => setSelectedUser(b.target_user_id)}>
+                        Unban
+                      </Button>
+                    )}
+                  </HStack>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      )}
+    </Box>
+  );
+}
+
 export function AdminDashboardPage() {
-  const { user, updateProfile } = useUser();
+  const { user, updateProfile, getAdminPin } = useUser();
 
   // Initialize tab directly from user role to avoid cascading useEffect renders
   const [activeTab, setActiveTab] = useState<"moderator" | "media" | "staff">(
@@ -345,8 +432,7 @@ export function AdminDashboardPage() {
       พยาบาล: "Medical Team พยาบาล",
       สถานที่: "Logistics & Venue สถานที่",
       ทะเบียน: "Registration ทะเบียน",
-      staff: "General Staff",
-      media_admin: "Media Admin",
+      staff: "Staff",
       moderator: "Moderator",
     };
 
@@ -369,6 +455,7 @@ export function AdminDashboardPage() {
   const maxAvailableCount = selectedTargetItem ? selectedTargetItem.count : 20;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNewMissionCount((prev) => Math.min(prev, maxAvailableCount));
   }, [maxAvailableCount]);
 
@@ -699,7 +786,7 @@ export function AdminDashboardPage() {
       const { error } = await supabase.rpc("delete_post_secure", {
         p_post_id: postId,
         p_student_id: user.student_id,
-        p_pin_hash: user.pin_hash || "",
+        p_pin_hash: getAdminPin(),
       });
 
       if (error) throw error;
@@ -719,7 +806,7 @@ export function AdminDashboardPage() {
       const { error } = await supabase.rpc("delete_comment_secure", {
         p_comment_id: commentId,
         p_student_id: user.student_id,
-        p_pin_hash: user.pin_hash || "",
+        p_pin_hash: getAdminPin(),
       });
 
       if (error) throw error;
@@ -944,8 +1031,6 @@ export function AdminDashboardPage() {
     switch (role) {
       case "moderator":
         return "Moderator: Full administrative control, whitelist management, emergency broadcasts, game configuration, and audit logs.";
-      case "media_admin":
-        return "Media Admin: Access to photo server connectivity status, droplet sync tracker, and media synchronization tools.";
       case "staff":
         return "Staff: Access to staff panel to verify cards, view house statistics, and manage general operations.";
       default:
@@ -1165,7 +1250,7 @@ export function AdminDashboardPage() {
 
     try {
       await updateUserProfileRpc.mutateAsync({
-        pinHash: user.pin_hash || "",
+        pinHash: getAdminPin(),
         targetId: inspectUser.student_id,
         newRole: editRole,
         nickname: editNickname,
@@ -1201,7 +1286,7 @@ export function AdminDashboardPage() {
     try {
       const { error } = await supabase.rpc("admin_update_system_config", {
         p_admin_id: user?.student_id,
-        p_admin_pin: user?.pin_hash,
+        p_admin_pin: getAdminPin(),
         p_key: key,
         p_value: newVal,
       });
@@ -1638,7 +1723,7 @@ export function AdminDashboardPage() {
       for (const update of updates) {
         const { error } = await supabase.rpc("admin_update_system_config", {
           p_admin_id: user?.student_id,
-          p_admin_pin: user?.pin_hash,
+          p_admin_pin: getAdminPin(),
           p_key: update.key,
           p_value: true,
           p_int_value: update.int_value,
@@ -1917,7 +2002,7 @@ export function AdminDashboardPage() {
               Moderator Command Center
             </Button>
           )}
-          {(user?.role === "moderator" || user?.role === "media_admin") && (
+          {(user?.role === "moderator") && (
             <Button
               type="button"
               onClick={() => setActiveTab("media")}
@@ -2922,6 +3007,9 @@ export function AdminDashboardPage() {
             </Box>
           </SimpleGrid>
 
+          {/* Banned Users Control */}
+          <BannedUsersAdmin />
+
           {/* 5. Student Whitelist */}
           {/* Section C: Student Whitelist Matrix Table */}
           <WhitelistTable
@@ -3119,7 +3207,7 @@ export function AdminDashboardPage() {
       )}
       {/* TIER 2: Media Admin Panel */}
       {activeTab === "media" &&
-        (user?.role === "moderator" || user?.role === "media_admin") && (
+        (user?.role === "moderator") && (
           <VStack align="stretch" gap={6}>
             <Box
               bg="white"

@@ -112,7 +112,7 @@ const UserDropdownContent = ({
         </Button>
       </Link>
     )}
-    {user && (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
+    {user && (user.role === "moderator" || user.role === "staff") && (
       <>
         <Link to="/admin" onClick={onClose} style={{ width: "100%" }}>
           <Button
@@ -465,7 +465,7 @@ export function Navbar() {
               {user && hasClaimedFace && <NavItem to="/my-moments">My Moments</NavItem>}
 
               {user &&
-                (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
+                (user.role === "moderator" || user.role === "staff") && (
                   <NavItem to="/admin">Admin</NavItem>
                 )}
             </HStack>
@@ -798,7 +798,7 @@ export function Navbar() {
           )}
 
           {user &&
-            (user.role === "moderator" || user.role === "media_admin" || user.role === "staff") && (
+            (user.role === "moderator" || user.role === "staff") && (
               <MobileDockItem
                 to="/admin"
                 icon="admin_panel_settings"

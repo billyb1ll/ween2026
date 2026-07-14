@@ -6,7 +6,7 @@ import type { AlbumMapping } from "../../config/album-mapping";
 import { supabase } from "../../lib/supabase";
 import { useUser } from "../../context/UserContext";
 import { toaster } from "../ui/toaster";
-import { FiTrash2, FiPlus, FiSave } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiSave, FiChevronUp, FiChevronDown } from "react-icons/fi";
 
 
 
@@ -16,7 +16,7 @@ export function AlbumMappingAdmin() {
   const [immichAlbums, setImmichAlbums] = useState<{ id: string; albumName: string }[]>([]);
   const [fetchingAlbums, setFetchingAlbums] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { user } = useUser();
+  const { user, getAdminPin } = useUser();
 
   useEffect(() => {
     if (!loading) {
@@ -50,6 +50,24 @@ export function AlbumMappingAdmin() {
     setLocalMappings(localMappings.filter((_, i) => i !== index));
   };
 
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    const updated = [...localMappings];
+    const temp = updated[index];
+    updated[index] = updated[index - 1];
+    updated[index - 1] = temp;
+    setLocalMappings(updated);
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === localMappings.length - 1) return;
+    const updated = [...localMappings];
+    const temp = updated[index];
+    updated[index] = updated[index + 1];
+    updated[index + 1] = temp;
+    setLocalMappings(updated);
+  };
+
   const handleChange = (index: number, field: keyof AlbumMapping, value: string) => {
     const updated = [...localMappings];
     updated[index][field] = value;
@@ -61,7 +79,7 @@ export function AlbumMappingAdmin() {
     try {
       const { error } = await supabase.rpc("admin_update_system_config", {
         p_admin_id: user?.student_id,
-        p_admin_pin: user?.pin_hash,
+        p_admin_pin: getAdminPin(),
         p_key: "immich_album_mapping",
         p_value: true,
         p_text_value: JSON.stringify(localMappings),
@@ -112,7 +130,7 @@ export function AlbumMappingAdmin() {
                     aria-label="Select Immich Album"
                     title="Select Immich Album"
                     value={m.immichAlbumId || ""} 
-                    onChange={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                       const selectedId = e.target.value;
                       const selectedAlbum = immichAlbums.find(a => a.id === selectedId);
                       const updated = [...localMappings];
@@ -128,9 +146,33 @@ export function AlbumMappingAdmin() {
                   </select>
                 </Box>
               </Box>
-              <IconButton aria-label="Remove" variant="ghost" color="red.500" onClick={() => handleRemoveRow(i)}>
-                <FiTrash2 />
-              </IconButton>
+              <Flex gap={1} align="center" ml={2}>
+                <Flex direction="column" gap={0}>
+                  <IconButton 
+                    aria-label="Move Up" 
+                    variant="ghost" 
+                    size="xs"
+                    h="20px"
+                    disabled={i === 0}
+                    onClick={() => handleMoveUp(i)}
+                  >
+                    <FiChevronUp />
+                  </IconButton>
+                  <IconButton 
+                    aria-label="Move Down" 
+                    variant="ghost" 
+                    size="xs"
+                    h="20px"
+                    disabled={i === localMappings.length - 1}
+                    onClick={() => handleMoveDown(i)}
+                  >
+                    <FiChevronDown />
+                  </IconButton>
+                </Flex>
+                <IconButton aria-label="Remove" variant="ghost" color="red.500" onClick={() => handleRemoveRow(i)}>
+                  <FiTrash2 />
+                </IconButton>
+              </Flex>
             </Flex>
           ))}
           

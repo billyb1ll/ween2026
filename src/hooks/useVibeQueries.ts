@@ -183,7 +183,7 @@ export function useWhitelistedStaff() {
         .select(
           "student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role, house_position"
         )
-        .in("role", ["staff", "media_admin", "moderator"]);
+        .in("role", ["staff", "moderator"]);
 
       if (error) {
         console.error("Fetch staff error:", error);
@@ -225,7 +225,7 @@ export function useVibeDeck(studentId: string | undefined, currentMissionTargetR
         .select(
           "student_id, nickname, faculty, major, avatar_color, profile_pic_url, bio, ig, images, tags, role, house_position"
         )
-        .in("role", ["staff", "media_admin", "moderator"]);
+        .in("role", ["staff", "moderator"]);
 
       if (staffError) {
         console.error("Fetch staff error:", staffError);

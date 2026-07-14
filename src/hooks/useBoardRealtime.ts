@@ -31,6 +31,7 @@ export interface UseBoardRealtimeReturn {
 export function useBoardRealtime(
   activeTab: BoardTab,
   user: User | null,
+  adminPin: string,
 ): UseBoardRealtimeReturn {
   const { data: posts = [], isLoading } = useBoardPosts(activeTab);
   const { data: configs } = useSystemConfigs();
@@ -144,7 +145,7 @@ export function useBoardRealtime(
         await deletePostMutation.mutateAsync({
           postId,
           userId: user.student_id,
-          pinHash: user.pin_hash || "",
+          pinHash: adminPin,
         });
         toaster.create({ title: "Post Deleted!", type: "success" });
       } catch (err) {
@@ -152,7 +153,7 @@ export function useBoardRealtime(
         toaster.create({ title: "Failed to delete post", type: "error" });
       }
     },
-    [user, deletePostMutation]
+    [user, adminPin, deletePostMutation]
   );
 
   return {

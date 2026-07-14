@@ -41,7 +41,7 @@ function parseArgs(): { baseUrl: string; apiKey: string } {
 async function testEndpoint(
   label: string,
   url: string,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<TestResult> {
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -70,14 +70,32 @@ async function testEndpoint(
       } else {
         body = await response.text();
       }
-      return { label, endpoint: url, status: "pass", httpStatus: response.status, body };
+      return {
+        label,
+        endpoint: url,
+        status: "pass",
+        httpStatus: response.status,
+        body,
+      };
     }
 
     if ((response.status === 401 || response.status === 403) && !apiKey) {
-      return { label, endpoint: url, status: "skip", httpStatus: response.status, error: "No API key provided" };
+      return {
+        label,
+        endpoint: url,
+        status: "skip",
+        httpStatus: response.status,
+        error: "No API key provided",
+      };
     }
 
-    return { label, endpoint: url, status: "fail", httpStatus: response.status, error: response.statusText };
+    return {
+      label,
+      endpoint: url,
+      status: "fail",
+      httpStatus: response.status,
+      error: response.statusText,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { label, endpoint: url, status: "fail", error: message };
@@ -92,9 +110,13 @@ function printResult(result: TestResult): void {
   console.log(`  ${icon} [${result.label}] ${statusText}`);
 
   if (result.status === "pass" && result.body) {
-    const bodyStr = typeof result.body === "string"
-      ? result.body.slice(0, 200)
-      : JSON.stringify(result.body, null, 2).split("\n").slice(0, 6).join("\n");
+    const bodyStr =
+      typeof result.body === "string"
+        ? result.body.slice(0, 200)
+        : JSON.stringify(result.body, null, 2)
+            .split("\n")
+            .slice(0, 6)
+            .join("\n");
     console.log(`     ${bodyStr}`);
   }
 
@@ -123,10 +145,18 @@ async function main() {
   tests.push(await testEndpoint("Version", `${baseUrl}/api/server/version`));
 
   // Test 3: About (authenticated)
-  tests.push(await testEndpoint("About", `${baseUrl}/api/server/about`, apiKey || undefined));
+  tests.push(
+    await testEndpoint(
+      "About",
+      `${baseUrl}/api/server/about`,
+      apiKey || undefined,
+    ),
+  );
 
   // Test 4: Albums (authenticated)
-  tests.push(await testEndpoint("Albums", `${baseUrl}/api/albums`, apiKey || undefined));
+  tests.push(
+    await testEndpoint("Albums", `${baseUrl}/api/albums`, apiKey || undefined),
+  );
 
   for (const result of tests) {
     printResult(result);
@@ -138,15 +168,21 @@ async function main() {
 
   console.log("");
   console.log("───────────────────────────────────────────────");
-  console.log(`  Passed: ${passed}  |  Failed: ${failed}  |  Skipped: ${skipped}`);
+  console.log(
+    `  Passed: ${passed}  |  Failed: ${failed}  |  Skipped: ${skipped}`,
+  );
   console.log("───────────────────────────────────────────────");
 
   if (failed > 0) {
     console.log("");
     console.log("Tips:");
     console.log(`  • Ensure the Immich server is running at ${baseUrl}`);
-    console.log("  • Generate an API key: Immich Web UI → User Settings → API Keys");
-    console.log(`  • Re-run: npx tsx scripts/test-immich-connection.ts --url ${baseUrl} --api-key YOUR_KEY`);
+    console.log(
+      "  • Generate an API key: Immich Web UI → User Settings → API Keys",
+    );
+    console.log(
+      `  • Re-run: npx tsx scripts/test-immich-connection.ts --url ${baseUrl} --api-key YOUR_KEY`,
+    );
     process.exit(1);
   }
 

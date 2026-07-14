@@ -23,6 +23,22 @@ export function GalleryPage() {
   const [activeDay, setActiveDay] = useState<string>("");
   const [photos, setPhotos] = useState<ImmichAsset[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const [isAtTop, setIsAtTop] = useState(true);
+  
+  // Track window scroll for jump to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      // If we're within 400px of the top, consider it at the top
+      const scrolledToTop = window.scrollY <= 400;
+      setIsAtTop(scrolledToTop);
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    // Call once to initialize correctly
+    handleScroll();
+    
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   
   // Lightbox from global context
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
@@ -175,6 +191,46 @@ export function GalleryPage() {
               />
             )}
           />
+          {/* Jump to top button */}
+          {!isAtTop && (
+            <Button
+              position="fixed"
+              bottom="8"
+              left="50%"
+              transform="translateX(-50%)"
+              borderRadius="full"
+              size="sm"
+              shadow="xl"
+              bg="var(--c-ivory)"
+              color="var(--c-chocolate)"
+              borderColor="var(--c-chocolate)"
+              borderWidth="1px"
+              onClick={() => {
+                if (virtuosoRef.current) {
+                  virtuosoRef.current.scrollToIndex({
+                    index: 0,
+                    behavior: "smooth",
+                    align: "start",
+                  });
+                } else {
+                  window.scrollTo({
+                    top: 0,
+                    behavior: "smooth",
+                  });
+                }
+              }}
+              px={5}
+              py={2}
+              _hover={{ bg: "var(--c-lagoon)", color: "white" }}
+              zIndex="100"
+              animation="fade-in-up 0.2s var(--ease-out-quart) both"
+            >
+              <Box className="material-symbols-outlined" fontSize="sm" mr={1}>
+                arrow_upward
+              </Box>
+              Jump to latest
+            </Button>
+          )}
         </Box>
       )}
 

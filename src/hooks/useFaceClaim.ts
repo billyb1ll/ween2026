@@ -15,7 +15,7 @@ export function useFaceClaim() {
       // Allow user to unclaim their own, or admin to unclaim any
       const query = supabase.from('user_faces').delete().eq('immich_person_id', personId);
       
-      if (user.role !== 'media_admin' && user.role !== 'staff' && user.role !== 'moderator') {
+      if (user.role !== 'staff' && user.role !== 'moderator') {
         query.eq('student_id', user.student_id);
       }
       

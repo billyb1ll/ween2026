@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { hashPin } from "../utils/crypto";
 import type { User } from "../context/UserContext";
 
 // Query keys
@@ -18,7 +19,11 @@ export function useActiveSession(token: string | null) {
       if (!token) return null;
       const { data, error } = await supabase
         .from("user_sessions")
-        .select("student_id, expires_at, users (*)")
+        // Explicit join projection — pin_hash is intentionally excluded from
+        // the users column list so it never enters the client query cache.
+        .select(
+          "student_id, expires_at, users (student_id, role, nickname, faculty, major, house_position, avatar_color, images, tags, bio, profile_pic_url, photo_pool, immich_asset_id, ig, has_accepted_tos, created_at)"
+        )
         .eq("session_token", token)
         .maybeSingle();
 
@@ -69,6 +74,49 @@ export function useClaimedFaceStatus(studentId: string | undefined) {
       return !!(data && data.length > 0);
     },
     enabled: !!studentId,
+  });
+}
+
+/**
+ * Mutation hook to claim an unclaimed profile securely.
+ */
+export function useClaimProfileMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ studentId, pin }: { studentId: string; pin: string }) => {
+      const hashedPin = await hashPin(pin, studentId);
+      
+      const { error } = await supabase.rpc("claim_profile_secure", {
+        p_student_id: studentId,
+        p_pin_hash: hashedPin
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Generate session in database
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("user_sessions")
+        .insert({
+          student_id: studentId,
+          expires_at: expiresAt,
+        })
+        .select("session_token")
+        .single();
+
+      if (sessionError || !sessionData) {
+        throw new Error("SESSION_CREATION_FAILED");
+      }
+
+      return sessionData.session_token;
+    },
+    onSuccess: (sessionToken) => {
+      queryClient.invalidateQueries({ queryKey: userQueryKeys.session(sessionToken) });
+      queryClient.invalidateQueries({ queryKey: ["available_profiles"] });
+    },
   });
 }
 
