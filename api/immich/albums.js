@@ -1,9 +1,16 @@
+import { createClient } from '@supabase/supabase-js'
+
 export default async function handler(req, res) {
   const { name } = req.query
-  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
-  const IMMICH_API_KEY = process.env.IMMICH_API_KEY
+  const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
+  const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  const IMMICH_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
 
   if (req.method === 'GET') {
+
+
     try {
       const response = await fetch(`${IMMICH_SERVER_URL}/api/albums`, { 
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' } 

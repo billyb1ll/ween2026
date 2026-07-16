@@ -236,6 +236,7 @@ export interface SearchResponse {
 export interface ImmichClientConfig {
   baseUrl: string;
   apiKey?: string;
+  accessToken?: string;
 }
 
 // ── Error ───────────────────────────────────────────────────

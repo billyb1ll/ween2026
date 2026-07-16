@@ -122,6 +122,7 @@ export function useBoardRealtime(
           postId,
           nextLikes,
           nextLikedBy,
+          userId: user.student_id,
         });
       } catch (err) {
         console.error("[Board] Like mutation error:", err);

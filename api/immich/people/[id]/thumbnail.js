@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream'
+import { createClient } from '@supabase/supabase-js'
 
 export const config = {
   supportsResponseStreaming: true,
@@ -6,13 +7,20 @@ export const config = {
 
 export default async function handler(req, res) {
   const { id } = req.query
-  const IMMICH_SERVER_URL = process.env.VITE_IMMICH_SERVER_URL
-  const IMMICH_API_KEY = process.env.IMMICH_API_KEY
+  const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
+  const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+  const IMMICH_VIEWER_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
 
   if (req.method === 'GET') {
+    // Auth is NOT enforced here to allow public 'Who is this?' sections
+    // Face thumbnails (small crops) are considered safe for public display to encourage login.
+
     try {
+      // 2. Proxy the Image Bytes
       const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${id}/thumbnail`, {
-        headers: { 'x-api-key': IMMICH_API_KEY }
+        headers: { 'x-api-key': IMMICH_VIEWER_API_KEY }
       })
       
       if (!response.ok) {

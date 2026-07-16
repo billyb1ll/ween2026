@@ -4,7 +4,6 @@ import {
   Heading,
   Text,
   VStack,
-  Image,
   Button,
   Spinner,
 } from "@chakra-ui/react";
@@ -15,6 +14,7 @@ import { VirtuosoGrid } from "react-virtuoso";
 import { Link } from "react-router-dom";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
+import { ImmichImage } from "../components/gallery/ImmichImage";
 
 
 
@@ -67,7 +67,8 @@ export function GalleryPage() {
         } else if (mapping?.immichAlbumName) {
           album = await immich.albums.findByName(mapping.immichAlbumName);
         } else {
-          album = await immich.albums.findByName(activeDay);
+          console.warn(`No valid mapping found for ${activeDay}`);
+          return;
         }
 
         if (album) {
@@ -101,7 +102,7 @@ export function GalleryPage() {
   if (loadingMappings) {
     return (
       <Flex minH="100vh" align="center" justify="center">
-        <Spinner size="xl" color="accent.solid" />
+        <Spinner size="xl" color="brand.900" />
       </Flex>
     );
   }
@@ -112,7 +113,7 @@ export function GalleryPage() {
 
 
       <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
-        <Heading as="h1" fontFamily="'Playfair Display', serif" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="accent.solid" textAlign="center">
+        <Heading as="h1" fontFamily="'Playfair Display', serif" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="brand.900" textAlign="center">
           Baan 7 Gallery
         </Heading>
         <Text color="fg.muted" fontSize={{ base: "sm", md: "lg" }} textAlign="center" maxW="lg">
@@ -123,8 +124,8 @@ export function GalleryPage() {
       <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
         <Link to="/face-claim">
           <Flex w="100%" bg="bg.canvas" border="2px dashed" borderColor="accent.solid" borderRadius="xl" p={{ base: 4, md: 5 }} align="center" justify="center" transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-bg-canvas) 96%)", transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
-            <Box as="span" className="material-symbols-outlined" fontSize="24px" color="accent.solid" mr={3}>person_search</Box>
-            <Text color="accent.solid" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center">
+            <Box as="span" className="material-symbols-outlined" fontSize="24px" color="brand.900" mr={3}>person_search</Box>
+            <Text color="brand.900" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center" maxW="70ch">
               Cannot find your photos? Try searching for your face using our AI face finder. (Face claiming is currently in testing/Beta).
             </Text>
           </Flex>
@@ -139,10 +140,10 @@ export function GalleryPage() {
             onClick={() => {
               setActiveDay(m.key);
             }}
-            h="44px" px={6} borderRadius="full" fontWeight="600" fontSize="sm"
+            h="44px" px={6} py={2} borderRadius="full" fontWeight="600" fontSize="sm"
             variant={activeDay === m.key ? 'solid' : 'outline'}
             bg={activeDay === m.key ? 'accent.solid' : 'transparent'}
-            color={activeDay === m.key ? 'white' : 'accent.solid'}
+            color="brand.900"
             borderColor="accent.solid"
             _hover={{ bg: activeDay === m.key ? 'accent.solid' : 'color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, transparent)' }}
           >
@@ -183,8 +184,8 @@ export function GalleryPage() {
               )
             }}
             itemContent={(index, asset) => (
-              <Image 
-                src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} 
+              <ImmichImage 
+                endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")} 
                 alt="Gallery photo" 
                 w="100%" h="100%" objectFit="cover" loading="lazy" 
                 onClick={() => openLightbox(index, activeAssets)}
@@ -201,9 +202,9 @@ export function GalleryPage() {
               borderRadius="full"
               size="sm"
               shadow="xl"
-              bg="var(--c-ivory)"
-              color="var(--c-chocolate)"
-              borderColor="var(--c-chocolate)"
+              bg="bg.surface"
+              color="brand.900"
+              borderColor="accent.solid"
               borderWidth="1px"
               onClick={() => {
                 if (virtuosoRef.current) {
@@ -221,7 +222,7 @@ export function GalleryPage() {
               }}
               px={5}
               py={2}
-              _hover={{ bg: "var(--c-lagoon)", color: "white" }}
+              _hover={{ bg: "accent.solid", color: "brand.900" }}
               zIndex="100"
               animation="fade-in-up 0.2s var(--ease-out-quart) both"
             >

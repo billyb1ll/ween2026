@@ -8,6 +8,8 @@ import Download from "yet-another-react-lightbox/plugins/download";
 import type { ImmichAsset } from "../../lib/immich/types";
 import type { ImmichService } from "../../lib/immich/index";
 
+
+
 interface FaceOverlayLightboxProps {
   open: boolean;
   close: () => void;
@@ -18,10 +20,13 @@ interface FaceOverlayLightboxProps {
 }
 
 export const FaceOverlayLightbox: React.FC<FaceOverlayLightboxProps> = ({ open, close, index, assets, immichService, onView }) => {
-  const slides = assets.map((asset) => ({
-    src: immichService.assets.thumbnailUrl(asset.id, "preview"),
-    downloadUrl: immichService.assets.originalUrl(asset.id),
-  }));
+  const slides = assets.map((asset) => {
+    const token = localStorage.getItem('baan7_session_token') || '';
+    return {
+      src: `${immichService.assets.previewUrl(asset.id)}?token=${token}`,
+      downloadUrl: `${immichService.assets.downloadUrl(asset.id)}?token=${token}`,
+    };
+  });
 
   return (
     <Lightbox

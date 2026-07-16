@@ -1,32 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Mali:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Mali:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 :root {
   /* Brand colors */
-  --c-lagoon: #496268;
-  --c-lagoon-light: #c5e0e6;
-  --c-chocolate: #7c563f;
-  --c-chocolate-light: #ffe2d2;
-  --c-ivory: #fcf9f8;
-  --c-ivory-rgb: 252, 249, 248;
-  --c-white: #ffffff;
-  --c-white-rgb: 255, 255, 255;
-  --c-ink: #1b1c1c;
-  --c-muted: #424849;
-  --c-outline: #c2c7c9;
+  --c-lagoon: #39425b; /* Navy */
+  --c-lagoon-light: color-mix(in srgb, #39425b 20%, #fdfbf8);
+  --c-chocolate: #fcc9ce; /* Pink */
+  --c-chocolate-light: #f7dcde; /* Light Pink */
+  --c-ivory: #f2ede3;
+  --c-ivory-rgb: 242, 237, 227;
+  --c-white: #fdfbf8;
+  --c-white-rgb: 253, 251, 248;
+  --c-ink: #39425b;
+  --c-mauve: #7c6163;
+  --c-outline: #5a6a8a;
+  --c-muted: #8c755f;
   --c-error: #ba1a1a;
   --c-error-rgb: 186, 26, 26;
-  --c-orange: #e28743;
+  --c-orange: #e3caa1;
 
   /* State colors (replacing hard-coded values) */
-  --c-state-liked: #c0392b;
-  --c-state-liked-bg: #fce8e6;
-  --c-state-star: #496268;
-  --c-state-star-bg: #c5e0e6;
-  --c-state-boost: #7c563f;
-  --c-state-boost-bg: #ffe2d2;
-  --c-state-pin-a: #c0392b;
-  --c-state-pin-b: #c49070;
+  --c-state-liked: #fcc9ce;
+  --c-state-liked-bg: #f7dcde;
+  --c-state-star: #e3caa1;
+  --c-state-star-bg: #f2ede3;
+  --c-state-locked-bg: rgba(124, 86, 63, 0.05);
+  --c-state-boost-bg: #5a6a8a;
+  --c-state-pin-a: #fcc9ce;
+  --c-state-pin-b: #e3caa1;
 
   /* Shadows */
   --shadow-lagoon: 0 12px 40px rgba(73, 98, 104, 0.15);
@@ -233,7 +234,7 @@ a:hover {
   top: -100px;
   left: 16px;
   background-color: var(--c-chocolate);
-  color: var(--c-ivory);
+  color: var(--c-ink);
   padding: 12px 20px;
   border-radius: 12px;
   z-index: 9999;

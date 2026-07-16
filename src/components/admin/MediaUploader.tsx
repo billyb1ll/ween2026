@@ -108,7 +108,7 @@ export function MediaUploader() {
     }
   };
 
-  if (loading) return <Spinner color="var(--c-chocolate)" />;
+  if (loading) return <Spinner color="brand.900" />;
 
   return (
     <Box
@@ -119,7 +119,7 @@ export function MediaUploader() {
       borderColor="border.subtle"
     >
       <VStack align="stretch" gap={4}>
-        <Text fontWeight="700" color="accent.solid" fontSize="lg">
+        <Text fontWeight="700" color="brand.900" fontSize="lg">
           Immich Direct Upload
         </Text>
 
@@ -129,9 +129,9 @@ export function MediaUploader() {
               key={m.key}
               variant={selectedAlbum === m.key ? "solid" : "outline"}
               bg={
-                selectedAlbum === m.key ? "var(--c-chocolate)" : "transparent"
+                selectedAlbum === m.key ? "var(--chakra-colors-accent-solid)" : "transparent"
               }
-              color={selectedAlbum === m.key ? "white" : "var(--c-chocolate)"}
+              color={selectedAlbum === m.key ? "white" : "var(--chakra-colors-accent-solid)"}
               onClick={() => setSelectedAlbum(m.key)}
               size="sm"
               borderRadius="full"
@@ -143,10 +143,10 @@ export function MediaUploader() {
 
         <Box
           border="2px dashed"
-          borderColor={dragActive ? "var(--c-chocolate)" : "border.subtle"}
+          borderColor={dragActive ? "var(--chakra-colors-accent-solid)" : "border.subtle"}
           bg={
             dragActive
-              ? "color-mix(in srgb, var(--c-chocolate) 5%, transparent)"
+              ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, transparent)"
               : "transparent"
           }
           borderRadius="xl"
@@ -168,7 +168,7 @@ export function MediaUploader() {
         >
           {uploading ? (
             <VStack>
-              <Spinner color="var(--c-chocolate)" />
+              <Spinner color="brand.900" />
               <Text color="fg.muted">
                 Uploading & adding to album... {progress}%
               </Text>
@@ -182,16 +182,16 @@ export function MediaUploader() {
                 <Button
                   onClick={() => fileInputRef.current?.click()}
                   variant="outline"
-                  color="var(--c-chocolate)"
-                  borderColor="var(--c-chocolate)"
+                  color="brand.900"
+                  borderColor="accent.solid"
                 >
                   Select Files
                 </Button>
                 <Button
                   onClick={() => folderInputRef.current?.click()}
                   variant="solid"
-                  bg="var(--c-chocolate)"
-                  color="white"
+                  bg="accent.solid"
+                  color="brand.900"
                 >
                   Select Folder
                 </Button>

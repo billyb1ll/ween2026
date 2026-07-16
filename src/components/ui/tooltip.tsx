@@ -15,8 +15,8 @@ export function Tooltip({ label, children, disabled }: TooltipProps) {
       <ChakraTooltip.Trigger asChild>{children}</ChakraTooltip.Trigger>
       <Portal>
         <ChakraTooltip.Content
-          bg="var(--c-chocolate)"
-          color="white"
+          bg="accent.solid"
+          color="brand.900"
           fontSize="2xs"
           px={3}
           py={1.5}

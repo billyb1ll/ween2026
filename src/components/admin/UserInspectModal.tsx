@@ -162,7 +162,7 @@ export function UserInspectModal({
         <Dialog.Positioner zIndex={2200} px={4}>
           <Dialog.Content
             bg="var(--c-ivory)"
-            border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+            border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
             color="var(--c-ink)"
             borderRadius={{ base: "t-3xl", md: "2xl" }}
             width={{ base: "100%", md: "560px" }}
@@ -176,7 +176,7 @@ export function UserInspectModal({
           <Dialog.Header p={0} mb={3}>
             <Dialog.Title
               fontSize="md"
-              color="var(--c-chocolate)"
+              color="brand.900"
               fontWeight="700"
             >
               User Audit & Inspector
@@ -208,7 +208,7 @@ export function UserInspectModal({
                   avatarColor={inspectUser.avatar_color || "var(--c-lagoon)"}
                   size="64px"
                   fontSize="md"
-                  border="2px solid var(--c-chocolate)"
+                  border="2px solid var(--chakra-colors-accent-solid)"
                   boxShadow="sm"
                 />
 
@@ -299,7 +299,7 @@ export function UserInspectModal({
                         fontSize="xs"
                       >
                         <Text color="fg.subtle">Stickers Collected</Text>
-                        <Text fontWeight="700" color="var(--c-chocolate)">
+                        <Text fontWeight="700" color="brand.900">
                           {inspectUserStats.collectedCount} cards
                         </Text>
                       </Flex>
@@ -473,8 +473,8 @@ export function UserInspectModal({
                               />
                               <Button
                                 size="sm"
-                                bg="var(--c-chocolate)"
-                                color="white"
+                                bg="accent.solid"
+                                color="brand.900"
                                 onClick={handleSetMission}
                                 loading={setMissionMutation.isPending}
                                 disabled={!selectedMission}
@@ -525,7 +525,7 @@ export function UserInspectModal({
                     onChange={(e) => setEditNickname(e.target.value)}
                     bg="var(--c-ivory)"
                     h="38px"
-                    _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)", bg: "var(--c-white)" }}
+                    _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--c-chocolate-light)", bg: "var(--c-white)" }}
                   />
                 </Box>
                 <Box>
@@ -561,7 +561,7 @@ export function UserInspectModal({
                     onChange={(e) => setEditMajor(e.target.value)}
                     bg="var(--c-ivory)"
                     h="38px"
-                    _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)", bg: "var(--c-white)" }}
+                    _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--c-chocolate-light)", bg: "var(--c-white)" }}
                   />
                 </Box>
                 {editRole !== "student" && (
@@ -588,7 +588,7 @@ export function UserInspectModal({
                         borderRadius="8px"
                         border="1.5px solid var(--c-outline)"
                         bg="var(--c-white)"
-                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
                         cursor="pointer"
                       >
                         <option value="">None / Unknown</option>
@@ -622,7 +622,7 @@ export function UserInspectModal({
                         borderRadius="8px"
                         border="1.5px solid var(--c-outline)"
                         bg="var(--c-white)"
-                        _focus={{ borderColor: "var(--c-chocolate)", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
+                        _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 2px var(--c-chocolate-light)" }}
                         cursor="pointer"
                       >
                         <option value="student">Student</option>
@@ -636,8 +636,8 @@ export function UserInspectModal({
                 </Box>
                 <Button
                   type="submit"
-                  bg="var(--c-chocolate)"
-                  color="white"
+                  bg="accent.solid"
+                  color="brand.900"
                   h="40px"
                   py={1.5}
                   borderRadius="lg"

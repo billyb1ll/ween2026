@@ -18,7 +18,7 @@ import { useUser, type User } from "../context/UserContext";
 import { useFaceClaim } from "../hooks/useFaceClaim";
 import { supabase } from "../lib/supabase";
 import { toaster } from "../components/ui/toaster";
-import { STAFF_ROLES } from "../lib/constants";
+import { STAFF_ROLES, FACULTIES } from "../lib/constants";
 import { FacultySelect } from "../components/FacultySelect";
 import { SearchableSelect } from "../components/SearchableSelect";
 import { useWhitelistedStaff } from "../hooks/useVibeQueries";
@@ -31,7 +31,7 @@ import type { ImmichAsset } from "../lib/immich";
 
 const PRESET_COLORS = [
   "var(--c-lagoon)",
-  "var(--c-chocolate)",
+  "var(--chakra-colors-accent-solid)",
   "var(--c-warm-muted)",
   "var(--c-light-cocoa)",
   "var(--c-sage-slate)",
@@ -60,7 +60,9 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const { updateProfile, refreshClaimedFaceStatus } = useUser();
 
   const [nickname, setNickname] = useState(user?.nickname || "");
-  const [faculty, setFaculty] = useState(user?.faculty || "");
+  const isKnownFaculty = (user?.faculty || "") === "" || FACULTIES.some(f => f.short === user?.faculty);
+  const [faculty, setFaculty] = useState(isKnownFaculty ? (user?.faculty || "") : "OTHER");
+  const [customFaculty, setCustomFaculty] = useState(isKnownFaculty ? "" : (user?.faculty || ""));
   const [major, setMajor] = useState(user?.major || "");
   const [ig, setIg] = useState(user?.ig || "");
   const [bio, setBio] = useState(user?.bio || "");
@@ -117,14 +119,11 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
   const serverUrl = import.meta.env.VITE_IMMICH_SERVER_URL;
-  const apiKey = import.meta.env.VITE_IMMICH_API_KEY;
 
   const isComingSoon =
     !serverUrl ||
     serverUrl.includes("placeholder") ||
-    serverUrl.includes("todo") ||
-    !apiKey ||
-    apiKey.includes("placeholder");
+    serverUrl.includes("todo");
 
   const [suggestedAsset, setSuggestedAsset] = useState<SuggestedAsset | null>(null);
 
@@ -143,10 +142,11 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
 
     const fetchSuggestion = async () => {
       try {
-        const res = await fetch(`${serverUrl}/api/search/smart`, {
+        const token = localStorage.getItem("baan7_session_token");
+        const res = await fetch(`/api/immich/search`, {
           method: "POST",
           headers: {
-            "x-api-key": apiKey || "",
+            "x-baan7-session": token || "",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ q: user.nickname }),
@@ -166,7 +166,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
     }
 
     fetchSuggestion();
-  }, [user, serverUrl, apiKey, isComingSoon]);
+  }, [user, serverUrl, isComingSoon]);
 
   // Fetch "My Photos"
   useEffect(() => {
@@ -228,10 +228,11 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
         if (personId) {
           try {
             const fullName = user.full_name || user.nickname || "Student";
-            const feedbackRes = await fetch(`${serverUrl}/api/people/${personId}`, {
+            const token = localStorage.getItem("baan7_session_token");
+            const feedbackRes = await fetch(`/api/immich/people/${personId}`, {
               method: "PUT",
               headers: {
-                "x-api-key": apiKey || "",
+                "x-baan7-session": token || "",
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
@@ -352,9 +353,10 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!nickname.trim() || !faculty.trim()) {
+    if (!nickname.trim() || !faculty.trim() || (faculty === "OTHER" && !customFaculty.trim())) {
       toaster.create({
-        title: "Nickname and Faculty are required",
+        title: "Required Fields Missing",
+        description: "Nickname and Faculty are required.",
         type: "error",
       });
       return;
@@ -375,7 +377,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
     setSubmitting(true);
     const success = await updateProfile({
       nickname: nickname.trim(),
-      faculty: faculty.trim(),
+      faculty: faculty === "OTHER" ? customFaculty.trim() : faculty.trim(),
       major: major.trim(),
       ig: ig.trim(),
       avatarColor,
@@ -413,10 +415,10 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
       <Container maxW="3xl">
         <Tabs.Root defaultValue="profile" variant="line" size="lg">
           <Tabs.List bg="bg.surface" p={2} borderRadius="xl" mb={6} justifyContent="center" gap={{ base: 4, md: 10 }}>
-            <Tabs.Trigger value="profile" px={6} py={3} borderRadius="md" _selected={{ bg: "var(--c-chocolate)", color: "white" }}>
+            <Tabs.Trigger value="profile" px={6} py={3} borderRadius="md" _selected={{ bg: "brand.900", color: "white" }}>
               Profile Details
             </Tabs.Trigger>
-            <Tabs.Trigger value="photos" px={6} py={3} borderRadius="md" _selected={{ bg: "var(--c-chocolate)", color: "white" }}>
+            <Tabs.Trigger value="photos" px={6} py={3} borderRadius="md" _selected={{ bg: "brand.900", color: "white" }}>
               My Photos
             </Tabs.Trigger>
           </Tabs.List>
@@ -425,7 +427,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
             <Box bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={{ base: 5, md: 8 }} boxShadow="var(--shadow-card)" animation="scale-in 0.4s var(--ease-out-quart)">
               <VStack align="stretch" gap={6}>
                 <VStack align="center" textAlign="center" gap={1}>
-                  <Heading as="h2" fontSize="2xl" color="accent.solid" fontWeight="700">My Claimed Faces</Heading>
+                  <Heading as="h2" fontSize="2xl" color="brand.900" fontWeight="700">My Claimed Faces</Heading>
                   <Text color="fg.muted" fontSize="sm">Faces you have identified as yourself.</Text>
                 </VStack>
 
@@ -467,7 +469,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box borderTop="1px solid" borderColor="border.subtle" pt={6} mt={2} />
 
                 <VStack align="center" textAlign="center" gap={1}>
-                  <Heading as="h2" fontSize="2xl" color="accent.solid" fontWeight="700">My Identified Photos</Heading>
+                  <Heading as="h2" fontSize="2xl" color="brand.900" fontWeight="700">My Identified Photos</Heading>
                   <Text color="fg.muted" fontSize="sm">Photos from the gallery where your face was recognized.</Text>
                 </VStack>
                 {loadingPhotos ? (
@@ -497,7 +499,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     as="h1"
                     fontFamily="'Playfair Display', serif"
                     fontSize="2xl"
-                    color="accent.solid"
+                    color="brand.900"
                     fontWeight="700"
                   >
                     Manage Profile
@@ -516,7 +518,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 gap={4}
                 p={4}
                 bg="var(--c-ivory)"
-                border="2px dashed var(--c-chocolate)"
+                border="2px dashed var(--chakra-colors-brand-900)"
                 borderRadius="md"
                 boxShadow="var(--shadow-card)"
                 w="100%"
@@ -534,10 +536,10 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     loading="lazy"
                   />
                   <VStack align="start" gap={0}>
-                    <Text fontSize="xs" fontWeight="700" color="accent.solid">
+                    <Text fontSize="xs" fontWeight="700" color="brand.900">
                       Is this you?
                     </Text>
-                    <Text fontSize="2xs" color="fg.muted">
+                    <Text fontSize="xs" color="fg.muted">
                       We found a matching photo containing your name tag.
                     </Text>
                   </VStack>
@@ -547,13 +549,13 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     type="button"
                     h="44px"
                     px={4}
-                    bg="accent.solid"
-                    color="white"
+                    bg="brand.900"
+                    color="brand.900"
                     borderRadius="xl"
                     fontSize="xs"
                     fontWeight="700"
                     cursor="pointer"
-                    _hover={{ bg: "chocolate.600" }}
+                    _hover={{ opacity: 0.9 }}
                     onClick={handleClaimSuggestion}
                     flex={{ base: 1, md: "initial" }}
                   >
@@ -621,7 +623,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 overflow="hidden"
                 w="120px"
                 h="120px"
-                border="3px solid var(--c-chocolate)"
+                border="3px solid var(--chakra-colors-brand-900)"
                 boxShadow="var(--shadow-card)"
                 bg={avatarColor}
                 display="flex"
@@ -653,8 +655,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-nickname">
@@ -672,7 +674,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   borderRadius="xl"
                   border="1.5px solid var(--c-outline)"
                   bg="bg.hero"
-                  _focus={{ borderColor: "accent.solid" }}
+                  _focus={{ borderColor: "brand.900" }}
                   h="48px"
                   fontSize="sm"
                   required
@@ -684,8 +686,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-faculty">
@@ -697,8 +699,24 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 </Box>
                 <FacultySelect
                   value={faculty}
-                  onChange={(val) => setFaculty(val)}
+                  onChange={(val) => {
+                    setFaculty(val);
+                    if (val !== "OTHER") setCustomFaculty("");
+                  }}
                 />
+                {faculty === "OTHER" && (
+                  <Input
+                    placeholder="โปรดระบุคณะของคุณ / Type your faculty..."
+                    value={customFaculty}
+                    onChange={(e) => setCustomFaculty(e.target.value)}
+                    bg="var(--c-ivory)"
+                    h="44px"
+                    borderRadius="xl"
+                    border="1.5px solid var(--c-outline)"
+                    _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 1px var(--chakra-colors-accent-solid)" }}
+                    mt={1}
+                  />
+                )}
               </VStack>
 
               {/* Major (Academic Major) */}
@@ -706,8 +724,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-major">
@@ -715,7 +733,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     <Text
                       as="span"
                       color="fg.subtle"
-                      fontSize="2xs"
+                      fontSize="xs"
                       fontWeight="normal"
                     >
                       (Optional)
@@ -730,11 +748,11 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   borderRadius="xl"
                   border="1.5px solid var(--c-outline)"
                   bg="bg.hero"
-                  _focus={{ borderColor: "accent.solid" }}
+                  _focus={{ borderColor: "brand.900" }}
                   h="48px"
                   fontSize="sm"
                 />
-                <Text fontSize="2xs" color="fg.subtle" mt={1}>
+                <Text fontSize="xs" color="fg.subtle" mt={1}>
                   Only visible to verified Baan 7 freshmen
                 </Text>
               </VStack>
@@ -745,8 +763,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   <Box
                     fontSize="xs"
                     fontWeight="700"
-                    color="accent.solid"
-                    textTransform="uppercase"
+                    color="brand.900"
+                    textTransform="none"
                     letterSpacing="0.05em"
                   >
                     <label htmlFor="edit-house-position">
@@ -788,14 +806,14 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                       borderRadius="xl"
                       border="1.5px solid var(--c-outline)"
                       bg="bg.hero"
-                      _focus={{ borderColor: "accent.solid" }}
+                      _focus={{ borderColor: "brand.900" }}
                       h="48px"
                       fontSize="sm"
                       mt={1.5}
                       required
                     />
                   )}
-                  <Text fontSize="2xs" color="fg.subtle" mt={1}>
+                  <Text fontSize="xs" color="fg.subtle" mt={1}>
                     This position is displayed on your sticker card album
                   </Text>
                 </VStack>
@@ -806,8 +824,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-ig">
@@ -815,7 +833,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     <Text
                       as="span"
                       color="fg.subtle"
-                      fontSize="2xs"
+                      fontSize="xs"
                       fontWeight="normal"
                     >
                       (Optional)
@@ -830,11 +848,11 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   borderRadius="xl"
                   border="1.5px solid var(--c-outline)"
                   bg="bg.hero"
-                  _focus={{ borderColor: "accent.solid" }}
+                  _focus={{ borderColor: "brand.900" }}
                   h="48px"
                   fontSize="sm"
                 />
-                <Text fontSize="2xs" color="fg.subtle" mt={1}>
+                <Text fontSize="xs" color="fg.subtle" mt={1}>
                   Only visible to verified Baan 7 freshmen
                 </Text>
               </VStack>
@@ -844,8 +862,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Box
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   <label htmlFor="edit-bio">
@@ -853,7 +871,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     <Text
                       as="span"
                       color="fg.subtle"
-                      fontSize="2xs"
+                      fontSize="xs"
                       fontWeight="normal"
                     >
                       (Optional)
@@ -868,7 +886,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   borderRadius="xl"
                   border="1.5px solid var(--c-outline)"
                   bg="bg.hero"
-                  _focus={{ borderColor: "accent.solid" }}
+                  _focus={{ borderColor: "brand.900" }}
                   minH="80px"
                   fontSize="sm"
                   py={3}
@@ -880,8 +898,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Text
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   Avatar Background Color
@@ -900,7 +918,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                       cursor="pointer"
                       border={
                         avatarColor === c
-                          ? "2.5px solid var(--c-chocolate)"
+                          ? "2.5px solid var(--chakra-colors-brand-900)"
                           : "1px solid rgba(0,0,0,0.1)"
                       }
                       transform={avatarColor === c ? "scale(1.15)" : "none"}
@@ -918,8 +936,8 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 <Text
                   fontSize="xs"
                   fontWeight="700"
-                  color="accent.solid"
-                  textTransform="uppercase"
+                  color="brand.900"
+                  textTransform="none"
                   letterSpacing="0.05em"
                 >
                   Profile Picture
@@ -935,9 +953,9 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   <Button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    loading={uploading}
+                    disabled={uploading}
                     bg="bg.hero"
-                    color="accent.solid"
+                    color="brand.900"
                     border="1px solid"
                     borderColor="border.subtle"
                     h="44px"
@@ -946,7 +964,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                     _hover={{ bg: "bg.surface" }}
                     flex={1}
                   >
-                    Upload Photo
+                    {uploading ? <Spinner size="sm" color="brand.900" mr={2} /> : null} Upload Photo
                   </Button>
                   {myPhotos.length > 0 && (
                     <Button
@@ -981,7 +999,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
 
                 {isImmichPickerOpen && myPhotos.length > 0 && (
                   <Box p={4} mt={2} bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="xl" animation="scale-in 0.3s var(--ease-out-quart)">
-                    <Text fontSize="sm" fontWeight="700" color="accent.solid" mb={3}>Select a photo</Text>
+                    <Text fontSize="sm" fontWeight="700" color="brand.900" mb={3}>Select a photo</Text>
                     <Box display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)" }} gap={3} maxH="240px" overflowY="auto" p={1}>
                       {myPhotos.map(asset => (
                         <Box 
@@ -1032,7 +1050,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                 type="button"
                 variant="outline"
                 borderColor="border.subtle"
-                color="accent.solid"
+                color="brand.900"
                 borderRadius="xl"
                 h="50px"
                 flex={1}
@@ -1046,17 +1064,17 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
               </Button>
               <Button
                 type="submit"
-                bg="accent.solid"
+                bg="brand.900"
                 color="white"
                 borderRadius="xl"
                 h="50px"
                 flex={2}
                 fontSize="md"
                 fontWeight="700"
-                _hover={{ bg: "chocolate.600" }}
-                loading={submitting}
+                _hover={{ opacity: 0.9 }}
+                disabled={submitting}
               >
-                Save Settings
+                {submitting ? <Spinner size="sm" color="white" /> : "Save Settings"}
               </Button>
             </HStack>
           </VStack>
@@ -1244,7 +1262,7 @@ export function AvatarCropModal({
             <Heading
               as="h2"
               fontSize="lg"
-              color="accent.solid"
+              color="brand.900"
               fontWeight="700"
             >
               Adjust Profile Pic
@@ -1332,10 +1350,10 @@ export function AvatarCropModal({
           {/* Slider Controls */}
           <VStack gap={2} align="stretch">
             <Text
-              fontSize="2xs"
+              fontSize="xs"
               fontWeight="700"
-              color="accent.solid"
-              textTransform="uppercase"
+              color="brand.900"
+              textTransform="none"
               letterSpacing="0.05em"
             >
               Zoom Control
@@ -1349,7 +1367,7 @@ export function AvatarCropModal({
                 borderRadius="lg"
                 variant="outline"
                 borderColor="border.subtle"
-                color="accent.solid"
+                color="brand.900"
                 onClick={() => {
                   const newZoom = Math.max(1, zoom - 0.1);
                   setZoom(newZoom);
@@ -1383,7 +1401,7 @@ export function AvatarCropModal({
                 borderRadius="lg"
                 variant="outline"
                 borderColor="border.subtle"
-                color="accent.solid"
+                color="brand.900"
                 onClick={() => {
                   const newZoom = Math.min(3, zoom + 0.1);
                   setZoom(newZoom);
@@ -1402,7 +1420,7 @@ export function AvatarCropModal({
             <Button
               variant="outline"
               borderColor="border.subtle"
-              color="accent.solid"
+              color="brand.900"
               borderRadius="xl"
               h="44px"
               flex={1}
@@ -1415,7 +1433,7 @@ export function AvatarCropModal({
               Cancel
             </Button>
             <Button
-              bg="accent.solid"
+              bg="brand.900"
               color="white"
               borderRadius="xl"
               h="44px"
@@ -1423,7 +1441,7 @@ export function AvatarCropModal({
               fontSize="sm"
               fontWeight="700"
               onClick={handleCropSaveLocal}
-              _hover={{ bg: "chocolate.600" }}
+              _hover={{ opacity: 0.9 }}
               cursor="pointer"
             >
               Apply Crop
@@ -1448,7 +1466,7 @@ export function ProfileEditPage() {
   if (loading || !user) {
     return (
       <Flex minH="90vh" align="center" justify="center" bg="bg.hero">
-        <Spinner color="var(--c-chocolate)" size="xl" />
+        <Spinner color="brand.900" size="xl" />
       </Flex>
     );
   }

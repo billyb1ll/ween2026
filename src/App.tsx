@@ -18,9 +18,41 @@ const GalleryPage = lazy(() => import('./pages/GalleryPage').then((module) => ({
 const MyMomentsPage = lazy(() => import('./pages/MyMomentsPage').then((module) => ({ default: module.MyMomentsPage })))
 const FaceClaimPage = lazy(() => import('./pages/FaceClaimPage').then((module) => ({ default: module.FaceClaimPage })))
 const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
+const ProfileSetupPage = lazy(() => import('./pages/ProfileSetupPage').then((module) => ({ default: module.ProfileSetupPage })))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((module) => ({ default: module.ProfileEditPage })))
 const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
+
+// Protected Route for Authenticated Users
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser()
+  const location = useLocation()
+
+  if (loading) {
+    return <LoadingFallback />
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+// Redirect if already logged in (for login page)
+function RequireGuest({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser()
+
+  if (loading) {
+    return <LoadingFallback />
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />
+  }
+
+  return <>{children}</>
+}
 
 // Route Interceptor for Complete Profiles
 function RequireCompleteProfile({ children }: { children: React.ReactNode }) {
@@ -31,9 +63,25 @@ function RequireCompleteProfile({ children }: { children: React.ReactNode }) {
     return <LoadingFallback />
   }
 
-  // If user is logged in but has no nickname or faculty, force redirect to edit
-  if (user && (!user.nickname || !user.faculty) && location.pathname !== '/profile-edit') {
-    return <Navigate to="/profile-edit" replace />
+  // If user is logged in but has no nickname or faculty, force redirect to setup
+  if (user && (!user.nickname || !user.faculty) && location.pathname !== '/setup') {
+    return <Navigate to="/setup" replace />
+  }
+
+  return <>{children}</>
+}
+
+// Route Interceptor to prevent returning to setup once profile is complete
+function RequireIncompleteProfile({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser()
+
+  if (loading) {
+    return <LoadingFallback />
+  }
+
+  // If user already has a complete profile, redirect them away from setup to home
+  if (user && user.nickname && user.faculty) {
+    return <Navigate to="/" replace />
   }
 
   return <>{children}</>
@@ -77,36 +125,43 @@ function AppContent() {
           <Routes>
             {/* Public/Standard Routes */}
             <Route path="/" element={<RequireCompleteProfile><HomePage /></RequireCompleteProfile>} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile-edit" element={<ProfileEditPage />} />
+            <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
+            <Route path="/face-claim" element={<FaceClaimPage />} />
+            
+            {/* Authenticated Routes without complete profile requirement */}
+            <Route path="/setup" element={<RequireAuth><RequireIncompleteProfile><ProfileSetupPage /></RequireIncompleteProfile></RequireAuth>} />
+            <Route path="/profile-edit" element={<RequireAuth><ProfileEditPage /></RequireAuth>} />
 
-            {/* Platform Feature Routes (Protected by profile setup completion) */}
-            <Route path="/vibe-check" element={<RequireCompleteProfile><VibeCheckPage /></RequireCompleteProfile>} />
-            <Route path="/board" element={<RequireCompleteProfile><BoardPage /></RequireCompleteProfile>} />
-            <Route path="/gallery" element={<RequireCompleteProfile><GalleryPage /></RequireCompleteProfile>} />
-            <Route path="/my-moments" element={<RequireCompleteProfile><MyMomentsPage /></RequireCompleteProfile>} />
-            <Route path="/face-claim" element={<RequireCompleteProfile><FaceClaimPage /></RequireCompleteProfile>} />
+            {/* Platform Feature Routes (Protected by Auth + Profile Setup Completion) */}
+            <Route path="/vibe-check" element={<RequireAuth><RequireCompleteProfile><VibeCheckPage /></RequireCompleteProfile></RequireAuth>} />
+            <Route path="/board" element={<RequireAuth><RequireCompleteProfile><BoardPage /></RequireCompleteProfile></RequireAuth>} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/my-moments" element={<RequireAuth><RequireCompleteProfile><MyMomentsPage /></RequireCompleteProfile></RequireAuth>} />
 
 
             {/* Administrative Dashboard Route (Unified) */}
             <Route
               path="/admin"
               element={
-                <RequireAdmin>
-                  <RequireCompleteProfile>
-                    <AdminDashboardPage />
-                  </RequireCompleteProfile>
-                </RequireAdmin>
+                <RequireAuth>
+                  <RequireAdmin>
+                    <RequireCompleteProfile>
+                      <AdminDashboardPage />
+                    </RequireCompleteProfile>
+                  </RequireAdmin>
+                </RequireAuth>
               }
             />
             <Route
               path="/admin/kpi"
               element={
-                <RequireAdmin>
-                  <RequireCompleteProfile>
-                    <AdminKpiPage />
-                  </RequireCompleteProfile>
-                </RequireAdmin>
+                <RequireAuth>
+                  <RequireAdmin>
+                    <RequireCompleteProfile>
+                      <AdminKpiPage />
+                    </RequireCompleteProfile>
+                  </RequireAdmin>
+                </RequireAuth>
               }
             />
           </Routes>

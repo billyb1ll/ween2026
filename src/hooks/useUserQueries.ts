@@ -145,32 +145,27 @@ export function useUpdateProfileMutation() {
         immichAssetId?: string | null;
       };
     }) => {
-      const updates: Partial<User> = {};
-
-      if (profile.nickname !== undefined) updates.nickname = profile.nickname;
-      if (profile.faculty !== undefined) updates.faculty = profile.faculty;
-      if (profile.major !== undefined) updates.major = profile.major || null;
-      if (profile.ig !== undefined) updates.ig = profile.ig || null;
-      if (profile.bio !== undefined) updates.bio = profile.bio || null;
-      if (profile.profilePicUrl !== undefined) updates.profile_pic_url = profile.profilePicUrl || null;
-      if (profile.photoPool !== undefined) updates.photo_pool = profile.photoPool;
-      if (profile.housePosition !== undefined) updates.house_position = profile.housePosition || null;
-      if (profile.immichAssetId !== undefined) updates.immich_asset_id = profile.immichAssetId || null;
-      if (profile.avatarColor !== undefined) updates.avatar_color = profile.avatarColor;
-
-      const { data, error } = await supabase
-        .from("users")
-        .update(updates)
-        .eq("student_id", studentId)
-        .select()
-        .single();
+      const { error } = await supabase.rpc("update_user_profile_secure", {
+        p_student_id: studentId,
+        p_nickname: profile.nickname,
+        p_faculty: profile.faculty,
+        p_major: profile.major || null,
+        p_ig: profile.ig || null,
+        p_avatar_color: profile.avatarColor || null,
+        p_bio: profile.bio || null,
+        p_profile_pic_url: profile.profilePicUrl || null,
+        p_photo_pool: profile.photoPool || null,
+        p_house_position: profile.housePosition || null,
+        p_immich_asset_id: profile.immichAssetId || null,
+      });
 
       if (error) {
         console.error("Update profile DB error:", error);
         throw error;
       }
 
-      return data as User;
+      // Return a partial object or boolean since RPC returns boolean
+      return { student_id: studentId } as User;
     },
     onSuccess: () => {
       // Invalidate all active session queries to trigger UI refresh across app

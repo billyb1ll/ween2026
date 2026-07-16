@@ -1,3 +1,4 @@
+import { ImmichImage } from "../components/gallery/ImmichImage";
 import {
   Box,
   Flex,
@@ -98,7 +99,7 @@ function StickerBookModal({
         h="100vh"
         w={{ base: "100%", md: "460px" }}
         bg="var(--c-ivory)"
-        borderLeft="2px solid var(--c-chocolate)"
+        borderLeft="2px solid var(--chakra-colors-accent-solid)"
         boxShadow="-4px 0 20px rgba(0,0,0,0.15)"
         zIndex="2100"
         display="flex"
@@ -111,12 +112,12 @@ function StickerBookModal({
               as="span"
               className="material-symbols-outlined"
               fontSize="22px"
-              color="accent.solid"
+              color="brand.900"
               aria-hidden="true"
             >
               auto_stories
             </Box>
-            <Heading as="h2" fontSize="md" color="var(--c-chocolate)" fontWeight="800">
+            <Heading as="h2" fontSize="md" color="brand.900" fontWeight="800">
               Orientation Sticker Album
             </Heading>
           </HStack>
@@ -139,7 +140,7 @@ function StickerBookModal({
           mb={4}
           fontSize="xs"
           h="38px"
-          _focus={{ borderColor: "var(--c-chocolate)" }}
+          _focus={{ borderColor: "accent.solid" }}
         />
 
         {/* List scroll wrapper */}
@@ -231,7 +232,7 @@ const ProfileCardView = ({ profile }: { profile: StaffProfile }) => (
     w="100%"
     bg="white"
     borderRadius="2xl"
-    border="1.5px solid var(--c-chocolate)"
+    border="1.5px solid var(--chakra-colors-accent-solid)"
     boxShadow="var(--shadow-card)"
     overflow="hidden"
     display="flex"
@@ -239,8 +240,8 @@ const ProfileCardView = ({ profile }: { profile: StaffProfile }) => (
     position="relative"
   >
     <Box position="relative" flex={1} bg="bg.muted">
-      <Image
-        src={
+      <ImmichImage
+        endpoint={
           profile?.images?.[0] ||
           profile?.profile_pic_url ||
           "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=500&h=700&fit=crop"
@@ -279,7 +280,7 @@ const ProfileCardView = ({ profile }: { profile: StaffProfile }) => (
           {profile?.ig && (
             <Text
               fontSize="2xs"
-              color="accent.solid"
+              color="brand.900"
               fontWeight="bold"
               bg="whiteAlpha.200"
               px={2}
@@ -592,7 +593,7 @@ export function VibeCheckPage() {
   if (authLoading) {
     return (
       <Flex minH="80vh" align="center" justify="center">
-        <Spinner size="xl" color="accent.solid" />
+        <Spinner size="xl" color="brand.900" />
       </Flex>
     );
   }
@@ -613,7 +614,7 @@ export function VibeCheckPage() {
   if (loading) {
     return (
       <Flex minH="80vh" align="center" justify="center">
-        <Spinner size="xl" color="accent.solid" />
+        <Spinner size="xl" color="brand.900" />
       </Flex>
     );
   }
@@ -627,7 +628,7 @@ export function VibeCheckPage() {
       {/* 1. Header & Quick Collection Counter */}
       <Flex justify="space-between" align="center" mb={4}>
         <VStack align="start" gap={0}>
-          <Heading as="h1" fontSize="xl" color="accent.solid" fontWeight="700">
+          <Heading as="h1" fontSize="xl" color="brand.900" fontWeight="700">
             Vibe Check
           </Heading>
           <Text fontSize="2xs" color="fg.muted">
@@ -639,7 +640,7 @@ export function VibeCheckPage() {
           variant="outline"
           borderColor="border.subtle"
           borderRadius="full"
-          color="accent.solid"
+          color="brand.900"
           px={3}
           onClick={() => setIsStickerOpen(true)}
           _hover={{ bg: "bg.hero" }}
@@ -678,7 +679,7 @@ export function VibeCheckPage() {
           <VStack align="start" gap={0.5}>
             <Text
               fontSize="2xs"
-              color="accent.solid"
+              color="brand.900"
               fontWeight="700"
               textTransform="uppercase"
               letterSpacing="0.04em"
@@ -767,7 +768,7 @@ export function VibeCheckPage() {
               <Box
                 className="material-symbols-outlined"
                 fontSize="4xl"
-                color="accent.solid"
+                color="brand.900"
                 mb={2}
                 aria-hidden="true"
               >
@@ -971,7 +972,7 @@ export function VibeCheckPage() {
           <Button
             onClick={() => handleSwipeAction("right")}
             bg="accent.solid"
-            color="white"
+            color="brand.900"
             h="64px"
             w="64px"
             borderRadius="full"
@@ -1043,7 +1044,7 @@ export function VibeCheckPage() {
             <Dialog.Positioner zIndex={2200} px={4}>
               <Dialog.Content
                 bg="var(--c-ivory)"
-                border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+                border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
                 color="var(--c-ink)"
                 borderRadius={{ base: "t-3xl", md: "2xl" }}
                 width={{ base: "100%", md: "460px" }}
@@ -1052,7 +1053,7 @@ export function VibeCheckPage() {
                 position="relative"
               >
                 <Dialog.Header p={0} mb={4}>
-                  <Dialog.Title fontSize="sm" color="var(--c-chocolate)" fontWeight="800" textTransform="uppercase">
+                  <Dialog.Title fontSize="sm" color="brand.900" fontWeight="800" textTransform="uppercase">
                     Sticker Collected Profile
                   </Dialog.Title>
                 </Dialog.Header>
@@ -1066,7 +1067,7 @@ export function VibeCheckPage() {
                         avatarColor={selectedStaffDetail?.avatar_color || "accent.solid"}
                         size="56px"
                         fontSize="md"
-                        border="2px solid var(--c-chocolate)"
+                        border="2px solid var(--chakra-colors-accent-solid)"
                       />
                       <VStack align="start" gap={0.5}>
                         <Heading as="h3" fontSize="sm" fontWeight="800" color="var(--c-ink)">
@@ -1173,7 +1174,7 @@ export function VibeCheckPage() {
           >
             <VStack gap={5} maxW="320px">
               <Box
-                color="accent.solid"
+                color="brand.900"
               >
                 <Box
                   as="span"
@@ -1200,7 +1201,7 @@ export function VibeCheckPage() {
               >
                 <Text
                   fontSize="2xs"
-                  color="accent.solid"
+                  color="brand.900"
                   textTransform="uppercase"
                   letterSpacing="0.08em"
                 >
@@ -1213,7 +1214,7 @@ export function VibeCheckPage() {
               <Button
                 size="md"
                 bg="accent.solid"
-                color="white"
+                color="brand.900"
                 borderRadius="xl"
                 h="48px"
                 w="100%"

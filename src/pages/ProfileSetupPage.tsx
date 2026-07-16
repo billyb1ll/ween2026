@@ -9,16 +9,17 @@ import {
   Text,
   VStack,
   HStack,
+  Spinner,
 } from '@chakra-ui/react'
 import { FacultySelect } from '../components/FacultySelect'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { useUser } from '../context/UserContext'
 import { toaster } from '../components/ui/toaster'
-import { STAFF_ROLES } from '../lib/constants'
+import { STAFF_ROLES, FACULTIES } from '../lib/constants'
 
 const PRESET_COLORS = [
   "var(--c-lagoon)",
-  "var(--c-chocolate)",
+  "var(--chakra-colors-accent-solid)",
   "var(--c-warm-muted)",
   "var(--c-light-cocoa)",
   "var(--c-sage-slate)",
@@ -30,9 +31,13 @@ export function ProfileSetupPage() {
   const { user, updateProfile } = useUser()
   const isStaff = user?.role && user.role !== 'student'
 
-  // Initialize state directly from user context to avoid useEffect cascade renders
+  // Initialize state directly from user context
   const [nickname, setNickname] = useState(user?.nickname || '')
-  const [faculty, setFaculty] = useState(user?.faculty || '')
+  
+  const isKnownFaculty = (user?.faculty || "") === "" || FACULTIES.some(f => f.short === user?.faculty);
+  const [faculty, setFaculty] = useState(isKnownFaculty ? (user?.faculty || "") : "OTHER");
+  const [customFaculty, setCustomFaculty] = useState(isKnownFaculty ? "" : (user?.faculty || ""));
+  
   const [major, setMajor] = useState(user?.major || '')
   const [ig, setIg] = useState(user?.ig || '')
   const [avatarColor, setAvatarColor] = useState(user?.avatar_color || PRESET_COLORS[0])
@@ -47,9 +52,10 @@ export function ProfileSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!nickname.trim() || !faculty.trim()) {
+    if (!nickname.trim() || !faculty.trim() || (faculty === "OTHER" && !customFaculty.trim())) {
       toaster.create({
-        title: 'Nickname and Faculty are required',
+        title: 'Required Fields Missing',
+        description: 'Please provide both your nickname and faculty.',
         type: 'error',
       })
       return
@@ -58,7 +64,7 @@ export function ProfileSetupPage() {
     setSubmitting(true)
     const success = await updateProfile({
       nickname: nickname.trim(),
-      faculty: faculty.trim(),
+      faculty: faculty === "OTHER" ? customFaculty.trim() : faculty.trim(),
       major: major.trim(),
       ig: ig.trim(),
       avatarColor,
@@ -83,100 +89,109 @@ export function ProfileSetupPage() {
 
   return (
     <Box
-      minH="90vh"
+      minH="100vh"
       display="flex"
       alignItems="center"
       justifyContent="center"
-      py={{ base: 6, md: 12 }}
+      py={{ base: 8, md: 16 }}
       px={4}
-      position="relative"
+      bg="var(--c-ivory)"
     >
       <Container maxW="md">
         <Box
+          as="form"
+          onSubmit={handleSubmit}
           bg="var(--c-white)"
-          border="1px solid"
-          borderColor="border.subtle"
+          p={{ base: 6, md: 10 }}
           borderRadius="2xl"
-          p={{ base: 5, md: 8 }}
-          boxShadow="var(--shadow-lagoon)"
-          animation="scale-in 0.4s var(--ease-out-quart)"
+          border="1px solid"
+          borderColor="gray.200"
+          boxShadow="0 4px 20px -2px rgba(57, 66, 91, 0.05)"
+          animation="fade-in 0.3s ease-out"
         >
-          <VStack align="stretch" gap={6} as="form" onSubmit={handleSubmit}>
-            <VStack align="center" textAlign="center" gap={1}>
+          <VStack align="stretch" gap={8}>
+            <VStack align="flex-start" gap={1.5}>
               <Heading
                 as="h1"
                 fontSize="2xl"
-                color="var(--c-chocolate)"
-                fontFamily="'Playfair Display', serif"
+                color="var(--c-lagoon)"
                 fontWeight="700"
+                letterSpacing="-0.02em"
               >
-                Complete Profile
+                Complete your profile
               </Heading>
-              <Text color="var(--c-muted)" fontSize="sm">
-                Set up your orientation identity. Let's make connections!
+              <Text color="gray.600" fontSize="sm">
+                Set up your orientation identity before you join the board.
               </Text>
             </VStack>
 
-            <VStack align="stretch" gap={4}>
+            <VStack align="stretch" gap={5}>
               {/* Nickname */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
-                  textTransform="uppercase"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="setup-nickname">Nickname <Box as="span" color="var(--c-error)">*</Box></label>
+              <VStack align="stretch" gap={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
+                  <label htmlFor="setup-nickname">
+                    Nickname <Box as="span" color="var(--c-error)">*</Box>
+                  </label>
                 </Box>
                 <Input
                   id="setup-nickname"
                   placeholder="e.g. billy"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-ivory)"
+                  borderRadius="lg"
+                  border="1px solid"
+                  borderColor="gray.300"
+                  bg="transparent"
                   _focus={{
                     borderColor: 'var(--c-lagoon)',
-                    boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                    bg: 'var(--c-white)',
+                    boxShadow: '0 0 0 1px var(--c-lagoon)',
                   }}
-                  h="48px"
-                  fontSize="sm"
+                  h="44px"
+                  fontSize="md"
                   required
                 />
               </VStack>
 
               {/* Faculty Dropdown */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
-                  textTransform="uppercase"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="setup-faculty">Faculty <Box as="span" color="var(--c-error)">*</Box></label>
+              <VStack align="stretch" gap={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
+                  <label htmlFor="setup-faculty">
+                    Faculty <Box as="span" color="var(--c-error)">*</Box>
+                  </label>
                 </Box>
                 <FacultySelect
                   value={faculty}
-                  onChange={(val) => setFaculty(val)}
+                  onChange={(val) => {
+                    setFaculty(val)
+                    if (val !== "OTHER") setCustomFaculty("")
+                  }}
                 />
+                {faculty === "OTHER" && (
+                  <Input
+                    placeholder="Type your faculty..."
+                    value={customFaculty}
+                    onChange={(e) => setCustomFaculty(e.target.value)}
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.300"
+                    bg="transparent"
+                    _focus={{
+                      borderColor: 'var(--c-lagoon)',
+                      boxShadow: '0 0 0 1px var(--c-lagoon)',
+                    }}
+                    h="44px"
+                    fontSize="md"
+                    mt={1}
+                  />
+                )}
               </VStack>
 
               {/* Major / Staff Position */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
-                  textTransform="uppercase"
-                  letterSpacing="0.05em"
-                >
+              <VStack align="stretch" gap={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
                   <label htmlFor="setup-major">
                     {isStaff ? 'Staff Position' : 'Major'}{' '}
-                    <Text as="span" color="var(--c-outline)" fontSize="2xs" fontWeight="normal">
+                    <Text as="span" color="gray.500" fontSize="xs" fontWeight="normal">
                       (Optional)
                     </Text>
                   </label>
@@ -190,7 +205,7 @@ export function ProfileSetupPage() {
                       primaryText: role,
                     }))}
                     placeholder="Select Position..."
-                    searchPlaceholder="พิมพ์ค้นหาตำแหน่ง / Type to search..."
+                    searchPlaceholder="Type to search..."
                   />
                 ) : (
                   <Input
@@ -198,54 +213,53 @@ export function ProfileSetupPage() {
                     placeholder="e.g. Computer Science"
                     value={major}
                     onChange={(e) => setMajor(e.target.value)}
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    bg="var(--c-ivory)"
+                    borderRadius="lg"
+                    border="1px solid"
+                    borderColor="gray.300"
+                    bg="transparent"
                     _focus={{
                       borderColor: 'var(--c-lagoon)',
-                      boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                      bg: 'var(--c-white)',
+                      boxShadow: '0 0 0 1px var(--c-lagoon)',
                     }}
-                    h="48px"
-                    fontSize="sm"
+                    h="44px"
+                    fontSize="md"
                   />
                 )}
               </VStack>
 
               {/* Instagram Account */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="var(--c-chocolate)"
-                  textTransform="uppercase"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="setup-ig">Instagram Account (IG) <Text as="span" color="var(--c-outline)" fontSize="2xs" fontWeight="normal">(Optional)</Text></label>
+              <VStack align="stretch" gap={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
+                  <label htmlFor="setup-ig">
+                    Instagram Account{' '}
+                    <Text as="span" color="gray.500" fontSize="xs" fontWeight="normal">
+                      (Optional)
+                    </Text>
+                  </label>
                 </Box>
                 <Input
                   id="setup-ig"
                   placeholder="e.g. chula.freshman"
                   value={ig}
                   onChange={(e) => setIg(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-ivory)"
+                  borderRadius="lg"
+                  border="1px solid"
+                  borderColor="gray.300"
+                  bg="transparent"
                   _focus={{
                     borderColor: 'var(--c-lagoon)',
-                    boxShadow: '0 0 0 3px var(--c-lagoon-light)',
-                    bg: 'var(--c-white)',
+                    boxShadow: '0 0 0 1px var(--c-lagoon)',
                   }}
-                  h="48px"
-                  fontSize="sm"
+                  h="44px"
+                  fontSize="md"
                 />
               </VStack>
 
               {/* Avatar Color Choice */}
-              <VStack align="stretch" gap={2}>
-                <Text fontSize="xs" fontWeight="700" color="var(--c-chocolate)" textTransform="uppercase" letterSpacing="0.05em">
+              <VStack align="stretch" gap={3} pt={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
                   Avatar Background Color
-                </Text>
+                </Box>
                 <HStack gap={3}>
                   {PRESET_COLORS.map((c) => (
                     <Button
@@ -258,7 +272,7 @@ export function ProfileSetupPage() {
                       borderRadius="full"
                       bg={c}
                       cursor="pointer"
-                      border={avatarColor === c ? '2.5px solid var(--c-chocolate)' : '1px solid rgba(0,0,0,0.1)'}
+                      border={avatarColor === c ? '2.5px solid var(--c-lagoon)' : '1px solid rgba(0,0,0,0.1)'}
                       transform={avatarColor === c ? 'scale(1.15)' : 'none'}
                       transition="all 0.2s ease"
                       _hover={{ transform: 'scale(1.15)', bg: c }}
@@ -275,22 +289,20 @@ export function ProfileSetupPage() {
               type="submit"
               bg="var(--c-lagoon)"
               color="white"
-              borderRadius="xl"
-              h="50px"
+              borderRadius="lg"
+              h="48px"
               fontSize="md"
-              fontWeight="700"
-              boxShadow="0 4px 12px rgba(73, 98, 104, 0.2)"
+              fontWeight="600"
               _hover={{
-                bg: '#3c5156',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 16px rgba(73, 98, 104, 0.3)',
+                bg: '#2d3446',
               }}
-              _active={{ transform: 'translateY(0)' }}
-              transition="all 0.2s var(--ease-out-quart)"
-              loading={submitting}
+              _active={{ transform: 'translateY(1px)' }}
+              transition="all 0.15s ease-out"
+              disabled={submitting}
               w="100%"
+              mt={4}
             >
-              Save & Start Exploring
+              {submitting ? <Spinner size="sm" color="white" /> : 'Save Profile'}
             </Button>
           </VStack>
         </Box>

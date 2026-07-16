@@ -116,16 +116,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (studentId: string, pin: string): Promise<boolean> => {
     try {
       const hashedPin = await hashPin(pin, studentId);
-      const { data, error } = await supabase
-        .from("users")
-        // Explicit column list — pin_hash is intentionally excluded from the
-        // response payload to prevent credential leakage into the client cache.
-        .select(
-          "student_id, role, nickname, faculty, major, house_position, avatar_color, images, tags, bio, profile_pic_url, photo_pool, immich_asset_id, ig, has_accepted_tos, created_at"
-        )
-        .eq("student_id", studentId)
-        .eq("pin_hash", hashedPin)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("verify_user_login", {
+        p_student_id: studentId,
+        p_pin_hash: hashedPin,
+      }).maybeSingle();
 
       if (error) throw error;
 
@@ -133,12 +127,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         return false;
       }
 
+      const verifiedUser = data as unknown as User;
+
       // Generate a session in the database
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data: sessionData, error: sessionError } = await supabase
         .from("user_sessions")
         .insert({
-          student_id: data.student_id,
+          student_id: verifiedUser.student_id,
           expires_at: expiresAt,
         })
         .select("session_token")
@@ -173,9 +169,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   ): Promise<boolean> => {
     try {
       const sessionDataToken = await claimProfileMutation.mutateAsync({ studentId, pin });
+      const hashedPin = await hashPin(pin, studentId);
 
       localStorage.removeItem("baan7_student_id");
       localStorage.setItem("baan7_session_token", sessionDataToken);
+      sessionStorage.setItem("baan7_admin_pin", hashedPin);
 
       // Update state and refresh
       setSessionToken(sessionDataToken);

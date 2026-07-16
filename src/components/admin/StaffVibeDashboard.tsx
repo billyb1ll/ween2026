@@ -97,7 +97,7 @@ export function StaffVibeDashboard() {
       <Box
         p={5}
         bg="var(--c-ivory)"
-        border="2px dashed var(--c-chocolate)"
+        border="2px dashed var(--chakra-colors-accent-solid)"
         borderRadius="2xl"
         boxShadow="var(--shadow-card)"
       >
@@ -105,7 +105,7 @@ export function StaffVibeDashboard() {
           <Heading
             as="h2"
             size="md"
-            color="var(--c-chocolate)"
+            color="brand.900"
             fontWeight="bold"
             textAlign="center"
           >
@@ -124,11 +124,11 @@ export function StaffVibeDashboard() {
       <Box
         p={5}
         bg="var(--c-ivory)"
-        border="2px dashed var(--c-chocolate)"
+        border="2px dashed var(--chakra-colors-accent-solid)"
         borderRadius="2xl"
         boxShadow="var(--shadow-card)"
       >
-        <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={4} fontWeight="bold">
+        <Heading as="h3" size="xs" color="brand.900" mb={4} fontWeight="bold">
           <Box display="flex" alignItems="center" gap={2}>
             <FiGrid size={16} />
             My Spy Metrics Grid
@@ -137,7 +137,7 @@ export function StaffVibeDashboard() {
 
         {isMetricsLoading ? (
           <Flex py={6} justify="center">
-            <Spinner color="var(--c-chocolate)" />
+            <Spinner color="brand.900" />
           </Flex>
         ) : (
           <Grid templateColumns="repeat(3, 1fr)" gap={3}>
@@ -192,7 +192,7 @@ export function StaffVibeDashboard() {
                 Accuracy Ratio
               </Text>
               <RoughNotation type="box" color="#FBD38D" strokeWidth={2} show={true}>
-                <Text fontSize="lg" fontWeight="bold" color="var(--c-chocolate)" px={2}>
+                <Text fontSize="lg" fontWeight="bold" color="brand.900" px={2}>
                   {metrics?.accuracyRatio ?? 0}%
                 </Text>
               </RoughNotation>
@@ -205,11 +205,11 @@ export function StaffVibeDashboard() {
       <Box
         p={5}
         bg="var(--c-ivory)"
-        border="2px dashed var(--c-chocolate)"
+        border="2px dashed var(--chakra-colors-accent-solid)"
         borderRadius="2xl"
         boxShadow="var(--shadow-card)"
       >
-        <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={3} fontWeight="bold">
+        <Heading as="h3" size="xs" color="brand.900" mb={3} fontWeight="bold">
           <Box display="flex" alignItems="center" gap={2}>
             <FiSearch size={16} />
             Top Detectives (Live Student Tracker)
@@ -218,7 +218,7 @@ export function StaffVibeDashboard() {
 
         {isDetectivesLoading ? (
           <Flex py={6} justify="center">
-            <Spinner color="var(--c-chocolate)" />
+            <Spinner color="brand.900" />
           </Flex>
         ) : detectives && detectives.length > 0 ? (
           <VStack align="stretch" gap={3} maxH="300px" overflowY="auto" pr={1}>
@@ -269,11 +269,11 @@ export function StaffVibeDashboard() {
       <Box
         p={5}
         bg="var(--c-ivory)"
-        border="2px dashed var(--c-chocolate)"
+        border="2px dashed var(--chakra-colors-accent-solid)"
         borderRadius="2xl"
         boxShadow="var(--shadow-card)"
       >
-        <Heading as="h3" size="xs" color="var(--c-chocolate)" mb={3} fontWeight="bold">
+        <Heading as="h3" size="xs" color="brand.900" mb={3} fontWeight="bold">
           <Box display="flex" alignItems="center" gap={2}>
             <FiCpu size={16} />
             Intel Clue Controller
@@ -294,7 +294,7 @@ export function StaffVibeDashboard() {
               fontSize="xs"
               borderRadius="xl"
               rows={3}
-              _focus={{ borderColor: "var(--c-chocolate)" }}
+              _focus={{ borderColor: "accent.solid" }}
             />
           </Box>
 
@@ -313,10 +313,10 @@ export function StaffVibeDashboard() {
                   py={1}
                   borderRadius="full"
                   border="1px solid"
-                  borderColor="color-mix(in srgb, var(--c-chocolate) 20%, transparent)"
+                  borderColor="color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
                   gap={1}
                 >
-                  <Text fontSize="2xs" fontWeight="600" color="var(--c-chocolate)">
+                  <Text fontSize="2xs" fontWeight="600" color="brand.900">
                     {tag}
                   </Text>
                   <Button
@@ -358,7 +358,7 @@ export function StaffVibeDashboard() {
                 fontSize="xs"
                 h="36px"
                 borderRadius="xl"
-                _focus={{ borderColor: "var(--c-chocolate)" }}
+                _focus={{ borderColor: "accent.solid" }}
               />
               <Button
                 onClick={handleAddTag}
@@ -379,8 +379,8 @@ export function StaffVibeDashboard() {
           <Button
             onClick={handleSaveClues}
             loading={updateCluesMutation.isPending}
-            bg="var(--c-chocolate)"
-            color="white"
+            bg="accent.solid"
+            color="brand.900"
             fontSize="xs"
             fontWeight="bold"
             h="40px"

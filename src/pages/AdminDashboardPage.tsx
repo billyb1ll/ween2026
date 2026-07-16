@@ -1949,7 +1949,7 @@ export function AdminDashboardPage() {
           fontFamily="heading"
           fontSize={{ base: "2rem", md: "3rem" }}
           fontWeight={700}
-          color="accent.solid"
+          color="brand.900"
         >
           Administrative Console
         </Heading>
@@ -2065,7 +2065,7 @@ export function AdminDashboardPage() {
             px={6}
             py={1.5}
             h="36px"
-            color="accent.solid"
+            color="brand.900"
             _hover={{
               bg: "rgba(73, 98, 104, 0.05)",
             }}
@@ -2279,7 +2279,7 @@ export function AdminDashboardPage() {
                     <Button
                       type="submit"
                       bg="accent.solid"
-                      color="white"
+                      color="brand.900"
                       _hover={{
                         bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
                       }}
@@ -2332,7 +2332,7 @@ export function AdminDashboardPage() {
                       >
                         breaking_news
                       </Box>
-                      <Text fontWeight="700" color="accent.solid" fontSize="sm">
+                      <Text fontWeight="700" color="brand.900" fontSize="sm">
                         Global Marquee Ticker
                       </Text>
                     </Flex>
@@ -2481,7 +2481,7 @@ export function AdminDashboardPage() {
                       >
                         {globalMuteActive ? "volume_off" : "volume_up"}
                       </Box>
-                      <Text fontWeight="700" color="accent.solid" fontSize="sm">
+                      <Text fontWeight="700" color="brand.900" fontSize="sm">
                         Instant Panic Mute
                       </Text>
                       {globalMuteActive && (
@@ -2624,7 +2624,7 @@ export function AdminDashboardPage() {
                 <Button
                   type="submit"
                   bg="accent.solid"
-                  color="white"
+                  color="brand.900"
                   loading={updatingEvent}
                   h="44px"
                   py={2}
@@ -2852,7 +2852,7 @@ export function AdminDashboardPage() {
                                 _hover={{ bg: "rgba(73, 98, 104, 0.08)" }}
                                 _selected={{
                                   bg: "accent.solid",
-                                  color: "white",
+                                  color: "brand.900",
                                 }}
                               >
                                 {item.label}
@@ -2892,7 +2892,7 @@ export function AdminDashboardPage() {
                   <Button
                     type="submit"
                     bg="accent.solid"
-                    color="white"
+                    color="brand.900"
                     h={{ base: "40px", md: "38px" }}
                     py={1.5}
                     px={4}
@@ -2924,7 +2924,7 @@ export function AdminDashboardPage() {
                     fontSize="sm"
                     fontWeight="700"
                     fontFamily="heading"
-                    color="accent.solid"
+                    color="brand.900"
                   >
                     Swipe Penalty & Exponential Lockout Variables
                   </Heading>
@@ -3222,7 +3222,7 @@ export function AdminDashboardPage() {
                 fontSize="lg"
                 fontWeight="700"
                 fontFamily="heading"
-                color="accent.solid"
+                color="brand.900"
                 mb={4}
               >
                 Immich Photo Server Connectivity (AV)
@@ -3235,7 +3235,7 @@ export function AdminDashboardPage() {
                   bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="accent.solid">
+                  <Text fontWeight="600" color="brand.900">
                     External Server Status
                   </Text>
                   <Badge
@@ -3251,7 +3251,7 @@ export function AdminDashboardPage() {
                   bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="accent.solid">
+                  <Text fontWeight="600" color="brand.900">
                     Configured Server Endpoint
                   </Text>
                   <Text fontSize="xs" fontWeight="700" color="brand.solid">
@@ -3265,10 +3265,10 @@ export function AdminDashboardPage() {
                   bg="bg.canvas"
                   borderRadius="xl"
                 >
-                  <Text fontWeight="600" color="accent.solid">
+                  <Text fontWeight="600" color="brand.900">
                     Synced Image Records
                   </Text>
-                  <Text fontSize="sm" fontWeight="700" color="accent.solid">
+                  <Text fontSize="sm" fontWeight="700" color="brand.900">
                     {immichStatus.totalImages} images
                   </Text>
                 </Flex>
@@ -3279,7 +3279,7 @@ export function AdminDashboardPage() {
                 fontSize="sm"
                 fontWeight="700"
                 fontFamily="heading"
-                color="accent.solid"
+                color="brand.900"
                 mb={2}
               >
                 DigitalOcean Droplet Sync Log Tracker
@@ -3322,7 +3322,7 @@ export function AdminDashboardPage() {
           <VStack align="stretch" gap={6}>
             {staffLoading ? (
               <Flex minH="40vh" align="center" justify="center">
-                <Spinner size="xl" color="accent.solid" />
+                <Spinner size="xl" color="brand.900" />
               </Flex>
             ) : (
               <>
@@ -3510,7 +3510,7 @@ export function AdminDashboardPage() {
                     <Button
                       type="submit"
                       bg="accent.solid"
-                      color="white"
+                      color="brand.900"
                       h="44px"
                       py={2}
                       borderRadius="xl"
@@ -3792,7 +3792,7 @@ export function AdminDashboardPage() {
                     <Dialog.Title
                       fontSize="xl"
                       fontWeight="bold"
-                      color="accent.solid"
+                      color="brand.900"
                       fontFamily="heading"
                     >
                       CSV Upload Preview & Duplicate Validation
@@ -3894,7 +3894,7 @@ export function AdminDashboardPage() {
                     <Button
                       type="submit"
                       bg="accent.solid"
-                      color="white"
+                      color="brand.900"
                       loading={upserting}
                       h="44px"
                       py={2}
@@ -4111,7 +4111,7 @@ export function AdminDashboardPage() {
           w="calc(100% - 32px)"
           maxW="md"
           bg="accent.solid"
-          color="white"
+          color="brand.900"
           borderRadius="2xl"
           boxShadow="lg"
           py={3}
@@ -4124,7 +4124,7 @@ export function AdminDashboardPage() {
                 as="span"
                 className="material-symbols-outlined"
                 fontSize="20px"
-                color="var(--chakra-colors-accent-muted)"
+                color="brand.900"
               >
                 check_box
               </Box>

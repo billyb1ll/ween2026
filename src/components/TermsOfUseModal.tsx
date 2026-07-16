@@ -42,7 +42,7 @@ export function TermsOfUseModal() {
         <Dialog.Positioner zIndex={2000} px={4}>
           <Dialog.Content
           bg="var(--c-ivory)"
-          border={{ base: "none", md: "2px solid var(--c-chocolate)" }}
+          border={{ base: "none", md: "2px solid var(--chakra-colors-accent-solid)" }}
           borderRadius="2xl"
           width={{ base: "100%", md: "640px" }}
           maxH="90vh"
@@ -57,7 +57,7 @@ export function TermsOfUseModal() {
               fontFamily="heading"
               fontSize="2xl"
               fontWeight="700"
-              color="var(--c-chocolate)"
+              color="brand.900"
               textAlign="center"
             >
               Terms of Use & Privacy Policy<br />
@@ -74,7 +74,7 @@ export function TermsOfUseModal() {
                 border="1px solid"
                 borderColor="border.subtle"
               >
-                <Text fontSize="sm" fontWeight="700" color="var(--c-chocolate)" mb={2}>
+                <Text fontSize="sm" fontWeight="700" color="brand.900" mb={2}>
                   1. Photo & Media Usage (การใช้รูปภาพและสื่อ)
                 </Text>
                 <Text fontSize="sm" color="fg.muted">
@@ -91,7 +91,7 @@ export function TermsOfUseModal() {
                 border="1px solid"
                 borderColor="border.subtle"
               >
-                <Text fontSize="sm" fontWeight="700" color="var(--c-chocolate)" mb={2}>
+                <Text fontSize="sm" fontWeight="700" color="brand.900" mb={2}>
                   2. Security & Password Storage (ความปลอดภัยและรหัสผ่าน)
                 </Text>
                 <Text fontSize="sm" color="fg.muted">
@@ -108,7 +108,7 @@ export function TermsOfUseModal() {
                 border="1px solid"
                 borderColor="border.subtle"
               >
-                <Text fontSize="sm" fontWeight="700" color="var(--c-chocolate)" mb={2}>
+                <Text fontSize="sm" fontWeight="700" color="brand.900" mb={2}>
                   3. PDPA & Data Privacy (นโยบายคุ้มครองข้อมูลส่วนบุคคล)
                 </Text>
                 <Text fontSize="sm" color="fg.muted">
@@ -132,7 +132,7 @@ export function TermsOfUseModal() {
                 borderRadius="xl"
                 transition="all 0.2s"
                 _hover={{ bg: "rgba(73, 98, 104, 0.05)" }}
-                _focusWithin={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "2px" }}
+                _focusWithin={{ ring: "2px", ringColor: "accent.solid", ringOffset: "2px" }}
               >
                 <input
                   type="checkbox"
@@ -153,8 +153,8 @@ export function TermsOfUseModal() {
             <Button
               w="100%"
               h="56px"
-              bg="var(--c-chocolate)"
-              color="white"
+              bg="accent.solid"
+              color="brand.900"
               borderRadius="xl"
               fontSize="lg"
               fontWeight="700"

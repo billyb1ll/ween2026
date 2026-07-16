@@ -5,56 +5,56 @@ const config = defineConfig({
     tokens: {
       colors: {
         brand: {
-          50: { value: "#f0f7f8" },
-          100: { value: "#cce7ed" },
-          200: { value: "#b0cbd1" },
-          300: { value: "#7fa6ad" },
-          400: { value: "#5f8a92" },
-          500: { value: "#496268" },
-          600: { value: "#3d5357" },
-          700: { value: "#324b50" },
-          800: { value: "#283d41" },
-          900: { value: "#1e2f32" },
-          950: { value: "#041f24" },
+          50: { value: "#f0f2f6" },
+          100: { value: "#d9dee8" },
+          200: { value: "#b3bdd1" },
+          300: { value: "#8c9bba" },
+          400: { value: "#667aa3" },
+          500: { value: "#39425b" }, // Navy Blue (Base)
+          600: { value: "#2d3448" },
+          700: { value: "#222736" },
+          800: { value: "#171a24" },
+          900: { value: "#0b0d12" },
+          950: { value: "#060709" },
         },
-        chocolate: {
-          50: { value: "#fdf6f2" },
-          100: { value: "#fae8db" },
-          200: { value: "#ffe2d2" },
-          300: { value: "#eebca0" },
-          400: { value: "#c49070" },
-          500: { value: "#7c563f" },
-          600: { value: "#6b4a36" },
-          700: { value: "#613f29" },
-          800: { value: "#4a2f1f" },
-          900: { value: "#2f1504" },
-          950: { value: "#1a0b02" },
+        pink: {
+          50: { value: "#fef6f7" },
+          100: { value: "#f7dcde" }, // Light Pink
+          200: { value: "#fcc9ce" }, // Pink (Base)
+          300: { value: "#f9a8b1" },
+          400: { value: "#f68693" },
+          500: { value: "#f26475" }, 
+          600: { value: "#e83a4f" },
+          700: { value: "#c22336" },
+          800: { value: "#991928" },
+          900: { value: "#70101b" },
+          950: { value: "#4a0810" },
         },
         ivory: {
           50: { value: "#ffffff" },
-          100: { value: "#fcf9f8" },
-          200: { value: "#f6f3f2" },
-          300: { value: "#f0eded" },
-          400: { value: "#eae7e7" },
-          500: { value: "#e4e2e1" },
-          600: { value: "#dcd9d9" },
-          700: { value: "#c2c7c9" },
+          100: { value: "#fdfbf8" }, // White
+          200: { value: "#f9f7f2" },
+          300: { value: "#f2ede3" }, // Ivory (Base)
+          400: { value: "#e8dfd1" },
+          500: { value: "#ddcfbd" },
+          600: { value: "#d3bfa8" },
+          700: { value: "#5a6a8a" }, // Sage Green mapped to border/muted lines
           800: { value: "var(--c-ink)" },
-          900: { value: "#424849" },
-          950: { value: "#1b1c1c" },
+          900: { value: "#7c6163" }, // Mauve/Brown for muted text
+          950: { value: "#39425b" }, // Navy for darkest ink
         },
         /* State colors — semantic palette */
         state: {
-          liked: { value: "#c0392b" },
-          likedBg: { value: "#fce8e6" },
-          star: { value: "#496268" },
-          starBg: { value: "#c5e0e6" },
-          boost: { value: "#7c563f" },
-          boostBg: { value: "#ffe2d2" },
+          liked: { value: "#fcc9ce" },
+          likedBg: { value: "#f7dcde" },
+          star: { value: "#e3caa1" }, // Gold/Sand
+          starBg: { value: "#f2ede3" },
+          boost: { value: "#516642" }, // Olive Green
+          boostBg: { value: "#5a6a8a" }, // Sage Green
         },
       },
       fonts: {
-        heading: { value: '"Playfair Display", Georgia, serif' },
+        heading: { value: '"Alex Brush", "Playfair Display", Georgia, serif' },
         body: { value: '"Plus Jakarta Sans", system-ui, sans-serif' },
       },
       radii: {
@@ -76,23 +76,23 @@ const config = defineConfig({
           focusRing: { value: "{colors.brand.400}" },
         },
         accent: {
-          solid: { value: "{colors.chocolate.500}" },
-          contrast: { value: "{colors.ivory.100}" },
-          fg: { value: "{colors.chocolate.500}" },
-          muted: { value: "{colors.chocolate.200}" },
-          subtle: { value: "{colors.chocolate.50}" },
+          solid: { value: "{colors.pink.200}" },
+          contrast: { value: "{colors.brand.900}" },
+          fg: { value: "{colors.pink.500}" },
+          muted: { value: "{colors.pink.100}" },
+          subtle: { value: "{colors.pink.50}" },
         },
         bg: {
-          canvas: { value: "{colors.ivory.100}" },
-          surface: { value: "{colors.white}" },
+          canvas: { value: "{colors.ivory.300}" },
+          surface: { value: "{colors.ivory.100}" },
           hero: { value: "{colors.ivory.200}" },
-          elevated: { value: "{colors.ivory.300}" },
-          input: { value: "{colors.ivory.300}" },
+          elevated: { value: "{colors.ivory.100}" },
+          input: { value: "{colors.ivory.200}" },
         },
         fg: {
-          default: { value: "{colors.ivory.950}" },
+          default: { value: "{colors.brand.900}" },
           muted: { value: "{colors.ivory.900}" },
-          subtle: { value: "{colors.ivory.800}" },
+          subtle: { value: "{colors.ivory.700}" },
         },
         border: {
           default: { value: "{colors.ivory.700}" },

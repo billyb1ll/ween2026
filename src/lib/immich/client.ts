@@ -24,8 +24,10 @@ export class ImmichApiError extends Error {
 export class ImmichClient {
   private readonly baseUrl: string;
   private readonly apiKey?: string;
+  private readonly config: ImmichClientConfig;
 
   constructor(config: ImmichClientConfig) {
+    this.config = config;
     // Strip trailing slash for consistent URL building
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
     this.apiKey = config.apiKey;
@@ -79,6 +81,12 @@ export class ImmichClient {
 
     if (this.apiKey) {
       headers["x-api-key"] = this.apiKey;
+    }
+
+    // Automatically use provided accessToken or fallback to localStorage token
+    const token = this.config.accessToken || (typeof window !== 'undefined' ? localStorage.getItem('baan7_session_token') : null);
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     if (body !== undefined && !(body instanceof FormData)) {

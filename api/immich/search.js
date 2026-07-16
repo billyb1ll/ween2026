@@ -5,9 +5,9 @@ export default async function handler(req, res) {
   const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
   const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   // Use the dedicated viewer key if available, otherwise fallback to master key
-  const IMMICH_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL
-  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
+  const IMMICH_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY;
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
   if (req.method === 'POST') {
 
@@ -26,20 +26,27 @@ export default async function handler(req, res) {
       }
     }
 
+    // 2. Proxy request
     try {
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/search/metadata`, {
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/search/smart`, {
         method: 'POST',
-        headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsedBody)
-      })
+        headers: {
+          'x-api-key': IMMICH_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(parsedBody),
+      });
+
       if (!response.ok) {
-        console.warn(`Immich metadata search returned ${response.status}`)
-        return res.status(200).json({ assets: { items: [] } })
+        console.warn(`Immich search proxy returned ${response.status}`);
+        return res.status(response.status).json({ error: 'Search failed' });
       }
-      return res.status(200).json(await response.json())
+
+      const data = await response.json();
+      return res.status(200).json(data);
     } catch (error) {
-      console.error('Proxy metadata search error:', error)
-      return res.status(200).json({ assets: { items: [] } })
+      console.error('Proxy search error:', error);
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
 

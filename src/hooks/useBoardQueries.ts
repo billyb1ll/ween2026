@@ -203,14 +203,11 @@ export function useLikePostMutation(activeTab: BoardTab) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ postId, nextLikes, nextLikedBy }: { postId: number; nextLikes: number; nextLikedBy: string[] }) => {
-      const { error } = await supabase
-        .from("posts")
-        .update({
-          likes: nextLikes,
-          liked_by: nextLikedBy,
-        })
-        .eq("id", postId);
+    mutationFn: async ({ postId, nextLikes, nextLikedBy, userId }: { postId: number; nextLikes: number; nextLikedBy: string[]; userId: string }) => {
+      const { error } = await supabase.rpc("toggle_post_like", {
+        p_post_id: postId,
+        p_student_id: userId,
+      });
 
       if (error) throw error;
       return { postId, nextLikes, nextLikedBy };

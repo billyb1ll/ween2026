@@ -100,8 +100,8 @@ export function HomePage() {
         ? "Find hidden peers and staff members around the campus! Swipe to collect cards and make new friends."
         : "Interactive Vibe Check is temporarily disabled by administrators (profile setup is suspended).",
       icon: vibecheckEnabled ? "mood" : "lock_clock",
-      color: vibecheckEnabled ? "var(--c-lagoon-light)" : "var(--c-ivory)",
-      textColor: vibecheckEnabled ? "var(--c-lagoon)" : "var(--c-outline)",
+      color: vibecheckEnabled ? "brand.100" : "bg.canvas",
+      textColor: vibecheckEnabled ? "brand.600" : "border.default",
       link: vibecheckEnabled ? "/vibe-check" : "#",
       size: "large" as const,
       avatars: vibecheckEnabled ? ["B7", "Fr", "+12"] : undefined,
@@ -110,8 +110,8 @@ export function HomePage() {
       title: "Real-time Message Board",
       description: "Share thoughts, send love, upload media, and hype up your fellow Baan 7 peers in real-time.",
       icon: "campaign",
-      color: "var(--c-chocolate)",
-      textColor: "white",
+      color: "accent.solid",
+      textColor: "brand.900",
       link: "/board",
       size: "wide" as const,
     },
@@ -119,8 +119,8 @@ export function HomePage() {
       title: "Exclusive Gallery",
       description: "Browse orientation activity highlights with our face-matching search engine.",
       icon: "photo_library",
-      color: "var(--c-white)",
-      textColor: "var(--c-ink)",
+      color: "bg.surface",
+      textColor: "fg.default",
       link: "/gallery",
       size: "small" as const,
     },
@@ -129,8 +129,8 @@ export function HomePage() {
       subtitle: "First Meet",
       time: "Today, 18:00",
       icon: "event",
-      color: "var(--c-ivory)",
-      textColor: "var(--c-ink)",
+      color: "bg.canvas",
+      textColor: "fg.default",
       link: "/board",
       size: "small" as const,
     },
@@ -278,7 +278,7 @@ export function HomePage() {
             Welcome to <br />
             <Text
               as="span"
-              color="accent.solid"
+              color="brand.900"
               fontStyle="italic"
               fontFamily="'Playfair Display', serif"
             >
@@ -302,7 +302,7 @@ export function HomePage() {
                 as="span"
                 display="inline-flex"
                 bg="accent.solid"
-                color="white"
+                color="brand.900"
                 px={{ base: 6, md: 8 }}
                 py={{ base: 3, md: 4 }}
                 borderRadius="full"
@@ -311,11 +311,11 @@ export function HomePage() {
                 letterSpacing="0.05em"
                 gap={2}
                 transition="all 0.3s var(--ease-out-quart)"
-                boxShadow="0 6px 20px color-mix(in srgb, var(--c-chocolate) 25%, transparent)"
+                boxShadow="0 6px 20px color-mix(in srgb, var(--chakra-colors-accent-solid) 25%, transparent)"
                 _hover={{
                   transform: "translateY(-2px)",
                   boxShadow:
-                    "0 10px 30px color-mix(in srgb, var(--c-chocolate) 35%, transparent)",
+                    "0 10px 30px color-mix(in srgb, var(--chakra-colors-accent-solid) 35%, transparent)",
                 }}
                 _active={{ transform: "scale(0.97)" }}
               >
@@ -375,7 +375,7 @@ export function HomePage() {
           >
             <motion.path
               d="M 100 100 Q 350 100, 550 100 C 600 100, 620 70, 600 40 C 580 50, 570 80, 550 100 C 500 100, 480 70, 500 40 C 520 50, 530 80, 550 100 C 570 80, 570 40, 550 15 C 530 40, 530 80, 550 100 Q 750 100, 1100 100"
-              stroke="var(--c-chocolate)"
+              stroke="var(--chakra-colors-accent-solid)"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
@@ -385,8 +385,26 @@ export function HomePage() {
           </svg>
         </Box>
 
+        {/* Face Claim Banner */}
+        <Box mb={12} animation="fade-in-up 0.7s var(--ease-out-expo) both">
+          <Link to="/face-claim">
+            <Flex w="100%" bg="white" border="2px dashed" borderColor="brand.solid" borderRadius="2xl" p={{ base: 5, md: 8 }} align="center" justify="center" direction={{ base: "column", md: "row" }} gap={4} transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "brand.subtle", transform: "translateY(-4px)", boxShadow: "var(--shadow-card-hover)" }}>
+              <Flex bg="brand.solid" color="white" w={12} h={12} borderRadius="full" align="center" justify="center" flexShrink={0}>
+                <Box as="span" className="material-symbols-outlined" fontSize="24px">face</Box>
+              </Flex>
+              <VStack align={{ base: "center", md: "start" }} gap={1} flex={1}>
+                <Heading as="h2" fontSize={{ base: "md", md: "lg" }} color="brand.solid">AI Face Match is now live!</Heading>
+                <Text color="fg.muted" fontSize="sm" textAlign={{ base: "center", md: "left" }} maxW="65ch">
+                  Unclaimed faces have been detected in our orientation gallery. Find yours and claim it before someone else does!
+                </Text>
+              </VStack>
+              <Box as="span" className="material-symbols-outlined" color="brand.solid" display={{ base: "none", md: "block" }}>arrow_forward</Box>
+            </Flex>
+          </Link>
+        </Box>
+
         {/* Features Grid — mobile-first: stacked with hierarchy */}
-        <Box as="section" py={{ base: 8, md: 20 }} id="features">
+        <Box as="section" py={{ base: 4, md: 10 }} id="features">
           <Heading
             as="h2"
             fontFamily="'Playfair Display', serif"
@@ -511,7 +529,7 @@ function FeatureCardLarge({
             : {
                 transform: "translateY(-4px)",
                 boxShadow:
-                  "0 0 40px color-mix(in srgb, var(--c-lagoon-light) 40%, transparent)",
+                  "0 0 40px color-mix(in srgb, var(--chakra-colors-brand-100) 40%, transparent)",
               }
         }
       >
@@ -596,8 +614,8 @@ function FeatureCardLarge({
                     i === 0
                       ? "white"
                       : i === 1
-                        ? "var(--c-chocolate-light)"
-                        : "var(--c-ivory)"
+                        ? "accent.muted"
+                        : "bg.canvas"
                   }
                   border="2px solid"
                   borderColor={feature.color}
@@ -606,7 +624,7 @@ function FeatureCardLarge({
                   justifyContent="center"
                   fontSize="xs"
                   fontWeight="700"
-                  color={i === 1 ? "var(--c-chocolate)" : feature.textColor}
+                  color={i === 1 ? "brand.900" : feature.textColor}
                   ml={i > 0 ? -4 : 0}
                 >
                   {label}
@@ -617,7 +635,7 @@ function FeatureCardLarge({
           {isLocked ? (
             <Box
               bg="rgba(124, 86, 63, 0.1)"
-              color="var(--c-chocolate)"
+              color="brand.900"
               px={3}
               py={1}
               borderRadius="full"
@@ -648,11 +666,11 @@ function FeatureCardLarge({
   if (isLocked) {
     return (
       <Box
-        bg="var(--c-ivory)"
+        bg="bg.canvas"
         p={{ base: 6, md: 12 }}
         borderRadius="2xl"
         border="2px dashed"
-        borderColor="var(--c-outline)"
+        borderColor="border.subtle"
         h="100%"
         display="flex"
         flexDirection="column"
@@ -666,7 +684,7 @@ function FeatureCardLarge({
             className="material-symbols-outlined"
             aria-hidden="true"
             fontSize={{ base: "3xl", md: "5xl" }}
-            color="var(--c-muted)"
+            color="fg.muted"
           >
             lock_clock
           </Box>
@@ -675,13 +693,13 @@ function FeatureCardLarge({
             fontFamily="'Playfair Display', serif"
             fontSize={{ base: "xl", md: "2xl" }}
             fontWeight={700}
-            color="var(--c-muted)"
+            color="fg.muted"
           >
             Coming Soon
           </Heading>
           <Text
             fontSize={{ base: "sm", md: "md" }}
-            color="var(--c-muted)"
+            color="fg.muted"
             opacity={0.8}
             lineHeight={1.5}
           >
@@ -750,7 +768,7 @@ function FeatureCardWide({
           _hover={{
             transform: "translateY(-4px)",
             boxShadow:
-              "0 0 40px color-mix(in srgb, var(--c-chocolate) 30%, transparent)",
+              "0 0 40px color-mix(in srgb, var(--chakra-colors-accent-solid) 30%, transparent)",
           }}
         >
           {/* Dot pattern */}
@@ -883,7 +901,7 @@ function FeatureCardSmall({
         <Box
           w={{ base: 12, md: 14 }}
           h={{ base: 12, md: 14 }}
-          bg="color-mix(in srgb, var(--c-lagoon) 10%, transparent)"
+          bg="color-mix(in srgb, var(--chakra-colors-brand-500) 10%, transparent)"
           borderRadius="xl"
           display="flex"
           alignItems="center"

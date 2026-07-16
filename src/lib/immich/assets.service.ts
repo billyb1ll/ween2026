@@ -31,10 +31,27 @@ export class AssetsService {
   }
 
   /**
+   * Build the URL for an asset preview (720p).
+   * Points to the dedicated Vercel Edge caching route.
+   */
+  previewUrl(id: string): string {
+    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/preview`);
+  }
+
+  /**
    * Build the URL for the original (full-resolution) asset file.
+   * This route issues a 302 redirect for bandwidth savings.
    */
   originalUrl(id: string): string {
     return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/original`);
+  }
+
+  /**
+   * Build the URL specifically for downloading the asset.
+   * This route streams bytes through Vercel and forces Content-Disposition: attachment.
+   */
+  downloadUrl(id: string): string {
+    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/download`);
   }
 
   /**

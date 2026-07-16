@@ -25,7 +25,7 @@ export const Toaster = () => {
             bg="rgba(252, 249, 248, 0.85)"
             backdropFilter="blur(12px)"
             border="1.5px solid"
-            borderColor="var(--c-chocolate)"
+            borderColor="accent.solid"
             borderRadius="xl"
             boxShadow="var(--shadow-card)"
             p={4}
@@ -38,13 +38,13 @@ export const Toaster = () => {
             }}
           >
             {toast.type === "loading" ? (
-              <Spinner size="sm" color="var(--c-chocolate)" />
+              <Spinner size="sm" color="brand.900" />
             ) : (
-              <Toast.Indicator color="var(--c-chocolate)" />
+              <Toast.Indicator color="brand.900" />
             )}
             <Stack gap="0.5" flex="1" maxWidth="100%">
               {toast.title && (
-                <Toast.Title color="var(--c-chocolate)" fontWeight="700" fontSize="sm">
+                <Toast.Title color="brand.900" fontWeight="700" fontSize="sm">
                   {toast.title}
                 </Toast.Title>
               )}
@@ -55,7 +55,7 @@ export const Toaster = () => {
               )}
             </Stack>
             {toast.action && (
-              <Toast.ActionTrigger color="var(--c-chocolate)" fontWeight="600" fontSize="xs">
+              <Toast.ActionTrigger color="brand.900" fontWeight="600" fontSize="xs">
                 {toast.action.label}
               </Toast.ActionTrigger>
             )}

@@ -238,12 +238,37 @@ export function LoginPage() {
     setConfirmPin("");
   };
 
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (lockoutEndTime && Date.now() < lockoutEndTime) {
+      const remaining = lockoutEndTime - Date.now();
+      const timer = setTimeout(() => {
+        setLockoutEndTime(null);
+      }, remaining);
+      return () => clearTimeout(timer);
+    }
+  }, [lockoutEndTime]);
+
   const triggerPinLogin = async (enteredPin: string) => {
+    if (lockoutEndTime && Date.now() < lockoutEndTime) {
+      const remainingSecs = Math.ceil((lockoutEndTime - Date.now()) / 1000);
+      toaster.create({
+        title: "Account Locked",
+        description: `Too many failed attempts. Please wait ${remainingSecs} seconds.`,
+        type: "error",
+      });
+      setPin("");
+      return;
+    }
+
     setSubmitting(true);
     const success = await login(studentId.trim(), enteredPin);
     setSubmitting(false);
 
     if (success) {
+      setFailedAttempts(0);
       setCheckmarkText("Welcome to Baan 7!");
       setShowCheckmark(true);
       setTimeout(() => {
@@ -256,11 +281,24 @@ export function LoginPage() {
       }, 1200);
     } else {
       setPin(""); // Reset PIN on error
-      toaster.create({
-        title: "Incorrect PIN",
-        description: "The PIN you entered is incorrect. Please try again.",
-        type: "error",
-      });
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+
+      if (newAttempts >= 3) {
+        setLockoutEndTime(Date.now() + 30000); // 30s lockout
+        setFailedAttempts(0); // Reset for after lockout
+        toaster.create({
+          title: "Account Locked",
+          description: "Too many failed attempts. Please wait 30 seconds.",
+          type: "error",
+        });
+      } else {
+        toaster.create({
+          title: "Incorrect PIN",
+          description: "The PIN you entered is incorrect. Please try again.",
+          type: "error",
+        });
+      }
     }
   };
 
@@ -346,7 +384,7 @@ export function LoginPage() {
             <VStack gap={1}>
               <Heading
                 size="lg"
-                color="var(--c-chocolate)"
+                color="brand.900"
                 fontFamily="'Playfair Display', serif"
                 textAlign="center"
               >
@@ -377,7 +415,7 @@ export function LoginPage() {
                 <Heading
                   as="h1"
                   fontSize="2xl"
-                  color="var(--c-chocolate)"
+                  color="brand.900"
                   fontFamily="'Playfair Display', serif"
                   fontWeight="700"
                 >
@@ -403,7 +441,7 @@ export function LoginPage() {
                       <Box
                         fontSize="xs"
                         fontWeight="700"
-                        color="var(--c-chocolate)"
+                        color="brand.900"
                         textTransform="uppercase"
                         letterSpacing="0.05em"
                         fontFamily="'Playfair Display', serif"
@@ -425,7 +463,7 @@ export function LoginPage() {
                         border="1.5px solid var(--c-outline)"
                         bg="var(--c-ivory)"
                         _focus={{
-                          borderColor: "var(--c-chocolate)",
+                          borderColor: "accent.solid",
                           boxShadow: "0 0 0 3px var(--c-chocolate-light)",
                           bg: "var(--c-white)",
                         }}
@@ -475,7 +513,7 @@ export function LoginPage() {
                         <Text
                           fontSize="xs"
                           fontWeight="700"
-                          color="var(--c-chocolate)"
+                          color="brand.900"
                           textTransform="uppercase"
                           fontFamily="'Playfair Display', serif"
                         >
@@ -490,7 +528,7 @@ export function LoginPage() {
                               borderRadius="full"
                               bg={
                                 i < pin.length
-                                  ? "var(--c-chocolate)"
+                                  ? "var(--chakra-colors-accent-solid)"
                                   : "var(--c-ivory)"
                               }
                               border="2px solid var(--c-outline)"
@@ -504,7 +542,7 @@ export function LoginPage() {
                         <Text
                           fontSize="xs"
                           fontWeight="700"
-                          color="var(--c-chocolate)"
+                          color="brand.900"
                           textTransform="uppercase"
                           fontFamily="'Playfair Display', serif"
                         >
@@ -542,8 +580,8 @@ export function LoginPage() {
 
                     <Button
                       type="submit"
-                      bg="var(--c-chocolate)"
-                      color="white"
+                      bg="accent.solid"
+                      color="brand.900"
                       borderRadius="xl"
                       h="50px"
                       fontSize="md"
@@ -678,7 +716,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadPro
           fontSize="sm"
           onClick={onClear}
           _hover={{ bg: "rgba(0,0,0,0.04)" }}
-          _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
+          _focusVisible={{ ring: "2px", ringColor: "accent.solid", ringOffset: "1px" }}
           cursor="pointer"
           disabled={disabled}
         >
@@ -695,7 +733,7 @@ function NumericKeypad({ onKeyPress, onBackspace, onClear, disabled }: KeypadPro
           color="var(--c-muted)"
           onClick={onBackspace}
           _hover={{ bg: "rgba(0,0,0,0.04)" }}
-          _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
+          _focusVisible={{ ring: "2px", ringColor: "accent.solid", ringOffset: "1px" }}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -727,7 +765,7 @@ function KeypadButton({
       borderRadius="xl"
       bg="var(--c-ivory)"
       border="1px solid var(--c-outline)"
-      color="var(--c-chocolate)"
+      color="brand.900"
       fontWeight="700"
       fontSize="lg"
       _hover={{
@@ -738,7 +776,7 @@ function KeypadButton({
       _active={{
         bg: "var(--c-lagoon-light)",
       }}
-      _focusVisible={{ ring: "2px", ringColor: "var(--c-chocolate)", ringOffset: "1px" }}
+      _focusVisible={{ ring: "2px", ringColor: "accent.solid", ringOffset: "1px" }}
       onClick={() => onClick(value)}
       cursor="pointer"
       disabled={disabled}

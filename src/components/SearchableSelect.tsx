@@ -127,8 +127,8 @@ export function SearchableSelect({
               pr="36px"
               fontSize="sm"
               _focus={{
-                borderColor: "var(--c-chocolate)",
-                boxShadow: "0 0 0 1px var(--c-chocolate)",
+                borderColor: "accent.solid",
+                boxShadow: "0 0 0 1px var(--chakra-colors-accent-solid)",
               }}
             />
           </InputGroup>
@@ -179,7 +179,7 @@ export function SearchableSelect({
                     fontSize="sm"
                     transition="background 0.2s"
                     _hover={{ bg: "rgba(73, 98, 104, 0.08)" }}
-                    _selected={{ bg: "var(--c-chocolate)", color: "white" }}
+                    _selected={{ bg: "accent.solid", color: "brand.900" }}
                   >
                     <HStack justify="space-between" w="100%">
                       <VStack align="start" gap={0}>
@@ -196,7 +196,7 @@ export function SearchableSelect({
                         <Badge
                           colorPalette={isSelected ? "green" : "gray"}
                           variant={isSelected ? "solid" : "subtle"}
-                          color={isSelected ? "var(--c-chocolate)" : undefined}
+                          color={isSelected ? "var(--chakra-colors-accent-solid)" : undefined}
                           bg={isSelected ? "white" : undefined}
                         >
                           {item.badge}

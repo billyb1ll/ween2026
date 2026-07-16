@@ -46,7 +46,7 @@ export function SystemControlPanel({
               <Text
                 fontFamily="heading"
                 fontWeight="700"
-                color="var(--c-chocolate)"
+                color="brand.900"
                 fontSize="sm"
               >
                 Hype Board Mode
@@ -174,7 +174,7 @@ export function SystemControlPanel({
             <Text
               fontFamily="heading"
               fontWeight="700"
-              color="var(--c-chocolate)"
+              color="brand.900"
               fontSize="sm"
             >
               Memory Board
@@ -232,7 +232,7 @@ export function SystemControlPanel({
             <Text
               fontFamily="heading"
               fontWeight="700"
-              color="var(--c-chocolate)"
+              color="brand.900"
               fontSize="sm"
             >
               Vibe Check Feature

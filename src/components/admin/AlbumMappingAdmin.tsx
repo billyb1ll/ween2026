@@ -97,14 +97,14 @@ export function AlbumMappingAdmin() {
     }
   };
 
-  if (loading || fetchingAlbums) return <Spinner color="var(--c-chocolate)" />;
+  if (loading || fetchingAlbums) return <Spinner color="brand.900" />;
 
   return (
     <Box bg="bg.surface" p={6} borderRadius="xl" border="1px solid" borderColor="border.subtle">
       <VStack align="stretch" gap={4}>
         <Flex justify="space-between" align="center">
-          <Text fontWeight="700" color="accent.solid" fontSize="lg">Frontend Album Mappings</Text>
-          <Button size="sm" onClick={handleSave} loading={saving} bg="var(--c-chocolate)" color="white" _hover={{ bg: "var(--c-ink)" }}>
+          <Text fontWeight="700" color="brand.900" fontSize="lg">Frontend Album Mappings</Text>
+          <Button size="sm" onClick={handleSave} loading={saving} bg="accent.solid" color="brand.900" _hover={{ bg: "var(--c-ink)" }}>
             <Box as="span" mr={2}><FiSave /></Box> Save Configuration
           </Button>
         </Flex>
@@ -176,7 +176,7 @@ export function AlbumMappingAdmin() {
             </Flex>
           ))}
           
-          <Button mt={2} variant="outline" color="var(--c-chocolate)" borderColor="var(--c-chocolate)" onClick={handleAddRow} alignSelf="flex-start">
+          <Button mt={2} variant="outline" color="brand.900" borderColor="accent.solid" onClick={handleAddRow} alignSelf="flex-start">
             <Box as="span" mr={2}><FiPlus /></Box> Add New Mapping
           </Button>
         </VStack>

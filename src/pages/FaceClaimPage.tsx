@@ -5,12 +5,13 @@ import {
   SimpleGrid,
   Text,
   VStack,
-  Image,
   Button,
   Spinner,
   Input,
+  Collapsible,
 } from "@chakra-ui/react";
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { toaster } from "../components/ui/toaster";
 import { immich } from "../lib/immich";
@@ -19,11 +20,34 @@ import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { VirtuosoGrid } from "react-virtuoso";
 import { supabase } from "../lib/supabase";
 import React from "react";
+import { ImmichImage } from "../components/gallery/ImmichImage";
 
 
+
+const GridList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
+  <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)", md: "repeat(6, 1fr)", lg: "repeat(8, 1fr)" }} gap={4} p={2}>
+    {children}
+  </Box>
+));
+
+const GridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <Box {...props}>{children}</Box>
+);
+
+const PreviewGridList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
+  <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)" }} gap={4} p={4}>
+    {children}
+  </Box>
+));
+
+const PreviewGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <Box {...props}>{children}</Box>
+);
 
 export function FaceClaimPage() {
   const { user, updateProfile, refreshClaimedFaceStatus } = useUser();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
   const [personAssets, setPersonAssets] = useState<ImmichAsset[]>([]);
@@ -71,7 +95,8 @@ export function FaceClaimPage() {
   // When selection changes, fetch assets for ALL selected people
   useEffect(() => {
     let active = true;
-    if (selectedPersonIds.length === 0) {
+    // If no selection or if user is a guest (guests can't see the photos anyway), skip fetching.
+    if (selectedPersonIds.length === 0 || !user) {
       Promise.resolve().then(() => {
         if (active) setPersonAssets([]);
       });
@@ -92,7 +117,7 @@ export function FaceClaimPage() {
 
     fetchSelectedAssets();
     return () => { active = false; };
-  }, [selectedPersonIds]);
+  }, [selectedPersonIds, user]);
 
   const handleExecuteClaim = async () => {
     if (!user || selectedPersonIds.length === 0) return;
@@ -128,9 +153,10 @@ export function FaceClaimPage() {
         console.error("Supabase insert error:", sbError);
       }
 
+      const defaultName = `Student ${user.student_id}`;
       const formattedName = (user.full_name && user.full_name.trim() !== "" 
-        ? `${user.nickname} (${user.full_name.trim()})` 
-        : user.nickname) || undefined;
+        ? `${user.nickname || "Student"} (${user.full_name.trim()})` 
+        : user.nickname) || defaultName;
 
       // Dual write: Update Immich for ALL selected people
       await Promise.all(
@@ -163,7 +189,7 @@ export function FaceClaimPage() {
   return (
     <Flex direction="column" position="relative" maxW="var(--container-max)" mx="auto" px={{ base: 4, md: 16 }} pt={{ base: 2, md: 28 }} pb={32} minH="100vh">
       <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
-        <Heading as="h1" fontSize={{ base: "2rem", md: "3.5rem" }} color="accent.solid" textAlign="center">
+        <Heading as="h1" fontSize={{ base: "2rem", md: "3.5rem" }} color="brand.900" textAlign="center">
           Claim Your Faces
         </Heading>
         <Text color="fg.muted" textAlign="center" maxW="lg">
@@ -195,14 +221,8 @@ export function FaceClaimPage() {
               data={filteredPeople}
               useWindowScroll
               components={{
-                List: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
-                  <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)", md: "repeat(6, 1fr)", lg: "repeat(8, 1fr)" }} gap={4} p={2}>
-                    {children}
-                  </Box>
-                )),
-                Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-                  <Box {...props}>{children}</Box>
-                )
+                List: GridList,
+                Item: GridItem
               }}
               itemContent={(_, person) => {
                 const isSelected = selectedPersonIds.includes(person.id);
@@ -226,7 +246,7 @@ export function FaceClaimPage() {
                       transform={isSelected ? "scale(1.05)" : "none"}
                     >
                       <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
-                        <Image src={immich.people.thumbnailUrl(person.id)} alt="Anonymous face" w="100%" h="100%" objectFit="cover" loading="lazy" />
+                        <ImmichImage endpoint={immich.people.thumbnailUrl(person.id)} alt="Anonymous face" w="100%" h="100%" objectFit="cover" decoding="async" />
                       </Box>
                       {isSelected && (
                         <Flex 
@@ -245,73 +265,95 @@ export function FaceClaimPage() {
             />
           </Box>
         )}
-
-        {selectedPersonIds.length > 0 && (
-          <Box animation="scale-in 0.4s var(--ease-out-quart)" mt={12}>
-            {loadingPersonAssets ? (
-              <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={4}>
-                {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, var(--chakra-colors-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
-              </SimpleGrid>
-            ) : personAssets.length === 0 ? (
-              <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl"><Text color="fg.subtle">No photos matched this face classification.</Text></Flex>
-            ) : (
-              <Box>
-                <Text fontSize="sm" fontWeight="700" color="accent.solid" mb={4}>
-                  Reviewing Photos ({personAssets.length})
-                </Text>
-                <Box flex="1" w="100%" minH="400px" borderRadius="xl" overflow="hidden" border="1px solid" borderColor="border.subtle">
-                  <VirtuosoGrid
-                    ref={virtuosoRef}
-                    data={personAssets}
-                    useWindowScroll={false}
-                    style={{ height: '100%', width: '100%' }}
-                    components={{
-                      List: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
-                        <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)" }} gap={4} p={4}>
-                          {children}
-                        </Box>
-                      )),
-                      Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-                        <Box {...props}>{children}</Box>
-                      )
-                    }}
-                    itemContent={(index, asset) => (
-                      <Box position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => openLightbox(index, personAssets)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
-                        <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                          <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} w="100%" h="100%" objectFit="cover" loading="lazy" />
-                        </Box>
-                      </Box>
-                    )}
-                  />
-                </Box>
-              </Box>
-            )}
-          </Box>
-        )}
       </Box>
 
       {/* Sticky Bottom Footer */}
       {selectedPersonIds.length > 0 && (
-        <Flex 
+        <Box 
           position="fixed" bottom="0" left="0" right="0" zIndex="sticky" 
-          bg="whiteAlpha.900" backdropFilter="blur(8px)" borderTop="1px solid" borderColor="border.subtle"
-          p={{ base: 4, md: 6 }} align="center" justify="center" boxShadow="0 -4px 12px rgba(0,0,0,0.05)"
           animation="fade-in-up 0.4s var(--ease-out-expo) both"
+          pointerEvents="none"
         >
-          <Flex maxW="var(--container-max)" w="100%" align="center" justify="space-between" px={{ base: 2, md: 8 }}>
-            <VStack align="start" gap={0}>
-              <Text fontSize={{ base: "sm", md: "md" }} fontWeight="700" color="accent.solid">
-                {selectedPersonIds.length} Face{selectedPersonIds.length > 1 ? 's' : ''} Selected
-              </Text>
-              <Text fontSize="xs" color="fg.muted" display={{ base: "none", sm: "block" }}>
-                Ensure these are you before confirming.
-              </Text>
-            </VStack>
-            <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} loading={claiming} onClick={handleExecuteClaim} _hover={{ bg: "teal.600" }}>
-              Confirm Selection
-            </Button>
-          </Flex>
-        </Flex>
+          <Collapsible.Root defaultOpen={false}>
+            <Collapsible.Content>
+              <Box pointerEvents="auto" bg="whiteAlpha.950" backdropFilter="blur(8px)" borderTop="1px solid" borderColor="border.subtle" p={{ base: 4, md: 6 }} pb={0} boxShadow="0 -4px 12px rgba(0,0,0,0.05)">
+                <Box maxW="var(--container-max)" mx="auto" w="100%">
+                  {!user ? (
+                    <Flex justify="center" align="center" direction="column" py={8} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl" mb={4}>
+                      <Box as="span" className="material-symbols-outlined" fontSize="48px" color="fg.subtle" mb={4}>lock</Box>
+                      <Text color="fg.muted" mb={6} textAlign="center" maxW="sm">
+                        Login to view full photos matching this face and claim it as yours.
+                      </Text>
+                      <Button onClick={() => navigate("/login", { state: { from: location.pathname } })} bg="brand.solid" color="white" borderRadius="xl" px={8} h="48px" _hover={{ bg: "brand.600" }}>
+                        Login to Claim
+                      </Button>
+                    </Flex>
+                  ) : loadingPersonAssets ? (
+                    <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={4} mb={4}>
+                      {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, var(--chakra-colors-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
+                    </SimpleGrid>
+                  ) : personAssets.length === 0 ? (
+                    <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl" mb={4}><Text color="fg.subtle">No photos matched this face classification.</Text></Flex>
+                  ) : (
+                    <Box flex="1" w="100%" h="400px" borderRadius="xl" overflow="hidden" border="1px solid" borderColor="border.subtle" mb={4} bg="bg.surface">
+                      <VirtuosoGrid
+                        ref={virtuosoRef}
+                        data={personAssets}
+                        useWindowScroll={false}
+                        style={{ height: '100%', width: '100%' }}
+                        components={{
+                          List: PreviewGridList,
+                          Item: PreviewGridItem
+                        }}
+                        itemContent={(index, asset) => (
+                          <Box position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => openLightbox(index, personAssets)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
+                            <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
+                              <ImmichImage endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")} w="100%" h="100%" objectFit="cover" decoding="async" />
+                            </Box>
+                          </Box>
+                        )}
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Collapsible.Content>
+
+            <Flex 
+              pointerEvents="auto"
+              bg="whiteAlpha.900" backdropFilter="blur(8px)" borderTop="1px solid" borderColor="border.subtle"
+              p={{ base: 4, md: 6 }} align="center" justify="center"
+              boxShadow="0 -4px 12px rgba(0,0,0,0.05)"
+            >
+              <Flex maxW="var(--container-max)" w="100%" align="center" justify="space-between" px={{ base: 2, md: 8 }}>
+                <Collapsible.Trigger asChild>
+                  <Flex cursor="pointer" _hover={{ opacity: 0.8 }} transition="opacity 0.2s" align="center" gap={3}>
+                    <VStack align="start" gap={0}>
+                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="700" color="brand.900">
+                        {selectedPersonIds.length} Face{selectedPersonIds.length > 1 ? 's' : ''} Selected
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted" display={{ base: "none", sm: "block" }}>
+                        {user ? "Tap to review photos before confirming." : "Login to review photos and claim."}
+                      </Text>
+                    </VStack>
+                    <Box as="span" className="material-symbols-outlined" fontSize="24px" color="brand.600">
+                      expand_less
+                    </Box>
+                  </Flex>
+                </Collapsible.Trigger>
+                {!user ? (
+                  <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} onClick={() => navigate("/login", { state: { from: location.pathname } })} _hover={{ bg: "brand.600" }}>
+                    Login to Claim
+                  </Button>
+                ) : (
+                  <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} loading={claiming} onClick={handleExecuteClaim} _hover={{ bg: "brand.600" }}>
+                    Confirm Selection
+                  </Button>
+                )}
+              </Flex>
+            </Flex>
+          </Collapsible.Root>
+        </Box>
       )}
     </Flex>
   );

@@ -1,3 +1,4 @@
+import { ImmichImage } from "../components/gallery/ImmichImage";
 import {
   Box,
   Flex,
@@ -298,7 +299,7 @@ function LivePresenceBadge({ count }: { count: number }) {
             />
           )}
         </Box>
-        <Text fontSize="xs" fontWeight="700" color="accent.solid">
+        <Text fontSize="xs" fontWeight="700" color="brand.900">
           {count} people jamming on the board right now
         </Text>
       </Flex>
@@ -567,22 +568,10 @@ const LiveChatBubble = memo(function LiveChatBubble({
             </Box>
           ) : (
             <Box
-              bg={
-                isMe
-                  ? "accent.solid"
-                  : isSenderStaff
-                    ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 6%, var(--chakra-colors-white))"
-                    : "bg.muted"
-              }
-              color={isMe ? "white" : "fg.default"}
-              border={isMe ? "none" : "1px solid"}
-              borderColor={
-                isMe
-                  ? undefined
-                  : isSenderStaff
-                    ? "color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
-                    : "border.subtle"
-              }
+              bg={isSenderStaff ? "accent.solid" : "brand.900"}
+              color={isSenderStaff ? "brand.900" : "white"}
+              border="none"
+              borderColor="transparent"
               px={{ base: 3.5, md: 4 }}
               py={{ base: 2, md: 2.5 }}
               borderRadius="xl"
@@ -1132,7 +1121,7 @@ export function BoardPage() {
           fontWeight={700}
           lineHeight={1.1}
           letterSpacing="-0.02em"
-          color="accent.solid"
+          color="brand.900"
           textAlign="center"
         >
           {(!effectiveHypeActive && activeTab === "hype") ||
@@ -1141,7 +1130,7 @@ export function BoardPage() {
             : `The ${activeTab === "hype" ? "Hype" : "Memory"} Board`}
         </Heading>
         <Text
-          color="fg.muted"
+          color="fg.subtle"
           fontSize={{ base: "sm", md: "lg" }}
           textAlign="center"
           maxW="lg"
@@ -1249,7 +1238,7 @@ export function BoardPage() {
               <Box
                 className="material-symbols-outlined"
                 fontSize="xl"
-                color="accent.solid"
+                color="brand.900"
               >
                 chat
               </Box>
@@ -1289,7 +1278,7 @@ export function BoardPage() {
                   />
                 )}
               </Box>
-              <Text fontSize="xs" fontWeight="600" color="fg.muted">
+              <Text fontSize="xs" fontWeight="600" color="fg.subtle">
                 {chatOnlineCount} {chatOnlineCount === 1 ? "viewer" : "viewers"}
               </Text>
             </HStack>
@@ -1351,9 +1340,9 @@ export function BoardPage() {
                   borderRadius="full"
                   size="sm"
                   shadow="lg"
-                  bg="var(--c-ivory)"
-                  color="var(--c-chocolate)"
-                  borderColor="var(--c-chocolate)"
+                  bg="bg.surface"
+                  color="brand.900"
+                  borderColor="accent.solid"
                   borderWidth="1px"
                   onClick={() =>
                     virtuosoRef.current?.scrollToIndex({
@@ -1363,7 +1352,7 @@ export function BoardPage() {
                   }
                   px={4}
                   py={2}
-                  _hover={{ bg: "var(--c-lagoon)", color: "white" }}
+                  _hover={{ bg: "accent.solid", color: "brand.900" }}
                   zIndex="10"
                 >
                   <Box className="material-symbols-outlined" fontSize="sm" mr={1}>
@@ -1442,7 +1431,7 @@ export function BoardPage() {
                   px={4}
                 >
                   <Text
-                    color="fg.muted"
+                    color="fg.subtle"
                     fontWeight="600"
                     fontSize="sm"
                     textAlign="center"
@@ -1575,7 +1564,7 @@ export function BoardPage() {
                   <Button
                     type="submit"
                     bg="accent.solid"
-                    color="white"
+                    color="brand.900"
                     h="40px"
                     w="40px"
                     minW="40px"
@@ -1640,10 +1629,10 @@ export function BoardPage() {
               >
                 <Box>
                   <Heading
-                    as="h3"
+                    as="h2"
                     fontSize="md"
                     fontWeight="700"
-                    color="accent.solid"
+                    color="brand.900"
                     mb={1}
                   >
                     Memory Board Governance Panel
@@ -1697,7 +1686,7 @@ export function BoardPage() {
               <Box
                 className="material-symbols-outlined"
                 fontSize="5xl"
-                color="accent.solid"
+                color="brand.900"
                 mb={4}
               >
                 lock
@@ -1711,7 +1700,7 @@ export function BoardPage() {
               >
                 Memory Board Locked
               </Heading>
-              <Text fontSize="md" color="fg.muted" maxW="md">
+              <Text fontSize="md" color="fg.subtle" maxW="md">
                 Memory Board will be unlocked during the final session. Stay
                 tuned!
               </Text>
@@ -1795,7 +1784,7 @@ export function BoardPage() {
                             : "bg.surface"
                         }
                         color={
-                          activeCategory === cat.value ? "white" : "fg.default"
+                          activeCategory === cat.value ? "brand.900" : "fg.default"
                         }
                         border="1px solid"
                         borderColor={
@@ -1867,7 +1856,7 @@ export function BoardPage() {
                               <Text
                                 fontSize="xs"
                                 fontWeight="700"
-                                color="fg.muted"
+                                color="fg.subtle"
                                 mr={1}
                               >
                                 Handcraft Accents:
@@ -2066,7 +2055,7 @@ export function BoardPage() {
                             <Text
                               fontSize="2xs"
                               fontWeight="700"
-                              color="fg.muted"
+                              color="fg.subtle"
                               mb={1}
                               textTransform="uppercase"
                               letterSpacing="0.05em"
@@ -2077,7 +2066,7 @@ export function BoardPage() {
                               p={4}
                               bg="#FFFDF6" // Cozy warm cream notebook color
                               border="1px dashed"
-                              borderColor="rgba(124, 86, 63, 0.25)"
+                              borderColor="rgba(57, 66, 91, 0.25)"
                               borderRadius="lg"
                               fontFamily="'Mali', sans-serif"
                               fontSize="sm"
@@ -2127,7 +2116,7 @@ export function BoardPage() {
                             <Text
                               fontSize="xs"
                               fontWeight="700"
-                              color="fg.muted"
+                              color="fg.subtle"
                             >
                               <RoughNotation
                                 type="highlight"
@@ -2167,7 +2156,7 @@ export function BoardPage() {
                                     bg={
                                       isSelected ? "accent.solid" : "bg.surface"
                                     }
-                                    color={isSelected ? "white" : "fg.default"}
+                                    color={isSelected ? "brand.900" : "fg.default"}
                                     border="1px solid"
                                     borderColor={
                                       isSelected
@@ -2213,7 +2202,7 @@ export function BoardPage() {
                                   style={{
                                     cursor: "pointer",
                                     fontSize: "0.875rem",
-                                    color: "accent.solid",
+                                    color: "brand.900",
                                     fontWeight: 600,
                                   }}
                                 >
@@ -2245,7 +2234,7 @@ export function BoardPage() {
                             )}
                             <Button
                               bg="bg.surface"
-                              color="#2D3748"
+                              color="brand.900"
                               border="1px solid"
                               borderColor="border.subtle"
                               px={{ base: 4, md: 6 }}
@@ -2466,7 +2455,7 @@ export function BoardPage() {
                   <Text
                     fontSize="2xl"
                     fontWeight="700"
-                    color="accent.solid"
+                    color="brand.900"
                     fontFamily="heading"
                   >
                     {inspectedUser.nickname
@@ -2477,7 +2466,7 @@ export function BoardPage() {
                       : "Guest"}
                   </Text>
                   {inspectedUser.full_name && (
-                    <Text fontSize="md" color="fg.muted" fontWeight="500">
+                    <Text fontSize="md" color="fg.subtle" fontWeight="500">
                       {inspectedUser.full_name.replace(
                         /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
                         "",
@@ -2666,7 +2655,7 @@ function JellyScrollLoader() {
           w="36px"
           h="36px"
           borderRadius="full"
-          border="4px solid rgba(197, 224, 230, 0.3)"
+          border="4px solid color-mix(in srgb, var(--chakra-colors-accent-solid) 20%, transparent)"
           borderTopColor="accent.solid"
           className="spin-loader"
         />
@@ -2682,7 +2671,7 @@ function JellyScrollLoader() {
         <Text
           fontSize="xs"
           fontWeight="600"
-          color="accent.solid"
+          color="brand.900"
           fontFamily="body"
         >
           Fetching more vibes...
@@ -2721,7 +2710,7 @@ function TabButton({
       cursor="pointer"
       transition="all 0.3s var(--ease-out-quart)"
       bg={active ? "accent.solid" : "transparent"}
-      color={active ? "white" : "fg.subtle"}
+      color={active ? "brand.900" : "fg.subtle"}
       _hover={{ bg: active ? "accent.solid" : "bg.hero" }}
       minH="44px"
     >
@@ -2920,7 +2909,7 @@ function CommentSection({
       <Text
         fontSize="xs"
         fontWeight="700"
-        color="fg.muted"
+        color="fg.subtle"
         textTransform="uppercase"
         letterSpacing="0.05em"
       >
@@ -2936,7 +2925,8 @@ function CommentSection({
           No comments yet. Be the first to comment!
         </Text>
       ) : (
-        <VStack align="stretch" gap={2}>
+
+<VStack align="stretch" gap={2}>
           {comments.map((comment) => {
             const isCommentStaff = comment.author?.role !== "student";
             const commentPrefix = isCommentStaff ? "P' " : "";
@@ -3038,7 +3028,7 @@ function CommentSection({
             type="submit"
             loading={submittingComment}
             bg="accent.solid"
-            color="white"
+            color="brand.900"
             h="36px"
             px={4}
             borderRadius="lg"
@@ -3096,6 +3086,9 @@ export const HypeCard = memo(function HypeCard({
   const isAnon = post.is_anonymous;
   const isStaff = post.author.role !== "student";
   const prefix = isStaff ? "P' " : "";
+  const cardBg = isStaff ? "accent.solid" : "brand.900";
+  const cardColor = isStaff ? "brand.900" : "white";
+  const cardSubtleColor = isStaff ? "brand.900" : "whiteAlpha.700";
 
   const displayAuthorName =
     isAnon && currentUserRole !== "moderator"
@@ -3124,9 +3117,10 @@ export const HypeCard = memo(function HypeCard({
 
   return (
     <Box
-      bg="bg.surface"
-      border="1px solid"
-      borderColor="border.subtle"
+      bg={cardBg}
+      color={cardColor}
+      border="none"
+      borderColor="transparent"
       borderRadius="2xl"
       p={{ base: 4, md: 5 }}
       mb="24px"
@@ -3179,8 +3173,8 @@ export const HypeCard = memo(function HypeCard({
         >
           {(!isAnon || currentUserRole === "moderator") &&
           post.author.profile_pic_url ? (
-            <Image
-              src={post.author.profile_pic_url}
+            <ImmichImage
+              endpoint={post.author.profile_pic_url}
               alt={
                 isAnon
                   ? "Anonymous user's profile picture"
@@ -3199,7 +3193,7 @@ export const HypeCard = memo(function HypeCard({
           <Text
             fontSize="sm"
             fontWeight="700"
-            color="fg.default"
+            color="inherit"
             display="inline-flex"
             gap={1}
             flexWrap="wrap"
@@ -3216,7 +3210,7 @@ export const HypeCard = memo(function HypeCard({
               </Badge>
             )}
           </Text>
-          <Text fontSize="2xs" color="fg.subtle">
+          <Text fontSize="2xs" color={cardSubtleColor}>
             {getRelativeTime(post.createdAt)}
           </Text>
         </VStack>
@@ -3244,14 +3238,14 @@ export const HypeCard = memo(function HypeCard({
             : "orientation"}
         </Box>
       </Flex>
-      <Text fontSize="sm" color="fg.default" lineHeight={1.6} mb={3}>
+      <Text fontSize="sm" color="inherit" lineHeight={1.6} mb={3}>
         {post.content}
       </Text>
       <Flex gap={4} align="center">
         <Button
           type="button"
           role="group"
-          color={localLiked ? "accent.solid" : "fg.subtle"}
+          color={localLiked ? "brand.900" : "fg.subtle"}
           bg={{
             base: "transparent",
             md: localLiked ? "bg.hero" : "transparent",
@@ -3270,8 +3264,8 @@ export const HypeCard = memo(function HypeCard({
           disabled={!user}
           _hover={{
             bg: "bg.hero",
-            color: "accent.solid",
-            borderColor: "accent.solid",
+            color: "brand.900",
+            borderColor: "brand.900",
           }}
         >
           <Box
@@ -3296,7 +3290,7 @@ export const HypeCard = memo(function HypeCard({
           aria-label={showComments ? "Collapse comments" : "Expand comments"}
           aria-expanded={showComments}
           onClick={() => setShowComments(!showComments)}
-          color="fg.subtle"
+          color={cardSubtleColor}
           bg="transparent"
           border="none"
           p={1}
@@ -3331,7 +3325,7 @@ export const HypeCard = memo(function HypeCard({
               e.stopPropagation();
               if (onPin) onPin(post.id, post.is_pinned ?? false);
             }}
-            color={post.is_pinned ? "accent.solid" : "fg.subtle"}
+            color={post.is_pinned ? "brand.900" : cardSubtleColor}
             _hover={{ bg: "bg.hero" }}
           >
             <Box className="material-symbols-outlined" fontSize="sm">
@@ -3347,14 +3341,14 @@ export const HypeCard = memo(function HypeCard({
             minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
-            color="red.500"
+            color={isStaff ? "red.700" : "red.300"}
             onClick={(e) => {
               e.stopPropagation();
               if (window.confirm("Confirm delete?")) {
                 if (onDelete) onDelete(post.id);
               }
             }}
-            _hover={{ bg: "red.50" }}
+            _hover={{ bg: isStaff ? "whiteAlpha.400" : "whiteAlpha.200" }}
           >
             <Box className="material-symbols-outlined" fontSize="sm">
               delete
@@ -3430,6 +3424,9 @@ const MemoryCard = memo(function MemoryCard({
   const isAnon = post.is_anonymous;
   const isStaff = post.author.role !== "student";
   const prefix = isStaff ? "P' " : "";
+  const cardBg = isStaff ? "accent.solid" : "brand.900";
+  const cardColor = isStaff ? "brand.900" : "white";
+  const cardSubtleColor = isStaff ? "brand.900" : "whiteAlpha.700";
 
   const displayAuthorName =
     isAnon && currentUserRole !== "moderator"
@@ -3463,16 +3460,11 @@ const MemoryCard = memo(function MemoryCard({
       h="100%"
       display="flex"
       flexDirection="column"
-      overflow="hidden"
-      bg={
-        isStaff
-          ? "linear-gradient(to bottom right, #f4fcfa, #eefaf7)"
-          : "linear-gradient(to bottom right, #fdfbf7, #f7f3eb)"
-      }
-      border="1px solid"
-      borderColor={
-        isStaff ? "rgba(13, 148, 136, 0.2)" : "rgba(124, 86, 63, 0.15)"
-      }
+      overflow="visible"
+      bg={cardBg}
+      color={cardColor}
+      border="none"
+      borderColor="transparent"
       borderRadius="2xl"
       px={{ base: 4.5, md: 6 }}
       py={{ base: 4, md: 5 }}
@@ -3484,11 +3476,11 @@ const MemoryCard = memo(function MemoryCard({
       }}
       transition="all 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.5)}s both`}
-      boxShadow="0 10px 25px -5px rgba(124, 86, 63, 0.05), 0 4px 10px -2px rgba(124, 86, 63, 0.02)"
+      boxShadow="0 4px 20px -2px rgba(57, 66, 91, 0.12)"
       _hover={{
         transform: "rotate(0deg) translateY(-6px)",
         boxShadow:
-          "0 22px 35px -8px rgba(124, 86, 63, 0.12), 0 8px 18px -4px rgba(124, 86, 63, 0.06)",
+          "0 8px 24px -4px rgba(57, 66, 91, 0.15)",
         zIndex: 10,
       }}
     >
@@ -3501,8 +3493,8 @@ const MemoryCard = memo(function MemoryCard({
         h="20px"
         bg="rgba(255, 223, 137, 0.45)"
         backdropFilter="blur(1px)"
-        borderLeft="1px dashed rgba(124, 86, 63, 0.15)"
-        borderRight="1px dashed rgba(124, 86, 63, 0.15)"
+        borderLeft="1px dashed rgba(57, 66, 91, 0.15)"
+        borderRight="1px dashed rgba(57, 66, 91, 0.15)"
         boxShadow="0 1px 3px rgba(0, 0, 0, 0.03)"
         zIndex={2}
         transition="all 0.3s ease"
@@ -3563,7 +3555,7 @@ const MemoryCard = memo(function MemoryCard({
                   <Text
                     fontSize="xs"
                     fontWeight="700"
-                    color="fg.default"
+                    color="inherit"
                     display="inline-flex"
                     gap={1}
                     flexWrap="wrap"
@@ -3588,7 +3580,7 @@ const MemoryCard = memo(function MemoryCard({
                       </Badge>
                     )}
                   </Text>
-                  <Text fontSize="2xs" color="fg.subtle">
+                  <Text fontSize="2xs" color={cardSubtleColor}>
                     {getRelativeTime(post.createdAt)}
                   </Text>
                 </VStack>
@@ -3600,9 +3592,9 @@ const MemoryCard = memo(function MemoryCard({
                     fontSize="2xs"
                     fontWeight="700"
                     fontFamily="'Mali', sans-serif"
-                    bg="rgba(124, 86, 63, 0.08)"
-                    color="var(--c-chocolate)"
-                    border="1px dashed rgba(124, 86, 63, 0.25)"
+                    bg="rgba(57, 66, 91, 0.08)"
+                    color="brand.900"
+                    border="1px dashed rgba(57, 66, 91, 0.25)"
                     transform="rotate(-2deg)"
                     alignSelf="center"
                   >
@@ -3612,7 +3604,7 @@ const MemoryCard = memo(function MemoryCard({
               </Flex>
               <Text
                 fontSize="sm"
-                color="fg.default"
+                color="inherit"
                 lineHeight={1.6}
                 mb={3}
                 fontStyle={index % 3 === 0 ? "italic" : "normal"}
@@ -3639,7 +3631,7 @@ const MemoryCard = memo(function MemoryCard({
               <Button
                 type="button"
                 role="group"
-                color={localLiked ? "accent.solid" : "fg.subtle"}
+                color={localLiked ? "brand.900" : "fg.subtle"}
                 bg={{
                   base: "transparent",
                   md: localLiked ? "bg.hero" : "transparent",
@@ -3658,8 +3650,8 @@ const MemoryCard = memo(function MemoryCard({
                 disabled={!user}
                 _hover={{
                   bg: "bg.hero",
-                  color: "accent.solid",
-                  borderColor: "accent.solid",
+                  color: "brand.900",
+                  borderColor: "brand.900",
                 }}
               >
                 <Box
@@ -3686,7 +3678,7 @@ const MemoryCard = memo(function MemoryCard({
                 }
                 aria-expanded={showComments}
                 onClick={() => setShowComments(!showComments)}
-                color="fg.subtle"
+                color={cardSubtleColor}
                 bg="transparent"
                 border="none"
                 p={1}
@@ -3766,7 +3758,7 @@ const MemoryCard = memo(function MemoryCard({
                 <Text
                   fontSize="xs"
                   fontWeight="700"
-                  color="fg.default"
+                  color="inherit"
                   display="inline-flex"
                   gap={1}
                   flexWrap="wrap"
@@ -3791,7 +3783,7 @@ const MemoryCard = memo(function MemoryCard({
                     </Badge>
                   )}
                 </Text>
-                <Text fontSize="2xs" color="fg.subtle">
+                <Text fontSize="2xs" color={cardSubtleColor}>
                   {getRelativeTime(post.createdAt)}
                 </Text>
               </VStack>
@@ -3803,9 +3795,9 @@ const MemoryCard = memo(function MemoryCard({
                   fontSize="2xs"
                   fontWeight="700"
                   fontFamily="'Mali', sans-serif"
-                  bg="rgba(124, 86, 63, 0.08)"
-                  color="var(--c-chocolate)"
-                  border="1px dashed rgba(124, 86, 63, 0.25)"
+                  bg="rgba(57, 66, 91, 0.08)"
+                  color="brand.900"
+                  border="1px dashed rgba(57, 66, 91, 0.25)"
                   transform="rotate(-2deg)"
                   alignSelf="center"
                 >
@@ -3815,7 +3807,7 @@ const MemoryCard = memo(function MemoryCard({
             </Flex>
             <Text
               fontSize="sm"
-              color="fg.default"
+              color="inherit"
               lineHeight={1.6}
               mb={3}
               fontStyle={index % 3 === 0 ? "italic" : "normal"}
@@ -3863,7 +3855,7 @@ const MemoryCard = memo(function MemoryCard({
             <Button
               type="button"
               role="group"
-              color={localLiked ? "accent.solid" : "fg.subtle"}
+              color={localLiked ? "brand.900" : "fg.subtle"}
               bg={{
                 base: "transparent",
                 md: localLiked ? "bg.hero" : "transparent",
@@ -3882,8 +3874,8 @@ const MemoryCard = memo(function MemoryCard({
               disabled={!user}
               _hover={{
                 bg: "bg.hero",
-                color: "accent.solid",
-                borderColor: "accent.solid",
+                color: "brand.900",
+                borderColor: "brand.900",
               }}
             >
               <Box
@@ -3910,7 +3902,7 @@ const MemoryCard = memo(function MemoryCard({
               }
               aria-expanded={showComments}
               onClick={() => setShowComments(!showComments)}
-              color="fg.subtle"
+              color={cardSubtleColor}
               bg="transparent"
               border="none"
               p={1}
@@ -3947,7 +3939,7 @@ const MemoryCard = memo(function MemoryCard({
               e.stopPropagation();
               if (onPin) onPin(post.id, post.is_pinned ?? false);
             }}
-            color={post.is_pinned ? "accent.solid" : "fg.subtle"}
+            color={post.is_pinned ? "brand.900" : cardSubtleColor}
             _hover={{ bg: "bg.hero" }}
           >
             <Box className="material-symbols-outlined" fontSize="sm">
@@ -3963,14 +3955,14 @@ const MemoryCard = memo(function MemoryCard({
             minW={{ base: "40px", md: "32px" }}
             p={0}
             borderRadius="full"
-            color="red.500"
+            color={isStaff ? "red.700" : "red.300"}
             onClick={(e) => {
               e.stopPropagation();
               if (window.confirm("Confirm delete?")) {
                 if (onDelete) onDelete(post.id);
               }
             }}
-            _hover={{ bg: "red.50" }}
+            _hover={{ bg: isStaff ? "whiteAlpha.400" : "whiteAlpha.200" }}
           >
             <Box className="material-symbols-outlined" fontSize="sm">
               delete
@@ -3989,7 +3981,7 @@ const MemoryCard = memo(function MemoryCard({
           fontSize="9xl"
           fontWeight="900"
           fontFamily="Georgia, serif"
-          color="rgba(124, 86, 63, 0.04)"
+          color="rgba(57, 66, 91, 0.04)"
           lineHeight={0.6}
           pointerEvents="none"
           userSelect="none"

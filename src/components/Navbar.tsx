@@ -44,10 +44,10 @@ function NavItem({ to, children, icon }: NavItemProps) {
       letterSpacing="0.05em"
       transition="all 0.3s var(--ease-out-quart)"
       bg={isActive ? "rgba(var(--c-white-rgb), 0.5)" : "transparent"}
-      color={isActive ? "accent.solid" : "fg.subtle"}
+      color={isActive ? "brand.900" : "fg.subtle"}
       boxShadow={isActive ? "var(--shadow-ambient)" : "none"}
       _hover={{
-        color: "accent.solid",
+        color: "brand.900",
       }}
       position="relative"
     >
@@ -81,7 +81,7 @@ const UserDropdownContent = ({
 }: UserDropdownContentProps) => (
   <VStack align="stretch" gap={3}>
     <Box>
-      <Text fontWeight="700" color="var(--c-chocolate)" fontSize="sm">
+      <Text fontWeight="700" color="brand.900" fontSize="sm">
         {user?.nickname || "Student"}
       </Text>
       <Text fontSize="xs" color="var(--c-muted)">
@@ -97,7 +97,7 @@ const UserDropdownContent = ({
         <Button
           size="sm"
           variant="ghost"
-          color="var(--c-chocolate)"
+          color="brand.900"
           justifyContent="start"
           px={2}
           h={{ base: "44px", md: "36px" }}
@@ -105,7 +105,7 @@ const UserDropdownContent = ({
           borderRadius="8px"
           _hover={{
             bg: "rgba(73, 98, 104, 0.05)",
-            color: "var(--c-chocolate)",
+            color: "brand.900",
           }}
         >
           Edit Profile
@@ -118,7 +118,7 @@ const UserDropdownContent = ({
           <Button
             size="sm"
             variant="ghost"
-            color="var(--c-chocolate)"
+            color="brand.900"
             justifyContent="start"
             px={2}
             h={{ base: "44px", md: "36px" }}
@@ -126,7 +126,7 @@ const UserDropdownContent = ({
             borderRadius="8px"
             _hover={{
               bg: "rgba(73, 98, 104, 0.05)",
-              color: "var(--c-chocolate)",
+              color: "brand.900",
             }}
           >
             Admin Dashboard
@@ -137,7 +137,7 @@ const UserDropdownContent = ({
             <Button
               size="sm"
               variant="ghost"
-              color="var(--c-chocolate)"
+              color="brand.900"
               justifyContent="start"
               px={2}
               h={{ base: "44px", md: "36px" }}
@@ -145,7 +145,7 @@ const UserDropdownContent = ({
               borderRadius="8px"
               _hover={{
                 bg: "rgba(73, 98, 104, 0.05)",
-                color: "var(--c-chocolate)",
+                color: "brand.900",
               }}
             >
               Platform KPIs
@@ -405,6 +405,10 @@ export function Navbar() {
     }
   }, [dropdownOpen, mobileDropdownOpen, handleKeyDown, handleOutsideClick]);
 
+  if (user && (!user.nickname || !user.faculty)) {
+    return null;
+  }
+
   return (
     <>
       <Flex
@@ -433,7 +437,7 @@ export function Navbar() {
             borderRadius="full"
             px={6}
             py={3}
-            border="1px solid color-mix(in srgb, var(--c-chocolate) 15%, transparent)"
+            border="1px solid color-mix(in srgb, var(--chakra-colors-accent-solid) 15%, transparent)"
             boxShadow="var(--shadow-card)"
             gap={2}
             maxW="1200px"
@@ -452,7 +456,7 @@ export function Navbar() {
                   gap={1}
                 >
                   <Text color="#c53030">Very</Text>
-                  <Text color="var(--c-chocolate)">Ween</Text>
+                  <Text color="brand.900">Ween</Text>
                 </Flex>
               </NavLink>
             </Flex>
@@ -535,7 +539,7 @@ export function Navbar() {
                     fontSize="sm"
                     fontWeight="600"
                     letterSpacing="0.05em"
-                    color="white"
+                    color="brand.900"
                     bg="accent.solid"
                     px={6}
                     py={2.5}
@@ -571,14 +575,14 @@ export function Navbar() {
               <Text
                 as="div"
                 fontFamily="heading"
-                color="accent.solid"
+                color="brand.900"
                 fontSize="lg"
                 fontWeight="700"
                 letterSpacing="0.1em"
               >
                 <HStack>
                   <Text color="#c53030">Very</Text>
-                  <Text color="var(--c-chocolate)">Ween</Text>
+                  <Text color="brand.900">Ween</Text>
                 </HStack>
               </Text>
             </NavLink>
@@ -831,7 +835,7 @@ function MobileDockItem({
       py={1}
       borderRadius="xl"
       transition="all 0.2s"
-      color={isActive ? "accent.solid" : "fg.subtle"}
+      color={isActive ? "brand.900" : "fg.subtle"}
       bg="transparent"
       /* Touch target: min 44x44 */
       minW="44px"

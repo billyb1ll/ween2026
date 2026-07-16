@@ -138,7 +138,7 @@ export function WhitelistTable({
             fontSize="lg"
             fontWeight="700"
             fontFamily="heading"
-            color="var(--c-chocolate)"
+            color="brand.900"
             m={0}
           >
             Student ID Whitelisting
@@ -155,15 +155,15 @@ export function WhitelistTable({
             />
             <Button
               onClick={() => fileInputRef.current?.click()}
-              bg="var(--c-chocolate)"
-              color="white"
+              bg="accent.solid"
+              color="brand.900"
               h="44px"
               py={2}
               px={6}
               borderRadius="xl"
               cursor="pointer"
               _hover={{
-                bg: "color-mix(in srgb, var(--c-chocolate) 85%, black)",
+                bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 85%, black)",
               }}
             >
               Upload CSV
@@ -316,7 +316,7 @@ export function WhitelistTable({
                 bg="var(--c-white)"
                 fontSize="xs"
                 _focus={{
-                  borderColor: "var(--c-chocolate)",
+                  borderColor: "accent.solid",
                   boxShadow: "0 0 0 2px var(--c-chocolate-light)",
                 }}
               />
@@ -440,7 +440,7 @@ export function WhitelistTable({
                   <Table.Cell>
                     <Badge
                       bg="var(--c-ivory)"
-                      color="var(--c-chocolate)"
+                      color="brand.900"
                       border="1px solid var(--c-outline)"
                       px={2}
                       py={1}

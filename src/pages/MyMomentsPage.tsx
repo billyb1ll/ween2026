@@ -140,7 +140,7 @@ export function MyMomentsPage() {
   if (loadingMappings) {
     return (
       <Flex minH="100vh" align="center" justify="center">
-        <Spinner size="xl" color="accent.solid" />
+        <Spinner size="xl" color="brand.900" />
       </Flex>
     );
   }
@@ -149,7 +149,7 @@ export function MyMomentsPage() {
     <Flex direction="column" position="relative" zIndex={10} maxW="var(--container-max)" mx="auto" px={{ base: 4, md: 16 }} pt={{ base: 2, md: 28 }} pb={{ base: 4, md: 20 }} minH="100vh">
       
       <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
-        <Heading as="h1" fontFamily="'Playfair Display', serif" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="accent.solid" textAlign="center">
+        <Heading as="h1" fontFamily="'Playfair Display', serif" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="brand.900" textAlign="center">
           My Moments
         </Heading>
         <Text color="fg.muted" fontSize={{ base: "sm", md: "lg" }} textAlign="center" maxW="lg">

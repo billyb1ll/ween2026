@@ -259,8 +259,8 @@ export function AdminKpiPage() {
               <KPICard title="Total Students" value={kpi.totalStudents} icon="school" color="var(--c-lagoon)" />
               <KPICard title="Total Staff & Mods" value={kpi.totalStaff} icon="shield_person" color="var(--c-lagoon)" />
               <KPICard title="Whitelisted Guests" value={kpi.totalWhitelisted} icon="how_to_reg" color="var(--c-orange)" />
-              <KPICard title="Total Posts" value={kpi.totalPosts} icon="post_add" color="var(--c-chocolate)" />
-              <KPICard title="Total Comments" value={kpi.totalComments} icon="forum" color="var(--c-chocolate)" />
+              <KPICard title="Total Posts" value={kpi.totalPosts} icon="post_add" color="brand.900" />
+              <KPICard title="Total Comments" value={kpi.totalComments} icon="forum" color="brand.900" />
               <KPICard title="Vibe Checks Completed" value={kpi.totalVibeChecks} icon="verified" color="green.600" />
               <KPICard title="Total Chat Volume" value={kpi.totalChats} icon="chat_bubble" color="var(--c-orange)" />
             </SimpleGrid>
@@ -274,7 +274,7 @@ export function AdminKpiPage() {
               borderColor="border.subtle" 
               boxShadow="var(--shadow-card)"
             >
-              <Heading as="h2" fontSize="md" color="var(--c-chocolate)" mb={4} fontWeight="700" fontFamily="heading">
+              <Heading as="h2" fontSize="md" color="brand.900" mb={4} fontWeight="700" fontFamily="heading">
                 Interactive Engagement Index
               </Heading>
               <SimpleGrid columns={{ base: 1, md: 2 }} gap={8} alignItems="center">
@@ -292,8 +292,8 @@ export function AdminKpiPage() {
                 
                 <VStack align="stretch" gap={3}>
                   <EngagementBar label="Chat Messages" value={kpi.totalChats} max={engagementIndex} color="var(--c-orange)" />
-                  <EngagementBar label="Memory & Hype Posts" value={kpi.totalPosts} max={engagementIndex} color="var(--c-chocolate)" />
-                  <EngagementBar label="Post Comments" value={kpi.totalComments} max={engagementIndex} color="var(--c-chocolate)" />
+                  <EngagementBar label="Memory & Hype Posts" value={kpi.totalPosts} max={engagementIndex} color="brand.900" />
+                  <EngagementBar label="Post Comments" value={kpi.totalComments} max={engagementIndex} color="brand.900" />
                   <EngagementBar label="Completed Vibe Checks" value={kpi.totalVibeChecks} max={engagementIndex} color="green.600" />
                 </VStack>
               </SimpleGrid>
