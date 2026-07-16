@@ -45,7 +45,7 @@ export function LoginPage() {
     // If already logged in and has profile nickname, redirect to homepage
     if (user && !showCheckmark) {
       if (!user.nickname || !user.faculty) {
-        navigate("/profile-edit");
+        navigate("/setup");
       } else {
         navigate("/");
       }
@@ -188,7 +188,7 @@ export function LoginPage() {
       setCheckmarkText("Setup Complete!");
       setShowCheckmark(true);
       setTimeout(() => {
-        navigate("/profile-edit");
+        navigate("/setup");
       }, 1200);
     } else {
       toaster.create({
@@ -274,7 +274,7 @@ export function LoginPage() {
       setTimeout(() => {
         const currentUser = userRef.current;
         if (!currentUser || !currentUser.nickname || !currentUser.faculty) {
-          navigate("/profile-edit");
+          navigate("/setup");
         } else {
           navigate("/");
         }
