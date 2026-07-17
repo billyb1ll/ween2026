@@ -1,4 +1,5 @@
 import React, { useRef } from "react";
+import { FiChevronUp } from "react-icons/fi";
 import {
   Box,
   Heading,
@@ -11,7 +12,6 @@ import {
   Table,
   Badge,
   HStack,
-  NativeSelect,
 } from "@chakra-ui/react";
 import { Tooltip } from "../ui/tooltip";
 import { SearchableSelect } from "../SearchableSelect";
@@ -103,15 +103,76 @@ export function WhitelistTable({
         const facB = b.faculty || "";
         return facA.localeCompare(facB, "th");
       }
-      if (sortMode === "status") {
+      if (sortMode === "faculty-desc") {
+        const facA = a.faculty || "";
+        const facB = b.faculty || "";
+        return facB.localeCompare(facA, "th");
+      }
+      if (sortMode === "house-asc") {
+        const houseA = a.house_position || "";
+        const houseB = b.house_position || "";
+        return houseA.localeCompare(houseB, "th");
+      }
+      if (sortMode === "house-desc") {
+        const houseA = a.house_position || "";
+        const houseB = b.house_position || "";
+        return houseB.localeCompare(houseA, "th");
+      }
+      if (sortMode === "role-asc") {
+        const roleA = a.role || "";
+        const roleB = b.role || "";
+        return roleA.localeCompare(roleB);
+      }
+      if (sortMode === "role-desc") {
+        const roleA = a.role || "";
+        const roleB = b.role || "";
+        return roleB.localeCompare(roleA);
+      }
+      if (sortMode === "status-asc" || sortMode === "status") {
         const statusA = a.nickname ? 1 : 2;
         const statusB = b.nickname ? 1 : 2;
         if (statusA !== statusB) return statusA - statusB;
         return a.student_id.localeCompare(b.student_id);
       }
+      if (sortMode === "status-desc") {
+        const statusA = a.nickname ? 1 : 2;
+        const statusB = b.nickname ? 1 : 2;
+        if (statusA !== statusB) return statusB - statusA;
+        return b.student_id.localeCompare(a.student_id);
+      }
       return 0;
     });
   }, [filteredWhitelistedUsers, sortMode]);
+
+  const handleSort = (field: string) => {
+    if (sortMode === `${field}-asc`) {
+      setSortMode(`${field}-desc`);
+    } else {
+      setSortMode(`${field}-asc`);
+    }
+  };
+
+  const renderSortIcon = (field: string) => {
+    const isAsc = sortMode === `${field}-asc`;
+    const isDesc = sortMode === `${field}-desc`;
+    const isActive = isAsc || isDesc;
+    
+    return (
+      <Box
+        as="span"
+        w="14px"
+        h="14px"
+        display="inline-flex"
+        alignItems="center"
+        justifyContent="center"
+        transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+        transform={isDesc ? "rotate(180deg)" : "rotate(0deg)"}
+        opacity={isActive ? 1 : 0.2}
+      >
+        <FiChevronUp size={14} color={isActive ? "var(--chakra-colors-brand-600)" : "inherit"} />
+      </Box>
+    );
+  };
 
   return (
     <Box
@@ -321,30 +382,7 @@ export function WhitelistTable({
                 }}
               />
             </Box>
-            <Box position="relative" flex={1}>
-              <NativeSelect.Root size="sm">
-                <NativeSelect.Field
-                  aria-label="Sort users by"
-                  title="Sort users by"
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value)}
-                  h="40px"
-                  borderRadius="8px"
-                  border="1.5px solid var(--c-outline)"
-                  bg="var(--c-white)"
-                  fontSize="12px"
-                  cursor="pointer"
-                >
-                  <option value="id-asc">Student ID (Ascending)</option>
-                  <option value="id-desc">Student ID (Descending)</option>
-                  <option value="name-asc">Nickname (A-Z)</option>
-                  <option value="name-desc">Nickname (Z-A)</option>
-                  <option value="faculty-asc">Faculty Grouping</option>
-                  <option value="status">Status (Registered vs Pending)</option>
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-            </Box>
+
           </HStack>
           <Text
             fontSize="xs"
@@ -377,16 +415,28 @@ export function WhitelistTable({
                     />
                   </label>
                 </Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading">Student ID</Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading">Nickname</Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading">Faculty</Table.ColumnHeader>
+                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('id')} _hover={{ color: "brand.900" }}>
+                  <Flex align="center" gap={1}>Student ID {renderSortIcon("id")}</Flex>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('name')} _hover={{ color: "brand.900" }}>
+                  <Flex align="center" gap={1}>Nickname {renderSortIcon("name")}</Flex>
+                </Table.ColumnHeader>
+                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('faculty')} _hover={{ color: "brand.900" }}>
+                  <Flex align="center" gap={1}>Faculty {renderSortIcon("faculty")}</Flex>
+                </Table.ColumnHeader>
                 {whitelistRoleTab === "staff" && (
-                  <Table.ColumnHeader fontFamily="heading">House Position</Table.ColumnHeader>
+                  <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('house')} _hover={{ color: "brand.900" }}>
+                    <Flex align="center" gap={1}>House Position {renderSortIcon("house")}</Flex>
+                  </Table.ColumnHeader>
                 )}
                 {whitelistRoleTab === "staff" && (
-                  <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
+                  <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('role')} _hover={{ color: "brand.900" }}>
+                    <Flex align="center" gap={1}>Role {renderSortIcon("role")}</Flex>
+                  </Table.ColumnHeader>
                 )}
-                <Table.ColumnHeader fontFamily="heading">Status</Table.ColumnHeader>
+                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('status')} _hover={{ color: "brand.900" }}>
+                  <Flex align="center" gap={1}>Status {renderSortIcon("status")}</Flex>
+                </Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="right" fontFamily="heading">
                   Actions
                 </Table.ColumnHeader>
@@ -442,14 +492,11 @@ export function WhitelistTable({
                   {whitelistRoleTab === "staff" && (
                     <Table.Cell>
                       <Badge
-                        bg="var(--c-ivory)"
-                        color="brand.900"
-                        border="1px solid var(--c-outline)"
-                        px={2}
-                        py={1}
-                        borderRadius="md"
+                        colorPalette={u.role === "superadmin" ? "red" : u.role === "moderator" ? "amber" : "gray"}
+                        variant="subtle"
+                        size="sm"
                       >
-                        {getRoleDescription(u.role) || u.role}
+                        {u.role.toUpperCase()}
                       </Badge>
                     </Table.Cell>
                   )}
