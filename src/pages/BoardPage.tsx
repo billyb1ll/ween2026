@@ -510,7 +510,7 @@ const LiveChatBubble = memo(function LiveChatBubble({
                       aria-label="Moderator delete message"
                       title="ลบข้อความนี้"
                     >
-                      <Box className="material-symbols-outlined" fontSize="sm">
+                      <Box as="span" className="material-symbols-outlined" fontSize="sm">
                         delete
                       </Box>
                     </Button>
@@ -1410,7 +1410,7 @@ export function BoardPage() {
                     alignItems="center"
                     gap={2}
                   >
-                    <Box className="material-symbols-outlined" fontSize="md">
+                    <Box as="span" className="material-symbols-outlined" fontSize="md">
                       block
                     </Box>
                     ช่องแชทถูกปิดเสียงชั่วคราวโดยผู้ดูแลระบบ

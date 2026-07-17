@@ -2,5 +2,23 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "vite --port $PORT",
-  "framework": "vite"
+  "framework": "vite",
+  "env": {
+    "NODE_OPTIONS": "--no-warnings=DeprecationWarning"
+  },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--no-warnings=DeprecationWarning"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

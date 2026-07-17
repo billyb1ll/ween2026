@@ -31,14 +31,20 @@ export default async function handler(req, res) {
       }
 
       // 3. Forward to Immich
+      let bodyData = req.body;
+      if (typeof bodyData === 'string') {
+        try { bodyData = JSON.parse(bodyData); } catch(e) {}
+      }
+
       const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${id}`, {
         method: 'PUT',
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(req.body)
+        body: JSON.stringify(bodyData)
       })
       if (!response.ok) return res.status(response.status).send(await response.text())
       return res.status(200).json(await response.json())
     } catch (error) {
+      console.error('Immich Proxy Error:', error);
       return res.status(500).json({ error: 'Failed to proxy to Immich' })
     }
   }

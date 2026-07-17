@@ -160,19 +160,42 @@ export function WhitelistTable({
     return (
       <Box
         as="span"
-        w="14px"
-        h="14px"
+        w="16px"
+        h="16px"
         display="inline-flex"
         alignItems="center"
         justifyContent="center"
-        transition="all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+        borderRadius="full"
+        bg={isActive ? "brand.50" : "transparent"}
+        transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
         transform={isDesc ? "rotate(180deg)" : "rotate(0deg)"}
-        opacity={isActive ? 1 : 0.2}
+        opacity={isActive ? 1 : 0}
+        _groupHover={{ opacity: 1, bg: isActive ? "brand.50" : "gray.100" }}
       >
-        <FiChevronUp size={14} color={isActive ? "var(--chakra-colors-brand-600)" : "inherit"} />
+        <FiChevronUp size={12} color={isActive ? "var(--chakra-colors-brand-600)" : "var(--chakra-colors-gray-400)"} />
       </Box>
     );
   };
+
+  const renderSortableHeader = (field: string, label: string, width?: string) => (
+    <Table.ColumnHeader 
+      width={width}
+      fontFamily="heading" 
+      cursor="pointer" 
+      onClick={() => handleSort(field)} 
+      userSelect="none"
+      transition="all 0.2s"
+      className="group"
+      _hover={{ bg: "bg.muted" }}
+    >
+      <Flex align="center" gap={2}>
+        <Text fontWeight="600" color="fg.muted" _groupHover={{ color: "brand.900" }} transition="color 0.2s">
+          {label}
+        </Text>
+        {renderSortIcon(field)}
+      </Flex>
+    </Table.ColumnHeader>
+  );
 
   return (
     <Box
@@ -415,28 +438,16 @@ export function WhitelistTable({
                     />
                   </label>
                 </Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('id')} _hover={{ color: "brand.900" }}>
-                  <Flex align="center" gap={1}>Student ID {renderSortIcon("id")}</Flex>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('name')} _hover={{ color: "brand.900" }}>
-                  <Flex align="center" gap={1}>Nickname {renderSortIcon("name")}</Flex>
-                </Table.ColumnHeader>
-                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('faculty')} _hover={{ color: "brand.900" }}>
-                  <Flex align="center" gap={1}>Faculty {renderSortIcon("faculty")}</Flex>
-                </Table.ColumnHeader>
+                {renderSortableHeader("id", "Student ID")}
+                {renderSortableHeader("name", "Nickname")}
+                {renderSortableHeader("faculty", "Faculty")}
                 {whitelistRoleTab === "staff" && (
-                  <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('house')} _hover={{ color: "brand.900" }}>
-                    <Flex align="center" gap={1}>House Position {renderSortIcon("house")}</Flex>
-                  </Table.ColumnHeader>
+                  renderSortableHeader("house", "House Position")
                 )}
                 {whitelistRoleTab === "staff" && (
-                  <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('role')} _hover={{ color: "brand.900" }}>
-                    <Flex align="center" gap={1}>Role {renderSortIcon("role")}</Flex>
-                  </Table.ColumnHeader>
+                  renderSortableHeader("role", "Role", "1%")
                 )}
-                <Table.ColumnHeader fontFamily="heading" cursor="pointer" onClick={() => handleSort('status')} _hover={{ color: "brand.900" }}>
-                  <Flex align="center" gap={1}>Status {renderSortIcon("status")}</Flex>
-                </Table.ColumnHeader>
+                {renderSortableHeader("status", "Status")}
                 <Table.ColumnHeader textAlign="right" fontFamily="heading">
                   Actions
                 </Table.ColumnHeader>
@@ -490,7 +501,7 @@ export function WhitelistTable({
                     <Table.Cell>{u.house_position || "-"}</Table.Cell>
                   )}
                   {whitelistRoleTab === "staff" && (
-                    <Table.Cell>
+                    <Table.Cell whiteSpace="nowrap" w="1%">
                       <Badge
                         colorPalette={u.role === "superadmin" ? "red" : u.role === "moderator" ? "amber" : "gray"}
                         variant="subtle"
