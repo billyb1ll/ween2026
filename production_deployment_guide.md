@@ -188,6 +188,7 @@ Once your server is running, you need to configure it for the Orientation Portal
    *   Generate an API Key and add it to your Vercel Environment Variables (`VITE_IMMICH_API_KEY` & `IMMICH_API_KEY`).
 
 ### Step 7: Secure with Cloudflare Tunnels (Mandatory for Production)
+
 Do not expose `http://<YOUR_DROPLET_IP>:2283` to the open web directly. Vercel's `https` serverless functions will block insecure `http` requests anyway!
 
 1. Create a free **Cloudflare** account.
@@ -195,6 +196,69 @@ Do not expose `http://<YOUR_DROPLET_IP>:2283` to the open web directly. Vercel's
 3. Create a new tunnel, install the `cloudflared` agent on your Droplet (via the provided command).
 4. Route a Public Hostname (e.g., `gallery.baan7.university.edu`) to `http://localhost:2283`.
 5. Update your Vercel `VITE_IMMICH_SERVER_URL` to point to this new HTTPS domain.
+
+### Step 8: Server Security & Maintenance (For Server Managers)
+
+To ensure long-term stability and security of the Linux Droplet, we strongly recommend the following server-level configurations:
+
+#### 1. Enable Swap Space
+
+Machine Learning tasks can occasionally spike in memory. Prevent Out-Of-Memory (OOM) crashes by adding a 4GB Swap file:
+
+```bash
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+#### 2. Configure Docker Log Rotation
+
+Prevent Docker logs from consuming all your SSD storage over time. Create or edit `/etc/docker/daemon.json`:
+
+```bash
+sudo nano /etc/docker/daemon.json
+```
+
+Add the following:
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "3"
+  }
+}
+```
+
+Then restart Docker: `sudo systemctl restart docker`.
+
+#### 3. Enable UFW (Firewall)
+
+Since we are using Cloudflare Tunnels (which establishes an outbound connection from the server), you do not need to open inbound web ports. Secure the server by only allowing SSH:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw enable
+```
+
+#### 4. Automated Database Backups
+
+Set up a daily cron job to backup the Immich PostgreSQL database:
+
+```bash
+crontab -e
+```
+
+Add this line to backup daily at 2:00 AM:
+
+```bash
+0 2 * * * docker exec -t immich_postgres pg_dumpall -c -U postgres > ~/immich_db_backup.sql
+```
 
 ### Summary
 Your frontend and database tiers on Vercel and Supabase are perfectly optimized and well within the free limits. By utilizing a $48/mo 8GB/4CPU Droplet on DigitalOcean with our highly tailored Docker configuration, PostgreSQL tuning, and ML concurrency limits, you will have blazing fast facial recognition for your 1,000 photos while leaving 50% of your free credits unused. You are completely ready for production!
