@@ -433,18 +433,18 @@ export function UserInspectModal({
                           border="1px dashed"
                           borderColor="red.300"
                         >
-                          <Text
+                          <Flex
                             fontSize="xs"
                             fontWeight="700"
                             color="red.700"
                             mb={2}
                             textTransform="uppercase"
+                            alignItems="center"
+                            gap={2}
                           >
-                            <Box display="flex" alignItems="center" gap={2}>
-                              <FiAlertTriangle size={18} color="var(--chakra-colors-red-500)" />
-                              Admin Overrides
-                            </Box>
-                          </Text>
+                            <FiAlertTriangle size={18} color="var(--chakra-colors-red-500)" />
+                            Admin Overrides
+                          </Flex>
                           <VStack align="stretch" gap={3}>
                             <Button
                               size="sm"

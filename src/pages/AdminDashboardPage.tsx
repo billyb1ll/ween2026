@@ -130,9 +130,9 @@ function BannedUsersAdmin() {
       await unbanMutation.mutateAsync({
         targetUserId: targetId,
         staffId: user?.student_id || "",
-        pinHash: getAdminPin(), 
+        pinHash: getAdminPin(),
       });
-      
+
       toaster.create({
         title: "User Unbanned",
         description: `Successfully unbanned ${targetId}.`,
@@ -142,16 +142,25 @@ function BannedUsersAdmin() {
     } catch (err: unknown) {
       toaster.create({
         title: "Unban Failed",
-        description: err instanceof Error ? err.message : "An unexpected error occurred.",
+        description:
+          err instanceof Error ? err.message : "An unexpected error occurred.",
         type: "error",
       });
     }
   };
 
   return (
-    <Box bg="white" p={6} borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
-      <Heading size="md" mb={4}>Banned Users</Heading>
-      
+    <Box
+      bg="white"
+      p={6}
+      borderRadius="xl"
+      borderWidth="1px"
+      borderColor="border.subtle"
+    >
+      <Heading size="md" mb={4}>
+        Banned Users
+      </Heading>
+
       {isLoading ? (
         <Spinner />
       ) : bannedUsers.length === 0 ? (
@@ -168,35 +177,54 @@ function BannedUsersAdmin() {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {bannedUsers.map((b: { target_user_id: string; staff_id: string; reason: string; created_at: string }) => (
-              <Table.Row key={b.target_user_id}>
-                <Table.Cell>{b.target_user_id}</Table.Cell>
-                <Table.Cell>{b.staff_id}</Table.Cell>
-                <Table.Cell>{b.reason}</Table.Cell>
-                <Table.Cell>{new Date(b.created_at).toLocaleString()}</Table.Cell>
-                <Table.Cell textAlign="right">
-                  <HStack justify="flex-end">
-                    {selectedUser === b.target_user_id ? (
-                      <>
-                        <Button 
-                          size="xs" 
-                          colorScheme="red"
-                          loading={unbanMutation.isPending}
-                          onClick={() => handleUnban(b.target_user_id)}
+            {bannedUsers.map(
+              (b: {
+                target_user_id: string;
+                staff_id: string;
+                reason: string;
+                created_at: string;
+              }) => (
+                <Table.Row key={b.target_user_id}>
+                  <Table.Cell>{b.target_user_id}</Table.Cell>
+                  <Table.Cell>{b.staff_id}</Table.Cell>
+                  <Table.Cell>{b.reason}</Table.Cell>
+                  <Table.Cell>
+                    {new Date(b.created_at).toLocaleString()}
+                  </Table.Cell>
+                  <Table.Cell textAlign="right">
+                    <HStack justify="flex-end">
+                      {selectedUser === b.target_user_id ? (
+                        <>
+                          <Button
+                            size="xs"
+                            colorScheme="red"
+                            loading={unbanMutation.isPending}
+                            onClick={() => handleUnban(b.target_user_id)}
+                          >
+                            Confirm Unban
+                          </Button>
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => setSelectedUser(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setSelectedUser(b.target_user_id)}
                         >
-                          Confirm Unban
+                          Unban
                         </Button>
-                        <Button size="xs" variant="ghost" onClick={() => setSelectedUser(null)}>Cancel</Button>
-                      </>
-                    ) : (
-                      <Button size="xs" variant="outline" onClick={() => setSelectedUser(b.target_user_id)}>
-                        Unban
-                      </Button>
-                    )}
-                  </HStack>
-                </Table.Cell>
-              </Table.Row>
-            ))}
+                      )}
+                    </HStack>
+                  </Table.Cell>
+                </Table.Row>
+              ),
+            )}
           </Table.Body>
         </Table.Root>
       )}
@@ -496,9 +524,10 @@ export function AdminDashboardPage() {
   const immichConfig = getImmichConfig();
   const [immichStatus, setImmichStatus] = useState({
     ping: "Checking...",
-    activeSyncs: 142,
-    diskUsed: "24.8 GB",
-    totalImages: 1452,
+    activeSyncs: 0,
+    diskUsed: "0 GB",
+    totalImages: 0,
+    loading: true,
   });
 
   // Helper trigger to log audit activities
@@ -538,14 +567,33 @@ export function AdminDashboardPage() {
       setLoading(true);
       try {
         if (immichConfig.isConfigured && immichConfig.url) {
-          setImmichStatus((prev) => ({
-            ...prev,
-            ping: "200 OK (Droplet Live)",
-          }));
+          try {
+            const statsRes = await fetch("/api/immich/stats");
+            if (statsRes.ok && active) {
+              const data = await statsRes.json();
+              setImmichStatus({
+                ping: data.ping,
+                activeSyncs: data.activeSyncs,
+                diskUsed: data.diskUsed,
+                totalImages: data.totalImages,
+                loading: false,
+              });
+            }
+          } catch (error) {
+            console.error("Failed to fetch Immich stats:", error);
+            if (active) {
+              setImmichStatus((prev) => ({
+                ...prev,
+                ping: "Failed to connect",
+                loading: false,
+              }));
+            }
+          }
         } else {
           setImmichStatus((prev) => ({
             ...prev,
             ping: "Not Configured (Fallback Active)",
+            loading: false,
           }));
         }
 
@@ -1291,7 +1339,14 @@ export function AdminDashboardPage() {
         p_value: newVal,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "P0001" || error.message.includes("Unauthorized")) {
+          throw new Error(
+            "Admin session invalid: PIN or Role is incorrect. Please re-login as moderator.",
+          );
+        }
+        throw error;
+      }
 
       await logAuditAction("toggle_board", key, `Switched ${key} to ${newVal}`);
       await broadcastConfigSync("config_change", { key, value: newVal });
@@ -1827,6 +1882,7 @@ export function AdminDashboardPage() {
     try {
       const { error } = await supabase.rpc("admin_delete_mission_reorder", {
         p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
         p_mission_id: id,
       });
 
@@ -2002,7 +2058,7 @@ export function AdminDashboardPage() {
               Moderator Command Center
             </Button>
           )}
-          {(user?.role === "moderator") && (
+          {user?.role === "moderator" && (
             <Button
               type="button"
               onClick={() => setActiveTab("media")}
@@ -3206,115 +3262,173 @@ export function AdminDashboardPage() {
         </VStack>
       )}
       {/* TIER 2: Media Admin Panel */}
-      {activeTab === "media" &&
-        (user?.role === "moderator") && (
-          <VStack align="stretch" gap={6}>
-            <Box
-              bg="white"
-              p={6}
-              border="1px solid"
-              borderColor="border.subtle"
-              borderRadius="2xl"
-              boxShadow="var(--shadow-card)"
+      {activeTab === "media" && user?.role === "moderator" && (
+        <VStack align="stretch" gap={6}>
+          <Box
+            bg="white"
+            p={6}
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="2xl"
+            boxShadow="var(--shadow-card)"
+          >
+            <Heading
+              as="h2"
+              fontSize="lg"
+              fontWeight="700"
+              fontFamily="heading"
+              color="brand.900"
+              mb={4}
             >
-              <Heading
-                as="h2"
-                fontSize="lg"
-                fontWeight="700"
-                fontFamily="heading"
-                color="brand.900"
-                mb={4}
+              Immich Photo Server Connectivity (AV)
+            </Heading>
+            <VStack gap={4} align="stretch" mb={6}>
+              <Flex
+                align="center"
+                justify="space-between"
+                p={3}
+                bg="bg.canvas"
+                borderRadius="xl"
               >
-                Immich Photo Server Connectivity (AV)
-              </Heading>
-              <VStack gap={4} align="stretch" mb={6}>
-                <Flex
-                  align="center"
-                  justify="space-between"
-                  p={3}
-                  bg="bg.canvas"
-                  borderRadius="xl"
-                >
-                  <Text fontWeight="600" color="brand.900">
-                    External Server Status
-                  </Text>
+                <Text fontWeight="600" color="brand.900">
+                  External Server Status
+                </Text>
+                {immichStatus.loading ? (
+                  <Box
+                    w="60px"
+                    h="20px"
+                    bg="gray.200"
+                    borderRadius="md"
+                    animation="pulse 1.5s infinite"
+                  />
+                ) : (
                   <Badge
-                    colorPalette={immichConfig.isConfigured ? "green" : "red"}
+                    colorPalette={
+                      immichConfig.isConfigured &&
+                      immichStatus.ping.includes("OK")
+                        ? "green"
+                        : "red"
+                    }
                   >
                     {immichStatus.ping}
                   </Badge>
-                </Flex>
-                <Flex
-                  align="center"
-                  justify="space-between"
-                  p={3}
-                  bg="bg.canvas"
-                  borderRadius="xl"
-                >
-                  <Text fontWeight="600" color="brand.900">
-                    Configured Server Endpoint
-                  </Text>
-                  <Text fontSize="xs" fontWeight="700" color="brand.solid">
-                    {immichConfig.url || "None (Using local Supabase fallback)"}
-                  </Text>
-                </Flex>
-                <Flex
-                  align="center"
-                  justify="space-between"
-                  p={3}
-                  bg="bg.canvas"
-                  borderRadius="xl"
-                >
-                  <Text fontWeight="600" color="brand.900">
-                    Synced Image Records
-                  </Text>
+                )}
+              </Flex>
+              <Flex
+                align="center"
+                justify="space-between"
+                p={3}
+                bg="bg.canvas"
+                borderRadius="xl"
+              >
+                <Text fontWeight="600" color="brand.900">
+                  Configured Server Endpoint
+                </Text>
+                <Text fontSize="xs" fontWeight="700" color="brand.solid">
+                  {immichConfig.url ? (
+                    <a
+                      href={immichConfig.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {immichConfig.url}
+                    </a>
+                  ) : (
+                    "None (Using local Supabase fallback)"
+                  )}
+                </Text>
+              </Flex>
+              <Flex
+                align="center"
+                justify="space-between"
+                p={3}
+                bg="bg.canvas"
+                borderRadius="xl"
+              >
+                <Text fontWeight="600" color="brand.900">
+                  Synced Image Records
+                </Text>
+                {immichStatus.loading ? (
+                  <Box
+                    w="80px"
+                    h="20px"
+                    bg="gray.200"
+                    borderRadius="md"
+                    animation="pulse 1.5s infinite"
+                  />
+                ) : (
                   <Text fontSize="sm" fontWeight="700" color="brand.900">
                     {immichStatus.totalImages} images
                   </Text>
-                </Flex>
-              </VStack>
-
-              <Heading
-                as="h3"
-                fontSize="sm"
-                fontWeight="700"
-                fontFamily="heading"
-                color="brand.900"
-                mb={2}
-              >
-                DigitalOcean Droplet Sync Log Tracker
-              </Heading>
-              <Box
-                bg="fg.default"
-                color="green.400"
-                p={4}
+                )}
+              </Flex>
+              <Flex
+                align="center"
+                justify="space-between"
+                p={3}
+                bg="bg.canvas"
                 borderRadius="xl"
-                fontFamily="monospace"
-                fontSize="xs"
-                h="150px"
-                overflowY="auto"
               >
-                <Text>
-                  [{new Date().toISOString()}] INITIALIZING Droplet connectivity
-                  check...
+                <Text fontWeight="600" color="brand.900">
+                  Disk Usage
                 </Text>
-                <Text>
-                  [{new Date().toISOString()}] GET config url:{" "}
-                  {immichConfig.url || "local_db"}
-                </Text>
-                <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
-                <Text>
-                  [{new Date().toISOString()}] SYNC STATUS: Completed
-                  successfully. {immichStatus.activeSyncs} background tasks
-                  active.
-                </Text>
-              </Box>
-            </Box>
+                {immichStatus.loading ? (
+                  <Box
+                    w="50px"
+                    h="20px"
+                    bg="gray.200"
+                    borderRadius="md"
+                    animation="pulse 1.5s infinite"
+                  />
+                ) : (
+                  <Text fontSize="sm" fontWeight="700" color="brand.900">
+                    {immichStatus.diskUsed}
+                  </Text>
+                )}
+              </Flex>
+            </VStack>
 
-            <MediaUploader />
-            <AlbumMappingAdmin />
-          </VStack>
-        )}
+            <Heading
+              as="h3"
+              fontSize="sm"
+              fontWeight="700"
+              fontFamily="heading"
+              color="brand.900"
+              mb={2}
+            >
+              DigitalOcean Droplet Sync Log Tracker
+            </Heading>
+            <Box
+              bg="fg.default"
+              color="green.400"
+              p={4}
+              borderRadius="xl"
+              fontFamily="monospace"
+              fontSize="xs"
+              h="150px"
+              overflowY="auto"
+            >
+              <Text>
+                [{new Date().toISOString()}] INITIALIZING Droplet connectivity
+                check...
+              </Text>
+              <Text>
+                [{new Date().toISOString()}] GET config url:{" "}
+                {immichConfig.url || "local_db"}
+              </Text>
+              <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
+              <Text>
+                [{new Date().toISOString()}] SYNC STATUS: Completed
+                successfully. {immichStatus.activeSyncs} background tasks
+                active.
+              </Text>
+            </Box>
+          </Box>
+
+          <MediaUploader />
+          <AlbumMappingAdmin />
+        </VStack>
+      )}
 
       {/* TIER 3: Staff Moderation Panel */}
       {activeTab === "staff" &&

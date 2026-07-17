@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../utils/crypto";
@@ -74,6 +74,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const { data: hasClaimedFace } = useClaimedFaceStatus(user?.student_id);
   const updateProfileMutation = useUpdateProfileMutation();
   const claimProfileMutation = useClaimProfileMutation();
+
+  useEffect(() => {
+    // If we have a session token but the query finishes loading and returns null,
+    // the session has either expired or been invalidated on the server.
+    if (!sessionLoading && sessionToken && user === null) {
+      console.warn("Session expired or invalid, cleaning up local storage.");
+      localStorage.removeItem("baan7_session_token");
+      sessionStorage.removeItem("baan7_admin_pin");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionToken(null);
+    }
+  }, [user, sessionLoading, sessionToken]);
 
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;

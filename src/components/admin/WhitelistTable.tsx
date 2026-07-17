@@ -383,7 +383,9 @@ export function WhitelistTable({
                 {whitelistRoleTab === "staff" && (
                   <Table.ColumnHeader fontFamily="heading">House Position</Table.ColumnHeader>
                 )}
-                <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
+                {whitelistRoleTab === "staff" && (
+                  <Table.ColumnHeader fontFamily="heading">Role</Table.ColumnHeader>
+                )}
                 <Table.ColumnHeader fontFamily="heading">Status</Table.ColumnHeader>
                 <Table.ColumnHeader textAlign="right" fontFamily="heading">
                   Actions
@@ -437,18 +439,20 @@ export function WhitelistTable({
                   {whitelistRoleTab === "staff" && (
                     <Table.Cell>{u.house_position || "-"}</Table.Cell>
                   )}
-                  <Table.Cell>
-                    <Badge
-                      bg="var(--c-ivory)"
-                      color="brand.900"
-                      border="1px solid var(--c-outline)"
-                      px={2}
-                      py={1}
-                      borderRadius="md"
-                    >
-                      {getRoleDescription(u.role) || u.role}
-                    </Badge>
-                  </Table.Cell>
+                  {whitelistRoleTab === "staff" && (
+                    <Table.Cell>
+                      <Badge
+                        bg="var(--c-ivory)"
+                        color="brand.900"
+                        border="1px solid var(--c-outline)"
+                        px={2}
+                        py={1}
+                        borderRadius="md"
+                      >
+                        {getRoleDescription(u.role) || u.role}
+                      </Badge>
+                    </Table.Cell>
+                  )}
                   <Table.Cell>
                     {u.nickname ? (
                       <Badge colorPalette="green">Registered</Badge>

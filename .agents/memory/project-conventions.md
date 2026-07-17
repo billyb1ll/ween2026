@@ -19,3 +19,11 @@ updated: 2026-06-12
   - `draggable={false}` on inner `<Image />` tags.
   - `userSelect: "none"` and `WebkitUserSelect: "none"` on the `<motion.div>` drag container.
   - `pointerEvents="none"` on child card elements (overlays, text wraps, tags) to avoid gesture capture.
+
+## Design Conventions
+
+- **Role-based Styling:** Staff roles (e.g. "P'") use pink styling, while student roles use navy blue in Live Chat and the Memory Board.
+
+## Business Logic Conventions
+
+- **Profile Onboarding Flow:** After accepting the Terms of Use, users must remain on the profile completion step (`/setup`). The system must not redirect them elsewhere until their profile configuration is fully saved.
