@@ -297,7 +297,7 @@ export function ThreeBlob() {
     <Box position="absolute" inset={0} pointerEvents="none" zIndex={1} h="100%">
       <Canvas
         camera={{ position: [0, 0, 3.5], fov: 45 }}
-        gl={{ antialias: true, alpha: true }}
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         dpr={[1, 1.5]} // Performance optimization: cap pixel ratio
         style={{
           position: "sticky",
