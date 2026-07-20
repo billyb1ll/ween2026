@@ -724,6 +724,7 @@ export function BoardPage() {
   >("active");
   const [globalMuteActive, setGlobalMuteActive] = useState(false);
   const [isMemoryBoardActive, setIsMemoryBoardActive] = useState(true);
+  const [livechatEnabled, setLivechatEnabled] = useState(true);
 
   // Cooldown timer states
   const [lastChatSent, setLastChatSent] = useState<number | null>(null);
@@ -741,6 +742,8 @@ export function BoardPage() {
         if (active && data) {
           const hypeMode = data.find((c) => c.key === "hype_board_mode");
           const globalMute = data.find((c) => c.key === "global_mute_active");
+          const memoryBoard = data.find((c) => c.key === "enable_memory_board");
+          const liveChat = data.find((c) => c.key === "enable_hype_board");
           if (hypeMode?.text_value) {
             setHypeBoardMode(
               hypeMode.text_value as "active" | "slow_3s" | "read_only",
@@ -748,6 +751,12 @@ export function BoardPage() {
           }
           if (globalMute) {
             setGlobalMuteActive(Boolean(globalMute.value));
+          }
+          if (memoryBoard) {
+            setIsMemoryBoardActive(Boolean(memoryBoard.value));
+          }
+          if (liveChat) {
+            setLivechatEnabled(Boolean(liveChat.value));
           }
         }
       } catch (err) {
@@ -779,6 +788,12 @@ export function BoardPage() {
             payload.payload.value !== undefined
           ) {
             setIsMemoryBoardActive(payload.payload.value);
+          }
+          if (
+            payload.payload.key === "enable_hype_board" &&
+            payload.payload.value !== undefined
+          ) {
+            setLivechatEnabled(payload.payload.value);
           }
         }
       })
@@ -1207,22 +1222,59 @@ export function BoardPage() {
           </Text>
         </Flex>
       ) : activeTab === "hype" ? (
-        /* ═══ LIVE CHAT (Hype Tab) ═══════════════════════════════════════ */
-        <Box
-          maxW="3xl"
-          mx="auto"
-          w="100%"
-          bg="bg.surface"
-          border="1px solid"
-          borderColor="border.subtle"
-          borderRadius="2xl"
-          overflow="hidden"
-          display="flex"
-          flexDirection="column"
-          h={{ base: "calc(100vh - 200px)", md: "calc(100vh - 280px)" }}
-          minH="400px"
-          animation="fade-in-up 0.5s var(--ease-out-expo) both"
-        >
+        !livechatEnabled && !isStaff ? (
+          /* Live Chat Disabled Placeholder */
+          <Flex
+            justify="center"
+            align="center"
+            minH="400px"
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="2xl"
+            direction="column"
+            gap={3}
+            p={8}
+            textAlign="center"
+            animation="fade-in-up 0.5s var(--ease-out-expo) both"
+          >
+            <Box
+              className="material-symbols-outlined"
+              fontSize="4xl"
+              color="fg.subtle"
+            >
+              comments_disabled
+            </Box>
+            <Heading
+              as="h2"
+              fontSize="xl"
+              fontWeight="700"
+              color="fg.default"
+              fontFamily="heading"
+            >
+              Live Chat Paused
+            </Heading>
+            <Text fontSize="sm" color="fg.subtle" maxW="sm">
+              The live chat is temporarily paused by staff. Check back soon!
+            </Text>
+          </Flex>
+        ) : (
+          /* ═══ LIVE CHAT (Hype Tab) ═══════════════════════════════════════ */
+          <Box
+            maxW="3xl"
+            mx="auto"
+            w="100%"
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="2xl"
+            overflow="hidden"
+            display="flex"
+            flexDirection="column"
+            h={{ base: "calc(100vh - 200px)", md: "calc(100vh - 280px)" }}
+            minH="400px"
+            animation="fade-in-up 0.5s var(--ease-out-expo) both"
+          >
           {/* Chat Header */}
           <Flex
             align="center"
@@ -1605,6 +1657,7 @@ export function BoardPage() {
             </Box>
           )}
         </Box>
+        )
       ) : (
         /* ═══ MEMORY BOARD (Memory Tab) ═══════════════════════════════════ */
         <Box maxW="4xl" mx="auto" w="100%" h="auto" maxH="none" minH="auto">

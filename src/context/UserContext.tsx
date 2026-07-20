@@ -30,6 +30,7 @@ export interface User {
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  sessionExpired: boolean;
   hasClaimedFace: boolean;
   refreshClaimedFaceStatus: (currentStudentId?: string) => Promise<void>;
   checkStudentId: (
@@ -51,6 +52,7 @@ interface UserContextType {
   }) => Promise<boolean>;
   acceptTos: () => Promise<boolean>;
   logout: () => void;
+  clearSessionExpired: () => void;
   // Returns the current session's hashed PIN for admin RPC calls.
   // Stored in sessionStorage only — never in the User object or query cache.
   getAdminPin: () => string;
@@ -62,6 +64,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const queryClient = useQueryClient();
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     try {
       return localStorage.getItem("baan7_session_token");
@@ -70,22 +73,37 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
 
-  const { data: user, isLoading: sessionLoading } = useActiveSession(sessionToken);
+  const { data: user, isLoading: sessionLoading, isError: sessionError } = useActiveSession(sessionToken);
   const { data: hasClaimedFace } = useClaimedFaceStatus(user?.student_id);
   const updateProfileMutation = useUpdateProfileMutation();
   const claimProfileMutation = useClaimProfileMutation();
 
   useEffect(() => {
-    // If we have a session token but the query finishes loading and returns null,
-    // the session has either expired or been invalidated on the server.
-    if (!sessionLoading && sessionToken && user === null) {
-      console.warn("Session expired or invalid, cleaning up local storage.");
-      localStorage.removeItem("baan7_session_token");
-      sessionStorage.removeItem("baan7_admin_pin");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSessionToken(null);
+    // Trigger when: we have a token, loading is done, and user came back null OR query errored
+    const tokenIsInvalid = !sessionLoading && !!sessionToken && (!user || sessionError);
+    if (!tokenIsInvalid) return;
+
+    console.warn("Session expired or invalid — clearing credentials and redirecting to login.");
+
+    // Wipe all session credentials from storage
+    localStorage.removeItem("baan7_session_token");
+    localStorage.removeItem("baan7_student_id");
+    sessionStorage.removeItem("baan7_admin_pin");
+
+    // Remove any leftover legacy Supabase auth tokens
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        localStorage.removeItem(key);
+      }
     }
-  }, [user, sessionLoading, sessionToken]);
+
+    // Clear React Query cache so stale user data doesn't persist across re-login
+    queryClient.removeQueries({ queryKey: ["user_session"] });
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSessionExpired(true);
+    setSessionToken(null);
+  }, [user, sessionLoading, sessionError, sessionToken, queryClient]);
 
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;
@@ -269,8 +287,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (user?.student_id) {
       queryClient.removeQueries({ queryKey: userQueryKeys.claimedFace(user.student_id) });
     }
+    setSessionExpired(false);
     setSessionToken(null);
   };
+
+  const clearSessionExpired = () => setSessionExpired(false);
 
   // Returns the hashed PIN for the current session.
   // Falls back to empty string if the session was restored from a page refresh
@@ -280,13 +301,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return sessionStorage.getItem("baan7_admin_pin") ?? "";
   };
 
-  const loading = sessionToken ? sessionLoading : false;
+  // Show loading spinner while:
+  // - we have a token and the session query is still in-flight, OR
+  // - we have a token but no user yet (expiry detection window)
+  const loading = !!sessionToken && (sessionLoading || (!user && !sessionError));
 
   return (
     <UserContext.Provider
       value={{
         user: user || null,
         loading,
+        sessionExpired,
         hasClaimedFace: !!hasClaimedFace,
         refreshClaimedFaceStatus,
         checkStudentId,
@@ -295,6 +320,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         updateProfile,
         acceptTos,
         logout,
+        clearSessionExpired,
         getAdminPin,
       }}
     >

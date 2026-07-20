@@ -38,7 +38,7 @@ export function useActiveSession(token: string | null) {
 
       const expiresAt = new Date(data.expires_at);
       if (expiresAt < new Date()) {
-        // Expired session
+        // Expired session — delete from DB
         await supabase
           .from("user_sessions")
           .delete()
@@ -49,7 +49,9 @@ export function useActiveSession(token: string | null) {
       return data.users as unknown as User;
     },
     enabled: !!token,
-    staleTime: 60000, // Keep sessions fresh for 1 minute
+    staleTime: 0,        // Always revalidate — never serve a stale session
+    retry: false,        // Don't retry on 401/session-not-found; treat as expired
+    gcTime: 0,           // Immediately evict from cache when session ends
   });
 }
 

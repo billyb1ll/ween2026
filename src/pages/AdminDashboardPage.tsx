@@ -45,6 +45,7 @@ import { UserInspectModal } from "../components/admin/UserInspectModal";
 import { STAFF_ROLES } from "../lib/constants";
 import { MediaUploader } from "../components/admin/MediaUploader";
 import { AlbumMappingAdmin } from "../components/admin/AlbumMappingAdmin";
+import { ImmichPhotoPickerModal } from "../components/admin/ImmichPhotoPickerModal";
 
 export interface DBUser {
   student_id: string;
@@ -292,6 +293,11 @@ export function AdminDashboardPage() {
   const staffPhotoInputRef = useRef<HTMLInputElement>(null);
   const activeFileIdxRef = useRef<number>(0);
   const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
+  const [livechatEnabled, setLivechatEnabled] = useState(true);
+  const [featuredPhotoUrls, setFeaturedPhotoUrls] = useState<string[]>([]);
+  const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [isImmichModalOpen, setIsImmichModalOpen] = useState(false);
+  const [, setSavingPhotos] = useState(false);
 
   // User Inspector states
   const [inspectUser, setInspectUser] = useState<DBUser | null>(null);
@@ -377,6 +383,17 @@ export function AdminDashboardPage() {
       Promise.resolve().then(() => {
         if (memory) setEnableMemoryBoard(memory.value);
         if (vibecheck) setVibecheckEnabled(vibecheck.value);
+        const liveChat = configsData.find((c) => c.key === "enable_hype_board");
+        if (liveChat) setLivechatEnabled(liveChat.value);
+        const featuredPhotos = configsData.find((c) => c.key === "featured_photo_urls");
+        if (featuredPhotos?.text_value) {
+          try {
+            const parsed = JSON.parse(featuredPhotos.text_value);
+            if (Array.isArray(parsed)) setFeaturedPhotoUrls(parsed);
+          } catch {
+            setFeaturedPhotoUrls([]);
+          }
+        }
         if (emergency) {
           setEmergencyActive(emergency.value);
           setEmergencyText(emergency.text_value || "");
@@ -1324,12 +1341,13 @@ export function AdminDashboardPage() {
 
   // Handle Config Toggle
   const handleToggleConfig = async (
-    key: "enable_memory_board" | "vibecheck_enabled",
+    key: "enable_memory_board" | "vibecheck_enabled" | "enable_hype_board",
     currentVal: boolean,
   ) => {
     const newVal = !currentVal;
     if (key === "enable_memory_board") setEnableMemoryBoard(newVal);
     if (key === "vibecheck_enabled") setVibecheckEnabled(newVal);
+    if (key === "enable_hype_board") setLivechatEnabled(newVal);
 
     try {
       const { error } = await supabase.rpc("admin_update_system_config", {
@@ -1352,7 +1370,7 @@ export function AdminDashboardPage() {
       await broadcastConfigSync("config_change", { key, value: newVal });
       toaster.create({
         title: "Settings Updated",
-        description: `${key.replace("enable_", "").replace("_", " ")} switch is now ${newVal ? "OPEN" : "CLOSED"}.`,
+        description: `${key.replace("enable_", "").replace(/_/g, " ")} switch is now ${newVal ? "OPEN" : "CLOSED"}.`,
         type: "success",
       });
     } catch (err) {
@@ -1615,6 +1633,37 @@ export function AdminDashboardPage() {
       toaster.create({ title: "Failed to clear ticker", type: "error" });
     } finally {
       setIsSavingTicker(false);
+    }
+  };
+
+  // ── Featured Photos: Save URL list ──
+  const handleSaveFeaturedPhotos = async (urls: string[]) => {
+    setSavingPhotos(true);
+    try {
+      const { error } = await supabase
+        .from("system_config")
+        .upsert(
+          { key: "featured_photo_urls", value: true, text_value: JSON.stringify(urls) },
+          { onConflict: "key" }
+        );
+      if (error) throw error;
+      setFeaturedPhotoUrls(urls);
+      await broadcastConfigSync("config_change", {
+        key: "featured_photo_urls",
+        text_value: JSON.stringify(urls),
+      });
+      toaster.create({ title: "Featured photos updated", type: "success" });
+    } catch (err) {
+      console.error(err);
+      toaster.create({ title: "Failed to save featured photos", type: "error" });
+    } finally {
+      setSavingPhotos(false);
+    }
+  };
+
+  const handleAddFeaturedPhoto = (url: string) => {
+    if (!featuredPhotoUrls.includes(url)) {
+      handleSaveFeaturedPhotos([...featuredPhotoUrls, url]);
     }
   };
 
@@ -1995,7 +2044,7 @@ export function AdminDashboardPage() {
       maxW="var(--container-max)"
       mx="auto"
       px={{ base: 4, md: 16 }}
-      pt={{ base: 6, md: 28 }}
+      pt={{ base: 6, md: 36 }}
       pb={{ base: 4, md: 20 }}
       minH="100vh"
     >
@@ -2155,6 +2204,7 @@ export function AdminDashboardPage() {
               hypeBoardMode={hypeBoardMode}
               enableMemoryBoard={enableMemoryBoard}
               vibecheckEnabled={vibecheckEnabled}
+              livechatEnabled={livechatEnabled}
               globalMuteActive={globalMuteActive}
               handleSetHypeMode={handleSetHypeMode}
               handleToggleConfig={handleToggleConfig}
@@ -2366,7 +2416,7 @@ export function AdminDashboardPage() {
               >
                 <Flex
                   gap={{ base: 4, md: 6 }}
-                  flexDirection={{ base: "column", md: "row" }}
+                  flexDirection="column"
                 >
                   {/* Ticker Input Card */}
                   <VStack
@@ -2510,6 +2560,135 @@ export function AdminDashboardPage() {
                         )}
                       </Button>
                     </HStack>
+                  </VStack>
+
+                  {/* Featured Photo Carousel Manager */}
+                  <VStack
+                    align="stretch"
+                    gap={3}
+                    flex={1}
+                    bg="color-mix(in srgb, var(--chakra-colors-bg-canvas) 80%, transparent)"
+                    p={4}
+                    borderRadius="xl"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                  >
+                    <Flex align="center" gap={2}>
+                      <Box
+                        as="span"
+                        className="material-symbols-outlined"
+                        fontSize="18px"
+                        color="fg.muted"
+                      >
+                        photo_library
+                      </Box>
+                      <Text fontWeight="700" color="brand.900" fontSize="sm">
+                        Homepage Featured Photos
+                      </Text>
+                    </Flex>
+                    <Text fontSize="xs" color="fg.muted" lineHeight="tall">
+                      Paste image URLs to display in the homepage auto-scroll carousel. Changes apply instantly.
+                    </Text>
+
+                    {/* URL input */}
+                    <VStack gap={2} align="stretch">
+                      <Flex gap={2}>
+                        <Input
+                          placeholder="https://example.com/photo.jpg"
+                          value={newPhotoUrl}
+                          onChange={(e) => setNewPhotoUrl(e.target.value)}
+                          h="40px"
+                          borderRadius="lg"
+                          border="1px solid var(--chakra-colors-border-default)"
+                          bg="white"
+                          fontSize="sm"
+                          flex={1}
+                        />
+                        <Button
+                          type="button"
+                          bg="brand.solid"
+                          color="white"
+                          _hover={{ bg: "brand.600" }}
+                          h="40px"
+                          px={4}
+                          borderRadius="lg"
+                          onClick={() => {
+                            if (newPhotoUrl.trim()) {
+                              handleAddFeaturedPhoto(newPhotoUrl.trim());
+                            }
+                          }}
+                          disabled={!newPhotoUrl.trim()}
+                        >
+                          Add
+                        </Button>
+                      </Flex>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        h="40px"
+                        borderRadius="lg"
+                        onClick={() => setIsImmichModalOpen(true)}
+                        w="100%"
+                        fontSize="sm"
+                        fontWeight="600"
+                        color="brand.900"
+                        borderColor="border.subtle"
+                        _hover={{ bg: "bg.muted" }}
+                      >
+                        <Box as="span" className="material-symbols-outlined" fontSize="18px" mr={2}>
+                          photo_library
+                        </Box>
+                        Select from Immich Gallery
+                      </Button>
+                    </VStack>
+                    {/* Photo list */}
+                    {featuredPhotoUrls.length > 0 ? (
+                      <VStack align="stretch" gap={1} maxH="120px" overflow="auto">
+                        {featuredPhotoUrls.map((url, i) => (
+                          <Flex
+                            key={i}
+                            align="center"
+                            gap={2}
+                            p={2}
+                            bg="bg.hero"
+                            borderRadius="md"
+                            border="1px solid"
+                            borderColor="border.subtle"
+                          >
+                            <Text
+                              fontSize="xs"
+                              color="fg.default"
+                              flex={1}
+                              overflow="hidden"
+                              textOverflow="ellipsis"
+                              whiteSpace="nowrap"
+                            >
+                              {url}
+                            </Text>
+                            <Box
+                              as="button"
+                              className="material-symbols-outlined"
+                              fontSize="16px"
+                              color="fg.muted"
+                              cursor="pointer"
+                              _hover={{ color: "red.500" }}
+                              onClick={() =>
+                                handleSaveFeaturedPhotos(
+                                  featuredPhotoUrls.filter((_, idx) => idx !== i)
+                                )
+                              }
+                              aria-label={`Remove photo ${i + 1}`}
+                            >
+                              close
+                            </Box>
+                          </Flex>
+                        ))}
+                      </VStack>
+                    ) : (
+                      <Text fontSize="xs" color="fg.subtle" fontStyle="italic">
+                        No photos added yet. The carousel section will be hidden.
+                      </Text>
+                    )}
                   </VStack>
 
                   {/* Panic Mute Card */}
@@ -4406,6 +4585,16 @@ export function AdminDashboardPage() {
           </Portal>
         </Dialog.Root>
       )}
+
+      <ImmichPhotoPickerModal
+        isOpen={isImmichModalOpen}
+        onClose={() => setIsImmichModalOpen(false)}
+        onSelect={(url) => {
+          if (url) {
+            handleAddFeaturedPhoto(url);
+          }
+        }}
+      />
     </Box>
   );
 }

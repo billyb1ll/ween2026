@@ -1,14 +1,16 @@
 import { Box } from '@chakra-ui/react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { UserProvider, useUser } from './context/UserContext'
 import { Toaster } from './components/ui/toaster'
+import { toaster } from './components/ui/toaster'
 import { LoadingFallback } from './components/LoadingFallback'
 import { TermsOfUseModal } from './components/TermsOfUseModal'
 import { GalleryLightboxProvider } from './context/GalleryLightboxContext'
+
 
 // Dynamic Route Splitting for Named Exports
 const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
@@ -25,8 +27,21 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(
 
 // Protected Route for Authenticated Users
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser()
+  const { user, loading, sessionExpired, clearSessionExpired } = useUser()
   const location = useLocation()
+
+  useEffect(() => {
+    if (sessionExpired) {
+      toaster.create({
+        title: 'Session expired',
+        description: 'Please log in again to continue.',
+        type: 'warning',
+        duration: 4000,
+        closable: true,
+      })
+      clearSessionExpired()
+    }
+  }, [sessionExpired, clearSessionExpired])
 
   if (loading) {
     return <LoadingFallback />
@@ -38,6 +53,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>
 }
+
 
 // Redirect if already logged in (for login page)
 function RequireGuest({ children }: { children: React.ReactNode }) {

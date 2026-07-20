@@ -4,10 +4,11 @@ interface SystemControlPanelProps {
   hypeBoardMode: "active" | "slow_3s" | "read_only";
   enableMemoryBoard: boolean;
   vibecheckEnabled: boolean;
+  livechatEnabled: boolean;
   globalMuteActive: boolean;
   handleSetHypeMode: (mode: "active" | "slow_3s" | "read_only") => void;
   handleToggleConfig: (
-    key: "enable_memory_board" | "vibecheck_enabled",
+    key: "enable_memory_board" | "vibecheck_enabled" | "enable_hype_board",
     currentVal: boolean
   ) => void;
 }
@@ -16,10 +17,12 @@ export function SystemControlPanel({
   hypeBoardMode,
   enableMemoryBoard,
   vibecheckEnabled,
+  livechatEnabled,
   globalMuteActive,
   handleSetHypeMode,
   handleToggleConfig,
 }: SystemControlPanelProps) {
+
   return (
     <Box
       bg="var(--c-white)"
@@ -270,6 +273,61 @@ export function SystemControlPanel({
                 {vibecheckEnabled ? "check_circle" : "cancel"}
               </Box>
               {vibecheckEnabled ? "ACTIVE" : "DISABLED"}
+            </HStack>
+          </Button>
+        </Flex>
+
+        {/* Live Chat Toggle — Binary Switch */}
+        <Flex
+          align="center"
+          justify="space-between"
+          p={4}
+          bg="var(--c-ivory)"
+          borderRadius="xl"
+          border="1px solid"
+          borderColor="border.subtle"
+        >
+          <Box>
+            <Text
+              fontFamily="heading"
+              fontWeight="700"
+              color="brand.900"
+              fontSize="sm"
+            >
+              Live Chat (Hype Board)
+            </Text>
+            <Text fontSize="xs" color="fg.muted">
+              Real-time live chat stream on the Hype Board. When disabled,
+              students see a placeholder. Staff always retains access.
+            </Text>
+          </Box>
+          <Button
+            type="button"
+            bg={
+              livechatEnabled ? "var(--c-lagoon)" : "var(--c-muted)"
+            }
+            color="white"
+            onClick={() =>
+              handleToggleConfig("enable_hype_board", livechatEnabled)
+            }
+            cursor="pointer"
+            h={{ base: "44px", md: "40px" }}
+            py={2}
+            px={5}
+            borderRadius="lg"
+            fontWeight="700"
+            fontSize="xs"
+            transition="all 0.2s ease"
+          >
+            <HStack gap={1.5}>
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="16px"
+              >
+                {livechatEnabled ? "chat" : "comments_disabled"}
+              </Box>
+              {livechatEnabled ? "ACTIVE" : "DISABLED"}
             </HStack>
           </Button>
         </Flex>

@@ -626,6 +626,42 @@ a:hover {
   opacity: 1;
 }
 
+/* ─── Featured Photo Carousel ────────────────────────────────────────────── */
 
+@keyframes scroll-x {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-33.333%, 0, 0);
+  }
+}
 
+.carousel-track {
+  display: flex;
+  gap: 12px;
+  will-change: transform;
+  animation: scroll-x 30s linear infinite;
+  width: max-content;
+}
 
+.carousel-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel-track {
+    animation: none !important;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
+/* ─── Mobile: Live Chat Composer Safe Area ───────────────────────────────── */
+
+@media (max-width: 767px) {
+  .live-chat-scroll {
+    /* Ensure chat scroll area accounts for bottom dock on mobile */
+    height: calc(100% - env(safe-area-inset-bottom, 0px));
+  }
+}
