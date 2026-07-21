@@ -436,8 +436,7 @@ export function HomePage() {
           </Link>
         </Box>
 
-        {/* We only render the Featured Carousel outside the grid if ALL features are enabled. 
-            If any feature is disabled, we replace it with the featured photos inside the grid. */}
+        {/* Featured Carousel — only when both modules are live */}
         {vibecheckEnabled && hypeBoardEnabled && <FeaturedCarousel />}
 
         {/* Features Grid — mobile-first: stacked with hierarchy */}
@@ -475,50 +474,87 @@ export function HomePage() {
               gap={{ base: 3, md: 6 }}
               minH={{ md: "600px" }}
             >
-              {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
-              {vibecheckEnabled ? (
+              {/* Vibe Check + Hype Board slots: consolidated when both are off */}
+              {!vibecheckEnabled && !hypeBoardEnabled ? (
+                // Both off — one full-width Featured Moments card
                 <Box
-                  gridColumn={{ md: "span 2" }}
+                  gridColumn={{ md: "span 4" }}
                   gridRow={{ md: "span 2" }}
                   height="100%"
                 >
-                  <FeatureCardLarge feature={features[0]} variants={variants} />
+                  <FeatureCardAutoScroll
+                    feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
+                    images={featuredPhotos}
+                    variants={variants}
+                    isWide
+                  />
                 </Box>
               ) : (
-                <Box
-                  gridColumn={{ md: "span 2" }}
-                  gridRow={{ md: "span 2" }}
-                  height="100%"
-                >
-                  <FeatureCardAutoScroll feature={{...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900"}} images={featuredPhotos} variants={variants} />
-                </Box>
+                <>
+                  {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
+                  <Box
+                    gridColumn={{ md: "span 2" }}
+                    gridRow={{ md: "span 2" }}
+                    height="100%"
+                  >
+                    {vibecheckEnabled ? (
+                      <FeatureCardLarge feature={features[0]} variants={variants} />
+                    ) : (
+                      <FeatureCardAutoScroll
+                        feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
+                        images={featuredPhotos}
+                        variants={variants}
+                      />
+                    )}
+                  </Box>
+
+                  {/* Hype Board — spans 2 cols wide on desktop */}
+                  <Box gridColumn={{ md: "span 2" }} height="100%">
+                    {hypeBoardEnabled ? (
+                      <FeatureCardWide feature={features[1]} variants={variants} />
+                    ) : (
+                      <FeatureCardAutoScroll
+                        feature={{ ...features[1], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "bg.hero", textColor: "brand.900" }}
+                        images={featuredPhotos}
+                        variants={variants}
+                        isWide
+                      />
+                    )}
+                  </Box>
+
+                  {/* Gallery — spans 1 col on desktop */}
+                  <Box height="100%">
+                    <FeatureCardSmall feature={features[2]} variants={variants} />
+                  </Box>
+
+                  {/* Next Event — spans 1 col on desktop */}
+                  <Box height="100%">
+                    <FeatureCardEvent
+                      feature={features[3]}
+                      eventTitle={nextEvent.title}
+                      countdownText={countdownText}
+                      variants={variants}
+                    />
+                  </Box>
+                </>
               )}
 
-              {/* Hype Board — spans 2 cols wide on desktop */}
-              {hypeBoardEnabled ? (
-                <Box gridColumn={{ md: "span 2" }} height="100%">
-                  <FeatureCardWide feature={features[1]} variants={variants} />
-                </Box>
-              ) : (
-                <Box gridColumn={{ md: "span 2" }} height="100%">
-                  <FeatureCardAutoScroll feature={{...features[1], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "bg.hero", textColor: "brand.900"}} images={featuredPhotos} variants={variants} isWide />
-                </Box>
+              {/* Gallery + Event still appear when both modules are off */}
+              {!vibecheckEnabled && !hypeBoardEnabled && (
+                <>
+                  <Box height="100%">
+                    <FeatureCardSmall feature={features[2]} variants={variants} />
+                  </Box>
+                  <Box height="100%">
+                    <FeatureCardEvent
+                      feature={features[3]}
+                      eventTitle={nextEvent.title}
+                      countdownText={countdownText}
+                      variants={variants}
+                    />
+                  </Box>
+                </>
               )}
-
-              {/* Gallery — spans 1 col on desktop */}
-              <Box height="100%">
-                <FeatureCardSmall feature={features[2]} variants={variants} />
-              </Box>
-
-              {/* Next Event — spans 1 col on desktop */}
-              <Box height="100%">
-                <FeatureCardEvent
-                  feature={features[3]}
-                  eventTitle={nextEvent.title}
-                  countdownText={countdownText}
-                  variants={variants}
-                />
-              </Box>
             </Box>
           </motion.div>
         </Box>

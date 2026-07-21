@@ -1411,12 +1411,13 @@ export function AdminDashboardPage() {
     setHypeBoardMode(mode);
 
     try {
-      const { error } = await supabase
-        .from("system_config")
-        .upsert(
-          { key: "hype_board_mode", value: true, text_value: mode },
-          { onConflict: "key" },
-        );
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: "hype_board_mode",
+        p_value: true,
+        p_text_value: mode,
+      });
 
       if (error) throw error;
 
@@ -1458,22 +1459,14 @@ export function AdminDashboardPage() {
     setGlobalMuteActive(mute);
 
     try {
-      const token = localStorage.getItem("baan7_session_token");
-      const { error } = await supabase.rpc("global_panic_mute", {
-        p_session_token: token,
-        p_mute: mute,
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: "global_mute_active",
+        p_value: mute,
       });
 
-      // Fallback if RPC doesn't exist yet — direct update
-      if (error) {
-        const { error: fallbackErr } = await supabase
-          .from("system_config")
-          .upsert(
-            { key: "global_mute_active", value: mute },
-            { onConflict: "key" },
-          );
-        if (fallbackErr) throw fallbackErr;
-      }
+      if (error) throw error;
 
       await logAuditAction(
         "panic_mute",
@@ -1519,12 +1512,13 @@ export function AdminDashboardPage() {
 
     setIsSavingTicker(true);
     try {
-      const { error } = await supabase
-        .from("system_config")
-        .upsert(
-          { key: "ticker_text", value: true, text_value: text },
-          { onConflict: "key" },
-        );
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: "ticker_text",
+        p_value: true,
+        p_text_value: text,
+      });
 
       if (error) throw error;
 
@@ -1581,12 +1575,13 @@ export function AdminDashboardPage() {
   const handleClearTicker = async () => {
     setIsSavingTicker(true);
     try {
-      const { error } = await supabase
-        .from("system_config")
-        .upsert(
-          { key: "ticker_text", value: false, text_value: "" },
-          { onConflict: "key" },
-        );
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: "ticker_text",
+        p_value: false,
+        p_text_value: "",
+      });
 
       if (error) throw error;
 
@@ -1640,12 +1635,14 @@ export function AdminDashboardPage() {
   const handleSaveFeaturedPhotos = async (urls: string[]) => {
     setSavingPhotos(true);
     try {
-      const { error } = await supabase
-        .from("system_config")
-        .upsert(
-          { key: "featured_photo_urls", value: true, text_value: JSON.stringify(urls) },
-          { onConflict: "key" }
-        );
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: "featured_photo_urls",
+        p_value: true,
+        p_text_value: JSON.stringify(urls),
+      });
+
       if (error) throw error;
       setFeaturedPhotoUrls(urls);
       await broadcastConfigSync("config_change", {

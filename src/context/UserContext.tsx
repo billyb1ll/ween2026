@@ -73,17 +73,21 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
 
-  const { data: user, isLoading: sessionLoading, isError: sessionError } = useActiveSession(sessionToken);
+  const { data: user, isLoading: sessionLoading } = useActiveSession(sessionToken);
   const { data: hasClaimedFace } = useClaimedFaceStatus(user?.student_id);
   const updateProfileMutation = useUpdateProfileMutation();
   const claimProfileMutation = useClaimProfileMutation();
 
   useEffect(() => {
-    // Trigger when: we have a token, loading is done, and user came back null OR query errored
-    const tokenIsInvalid = !sessionLoading && !!sessionToken && (!user || sessionError);
-    if (!tokenIsInvalid) return;
+    // Only trigger logout when:
+    // - we have a token stored
+    // - the session query has finished loading (not still in-flight)
+    // - the query returned null (token not in DB or expired on server)
+    // Errors (network, transient) are NOT treated as expiry — they will retry.
+    const sessionDefinitelyGone = !sessionLoading && !!sessionToken && user === null;
+    if (!sessionDefinitelyGone) return;
 
-    console.warn("Session expired or invalid — clearing credentials and redirecting to login.");
+    console.warn("Session expired — clearing credentials and redirecting to login.");
 
     // Wipe all session credentials from storage
     localStorage.removeItem("baan7_session_token");
@@ -103,7 +107,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSessionExpired(true);
     setSessionToken(null);
-  }, [user, sessionLoading, sessionError, sessionToken, queryClient]);
+  }, [user, sessionLoading, sessionToken, queryClient]);
 
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;
@@ -301,10 +305,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return sessionStorage.getItem("baan7_admin_pin") ?? "";
   };
 
-  // Show loading spinner while:
-  // - we have a token and the session query is still in-flight, OR
-  // - we have a token but no user yet (expiry detection window)
-  const loading = !!sessionToken && (sessionLoading || (!user && !sessionError));
+  // Show loading spinner while the session query is in-flight.
+  // Once complete (user or null), stop blocking — let RequireAuth redirect if needed.
+  const loading = !!sessionToken && sessionLoading;
 
   return (
     <UserContext.Provider

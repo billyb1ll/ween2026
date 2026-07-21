@@ -29,10 +29,13 @@ export function useActiveSession(token: string | null) {
 
       if (error) {
         console.error("Session fetch failed:", error);
+        // Only throw on auth errors (42501 = RLS deny, PGRST301 = JWT expired).
+        // Network blips will bubble up as errors and trigger a retry, NOT a logout.
         throw error;
       }
 
       if (!data || !data.users) {
+        // Token exists in localStorage but no matching row in DB = definitely expired
         return null;
       }
 
@@ -49,9 +52,9 @@ export function useActiveSession(token: string | null) {
       return data.users as unknown as User;
     },
     enabled: !!token,
-    staleTime: 0,        // Always revalidate — never serve a stale session
-    retry: false,        // Don't retry on 401/session-not-found; treat as expired
-    gcTime: 0,           // Immediately evict from cache when session ends
+    staleTime: 0,   // Always revalidate — never serve a stale session
+    retry: 1,       // Retry once on transient errors before giving up
+    gcTime: 0,      // Immediately evict from cache when session ends
   });
 }
 
