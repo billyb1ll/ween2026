@@ -873,6 +873,21 @@ export function BoardPage() {
   } = useLiveChat("hype", user, getAdminPin());
 
   const isStaff = user?.role === "moderator" || user?.role === "staff";
+  const isBothDisabled = !livechatEnabled && !isMemoryBoardActive && !isStaff;
+
+  // Auto-redirect activeTab if only one board is enabled (for non-staff)
+  useEffect(() => {
+    if (isStaff) return;
+    if (!livechatEnabled && isMemoryBoardActive && activeTab === "hype") {
+      Promise.resolve().then(() => {
+        setActiveTab("memory");
+      });
+    } else if (livechatEnabled && !isMemoryBoardActive && activeTab === "memory") {
+      Promise.resolve().then(() => {
+        setActiveTab("hype");
+      });
+    }
+  }, [livechatEnabled, isMemoryBoardActive, activeTab, isStaff]);
 
   const visibleChatMessages = useMemo(() => {
     return chatMessages.filter((msg) => isStaff || !msg.is_deleted);
@@ -1170,8 +1185,8 @@ export function BoardPage() {
         )}
       </VStack>
 
-      {/* Tab Toggle */}
-      {effectiveHypeActive && isMemoryAccessible && (
+      {/* Tab Toggle (only shown when both boards are accessible or for staff) */}
+      {!isBothDisabled && (livechatEnabled || isStaff) && (isMemoryBoardActive || isStaff) && (
         <Flex justify="center" mb={6} position="relative" zIndex={2}>
           <HStack
             role="tablist"
@@ -1199,27 +1214,85 @@ export function BoardPage() {
         </Flex>
       )}
 
-      {/* Global Board Kill-Switch Ribbon */}
-      {(!effectiveHypeActive && activeTab === "hype") ||
-      (!effectiveMemoryActive && activeTab === "memory") ? (
+      {/* Global Board Kill-Switch / Both Disabled View */}
+      {isBothDisabled ? (
         <Flex
           justify="center"
           align="center"
-          minH="200px"
+          minH="420px"
           bg="bg.surface"
-          borderRadius="xl"
-          border="1px solid"
+          border="1.5px dashed"
           borderColor="border.subtle"
-          p={6}
+          borderRadius="2xl"
+          direction="column"
+          gap={5}
+          p={{ base: 6, md: 12 }}
+          textAlign="center"
+          animation="fade-in-up 0.5s var(--ease-out-expo) both"
+          maxW="2xl"
+          mx="auto"
+          boxShadow="var(--shadow-ambient)"
         >
-          <Text
-            fontSize="md"
-            fontWeight="600"
-            color="fg.subtle"
-            textAlign="center"
+          <Flex
+            w="64px"
+            h="64px"
+            bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 12%, transparent)"
+            borderRadius="full"
+            align="center"
+            justify="center"
           >
-            บอร์ดสนทนาปิดปรับปรุงชั่วคราวตามลำดับกิจกรรมโปรดรอสัญญาณจากพี่สตาฟ
-          </Text>
+            <Box
+              className="material-symbols-outlined"
+              fontSize="36px"
+              color="brand.solid"
+            >
+              pause_circle
+            </Box>
+          </Flex>
+          <VStack gap={2} maxW="md">
+            <Heading
+              as="h2"
+              fontSize={{ base: "xl", md: "2xl" }}
+              fontWeight="700"
+              color="brand.900"
+              fontFamily="heading"
+            >
+              Orientation Boards Closed
+            </Heading>
+            <Text fontSize="sm" color="fg.muted" lineHeight={1.6}>
+              ทั้ง Live Chat และ Memory Board ถูกปิดใช้งานชั่วคราวโดยพี่สตาฟเพื่อดำเนินกิจกรรมรับน้อง
+              โปรดรอสัญญาณประกาศจากทีมงานสตาฟ Baan 7
+            </Text>
+          </VStack>
+          <HStack gap={3} wrap="wrap" justify="center" pt={2}>
+            <Button
+              bg="brand.solid"
+              color="white"
+              borderRadius="xl"
+              px={6}
+              h="44px"
+              fontSize="sm"
+              fontWeight="600"
+              onClick={() => navigate("/")}
+              _hover={{ bg: "brand.600" }}
+            >
+              หน้าหลัก (Home)
+            </Button>
+            <Button
+              variant="outline"
+              borderColor="border.muted"
+              color="brand.900"
+              borderRadius="xl"
+              px={6}
+              h="44px"
+              fontSize="sm"
+              fontWeight="600"
+              onClick={() => navigate("/gallery")}
+              _hover={{ bg: "bg.muted" }}
+            >
+              แกลเลอรีรูปภาพ (Gallery)
+            </Button>
+          </HStack>
         </Flex>
       ) : activeTab === "hype" ? (
         !livechatEnabled && !isStaff ? (

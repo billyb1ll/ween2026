@@ -6,7 +6,11 @@ import { toaster } from "../components/ui/toaster";
 import { supabase } from "../lib/supabase";
 import { motion, useReducedMotion, useScroll } from "framer-motion";
 import type { Variants } from "framer-motion";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FeaturedCarousel } from "../components/FeaturedCarousel";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const ThreeBlob = lazy(() =>
   import("../components/ThreeBlob").then((module) => ({
@@ -27,36 +31,13 @@ interface FeatureItem {
   time?: string;
 }
 
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const cardVariants = (shouldReduceMotion: boolean): Variants => ({
-  hidden: {
-    y: shouldReduceMotion ? 0 : 30,
-    opacity: 0,
-  },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: shouldReduceMotion
-      ? { duration: 0.01 }
-      : { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-  },
-});
 
 export function HomePage() {
   const [onlineCount] = useState(42);
   const [isMobile, setIsMobile] = useState(true);
   const { scrollYProgress } = useScroll();
-  const shouldReduceMotion = useReducedMotion() ?? false;
-  const pathLength = shouldReduceMotion ? 1 : scrollYProgress;
-  const variants = cardVariants(shouldReduceMotion);
+  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pathLength = prefersReducedMotion ? 1 : scrollYProgress;
 
   const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
   const [hypeBoardEnabled, setHypeBoardEnabled] = useState(true);
@@ -238,6 +219,31 @@ export function HomePage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // GSAP ScrollTrigger entrance — immune to tab-switch visibility changes
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const cards = document.querySelectorAll(".feature-grid-card");
+    if (!cards.length) return;
+
+    const ctx = gsap.context(() => {
+      gsap.from(cards, {
+        opacity: 0,
+        y: 30,
+        duration: 0.7,
+        ease: "power3.out",
+        stagger: 0.1,
+        scrollTrigger: {
+          trigger: "#features",
+          start: "top 80%",
+          once: true, // fires once per page load; never affected by tab visibility
+        },
+      });
+    });
+
+    return () => ctx.revert();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vibecheckEnabled, hypeBoardEnabled]);
 
   return (
     <Box position="relative">
@@ -457,12 +463,7 @@ export function HomePage() {
             Your Baan 7 Experience
           </Heading>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-10%" }}
-          >
+          <div id="features-grid">
             <Box
               display="grid"
               gridTemplateColumns={{
@@ -478,6 +479,7 @@ export function HomePage() {
               {!vibecheckEnabled && !hypeBoardEnabled ? (
                 // Both off — one full-width Featured Moments card
                 <Box
+                  className="feature-grid-card"
                   gridColumn={{ md: "span 4" }}
                   gridRow={{ md: "span 2" }}
                   height="100%"
@@ -485,7 +487,6 @@ export function HomePage() {
                   <FeatureCardAutoScroll
                     feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
                     images={featuredPhotos}
-                    variants={variants}
                     isWide
                   />
                 </Box>
@@ -493,47 +494,45 @@ export function HomePage() {
                 <>
                   {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
                   <Box
+                    className="feature-grid-card"
                     gridColumn={{ md: "span 2" }}
                     gridRow={{ md: "span 2" }}
                     height="100%"
                   >
                     {vibecheckEnabled ? (
-                      <FeatureCardLarge feature={features[0]} variants={variants} />
+                      <FeatureCardLarge feature={features[0]} />
                     ) : (
                       <FeatureCardAutoScroll
                         feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
                         images={featuredPhotos}
-                        variants={variants}
                       />
                     )}
                   </Box>
 
                   {/* Hype Board — spans 2 cols wide on desktop */}
-                  <Box gridColumn={{ md: "span 2" }} height="100%">
+                  <Box className="feature-grid-card" gridColumn={{ md: "span 2" }} height="100%">
                     {hypeBoardEnabled ? (
-                      <FeatureCardWide feature={features[1]} variants={variants} />
+                      <FeatureCardWide feature={features[1]} />
                     ) : (
                       <FeatureCardAutoScroll
                         feature={{ ...features[1], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "bg.hero", textColor: "brand.900" }}
                         images={featuredPhotos}
-                        variants={variants}
                         isWide
                       />
                     )}
                   </Box>
 
                   {/* Gallery — spans 1 col on desktop */}
-                  <Box height="100%">
-                    <FeatureCardSmall feature={features[2]} variants={variants} />
+                  <Box className="feature-grid-card" height="100%">
+                    <FeatureCardSmall feature={features[2]} />
                   </Box>
 
                   {/* Next Event — spans 1 col on desktop */}
-                  <Box height="100%">
+                  <Box className="feature-grid-card" height="100%">
                     <FeatureCardEvent
                       feature={features[3]}
                       eventTitle={nextEvent.title}
                       countdownText={countdownText}
-                      variants={variants}
                     />
                   </Box>
                 </>
@@ -542,21 +541,20 @@ export function HomePage() {
               {/* Gallery + Event still appear when both modules are off */}
               {!vibecheckEnabled && !hypeBoardEnabled && (
                 <>
-                  <Box height="100%">
-                    <FeatureCardSmall feature={features[2]} variants={variants} />
+                  <Box className="feature-grid-card" height="100%">
+                    <FeatureCardSmall feature={features[2]} />
                   </Box>
-                  <Box height="100%">
+                  <Box className="feature-grid-card" height="100%">
                     <FeatureCardEvent
                       feature={features[3]}
                       eventTitle={nextEvent.title}
                       countdownText={countdownText}
-                      variants={variants}
                     />
                   </Box>
                 </>
               )}
             </Box>
-          </motion.div>
+          </div>
         </Box>
       </Box>
     </Box>
@@ -568,7 +566,7 @@ function FeatureCardLarge({
   variants,
 }: {
   feature: FeatureItem;
-  variants: Variants;
+  variants?: Variants;
 }) {
   const [tilt, setTilt] = useState(0);
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -811,7 +809,7 @@ function FeatureCardWide({
   variants,
 }: {
   feature: FeatureItem;
-  variants: Variants;
+  variants?: Variants;
 }) {
   const [tilt, setTilt] = useState(0);
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -923,7 +921,7 @@ function FeatureCardSmall({
   variants,
 }: {
   feature: FeatureItem;
-  variants: Variants;
+  variants?: Variants;
 }) {
   const isGallery = feature.title === "Gallery";
   const immich = getImmichConfig();
@@ -1058,7 +1056,7 @@ function FeatureCardEvent({
   feature: FeatureItem;
   eventTitle: string;
   countdownText: string;
-  variants: Variants;
+  variants?: Variants;
 }) {
   return (
     <Link to={feature.link} style={{ display: "block", height: "100%" }}>
@@ -1144,7 +1142,7 @@ function FeatureCardAutoScroll({
 }: {
   feature: FeatureItem;
   images: {url: string; alt?: string}[];
-  variants: Variants;
+  variants?: Variants;
   isWide?: boolean;
 }) {
   const shouldReduceMotion = useReducedMotion() ?? false;

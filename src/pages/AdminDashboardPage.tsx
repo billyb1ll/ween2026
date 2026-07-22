@@ -1649,18 +1649,12 @@ export function AdminDashboardPage() {
         key: "featured_photo_urls",
         text_value: JSON.stringify(urls),
       });
-      toaster.create({ title: "Featured photos updated", type: "success" });
+      toaster.create({ title: `Featured photos updated (${urls.length} photos)`, type: "success" });
     } catch (err) {
       console.error(err);
       toaster.create({ title: "Failed to save featured photos", type: "error" });
     } finally {
       setSavingPhotos(false);
-    }
-  };
-
-  const handleAddFeaturedPhoto = (url: string) => {
-    if (!featuredPhotoUrls.includes(url)) {
-      handleSaveFeaturedPhotos([...featuredPhotoUrls, url]);
     }
   };
 
@@ -2610,8 +2604,8 @@ export function AdminDashboardPage() {
                           px={4}
                           borderRadius="lg"
                           onClick={() => {
-                            if (newPhotoUrl.trim()) {
-                              handleAddFeaturedPhoto(newPhotoUrl.trim());
+                            if (newPhotoUrl.trim() && !featuredPhotoUrls.includes(newPhotoUrl.trim())) {
+                              handleSaveFeaturedPhotos([...featuredPhotoUrls, newPhotoUrl.trim()]);
                             }
                           }}
                           disabled={!newPhotoUrl.trim()}
@@ -4586,11 +4580,12 @@ export function AdminDashboardPage() {
       <ImmichPhotoPickerModal
         isOpen={isImmichModalOpen}
         onClose={() => setIsImmichModalOpen(false)}
-        onSelect={(url) => {
-          if (url) {
-            handleAddFeaturedPhoto(url);
+        onSelectMultiple={(urls) => {
+          if (urls.length > 0) {
+            handleSaveFeaturedPhotos(urls);
           }
         }}
+        currentUrls={featuredPhotoUrls}
       />
     </Box>
   );

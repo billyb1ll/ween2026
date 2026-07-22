@@ -1,5 +1,5 @@
 import { Box } from '@chakra-ui/react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { lazy, Suspense, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Navbar } from './components/Navbar'
@@ -25,10 +25,11 @@ const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((modul
 const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
 
-// Protected Route for Authenticated Users
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading, sessionExpired, clearSessionExpired } = useUser()
+// Global Auth Expiry Listener — intercepts sessionExpired on ANY route and redirects to /login
+function GlobalAuthListener() {
+  const { sessionExpired, clearSessionExpired } = useUser()
   const location = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (sessionExpired) {
@@ -36,12 +37,23 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
         title: 'Session expired',
         description: 'Please log in again to continue.',
         type: 'warning',
-        duration: 4000,
+        duration: 5000,
         closable: true,
       })
       clearSessionExpired()
+      if (location.pathname !== '/login') {
+        navigate('/login', { state: { from: location }, replace: true })
+      }
     }
-  }, [sessionExpired, clearSessionExpired])
+  }, [sessionExpired, clearSessionExpired, navigate, location])
+
+  return null
+}
+
+// Protected Route for Authenticated Users
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useUser()
+  const location = useLocation()
 
   if (loading) {
     return <LoadingFallback />
@@ -127,6 +139,7 @@ function AppContent() {
           Skip to content
       </a>
       <Toaster />
+      <GlobalAuthListener />
       <TermsOfUseModal />
       <Navbar />
       <Box

@@ -29,8 +29,17 @@ export function useActiveSession(token: string | null) {
 
       if (error) {
         console.error("Session fetch failed:", error);
-        // Only throw on auth errors (42501 = RLS deny, PGRST301 = JWT expired).
-        // Network blips will bubble up as errors and trigger a retry, NOT a logout.
+        // If it's an auth error (42501 = RLS deny, PGRST301 = JWT expired, 401 = unauthorized),
+        // return null so UserContext treats it as an invalid/expired session.
+        if (
+          error.code === 'PGRST301' ||
+          error.code === '42501' ||
+          (error as { status?: number }).status === 401 ||
+          error.message?.toLowerCase().includes('jwt') ||
+          error.message?.toLowerCase().includes('unauthorized')
+        ) {
+          return null;
+        }
         throw error;
       }
 

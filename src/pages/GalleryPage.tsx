@@ -121,13 +121,101 @@ export function GalleryPage() {
         </Text>
       </VStack>
 
-      <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
+      {/* Face Finder Banner — modern branded card */}
+      <Box
+        mb={8}
+        borderRadius="2xl"
+        overflow="hidden"
+        position="relative"
+        animation="fade-in-up 0.7s var(--ease-out-expo) both"
+        className="face-finder-banner"
+      >
+        <Box
+          position="absolute"
+          inset={0}
+          bg="linear-gradient(135deg, oklch(43.83% 0.046 211.59 / 0.12) 0%, oklch(44.33% 0.091 46.54 / 0.06) 100%)"
+          zIndex={0}
+        />
+        <Box
+          position="absolute"
+          inset={0}
+          border="1.5px solid"
+          borderColor="color-mix(in srgb, var(--chakra-colors-accent-solid) 25%, transparent)"
+          borderRadius="2xl"
+          zIndex={0}
+        />
         <Link to="/face-claim">
-          <Flex w="100%" bg="bg.canvas" border="2px dashed" borderColor="accent.solid" borderRadius="xl" p={{ base: 4, md: 5 }} align="center" justify="center" transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "color-mix(in srgb, var(--chakra-colors-accent-solid) 4%, var(--chakra-colors-bg-canvas) 96%)", transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
-            <Box as="span" className="material-symbols-outlined" fontSize="24px" color="brand.900" mr={3}>person_search</Box>
-            <Text color="brand.900" fontWeight="700" fontSize={{ base: "sm", md: "md" }} letterSpacing="0.02em" textAlign="center" maxW="70ch">
-              Cannot find your photos? Try searching for your face using our AI face finder. (Face claiming is currently in testing/Beta).
-            </Text>
+          <Flex
+            position="relative"
+            zIndex={1}
+            p={{ base: 5, md: 7 }}
+            align="center"
+            gap={{ base: 4, md: 6 }}
+            direction={{ base: "column", sm: "row" }}
+            transition="all 0.3s var(--ease-out-quart)"
+            _hover={{
+              "& .banner-icon": { transform: "scale(1.08) rotate(-4deg)" },
+              "& .banner-cta": { bg: "brand.900", color: "white" },
+            }}
+          >
+            {/* Icon */}
+            <Box
+              className="banner-icon"
+              w={{ base: "52px", md: "64px" }}
+              h={{ base: "52px", md: "64px" }}
+              bg="accent.solid"
+              borderRadius="2xl"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              flexShrink={0}
+              transition="transform 0.3s var(--ease-out-quart)"
+            >
+              <Box as="span" className="material-symbols-outlined" fontSize={{ base: "28px", md: "32px" }} color="white">
+                person_search
+              </Box>
+            </Box>
+
+            {/* Text */}
+            <VStack align={{ base: "center", sm: "start" }} gap={0.5} flex={1}>
+              <Heading
+                as="h3"
+                fontFamily="'Playfair Display', serif"
+                fontSize={{ base: "md", md: "lg" }}
+                fontWeight={600}
+                color="brand.900"
+                lineHeight={1.2}
+              >
+                Can't find your photo?
+              </Heading>
+              <Text fontSize={{ base: "xs", md: "sm" }} color="fg.muted" maxW="55ch" lineHeight={1.5}>
+                Use our AI face search to find photos where you appear — even if you don't know when they were taken.
+              </Text>
+            </VStack>
+
+            {/* CTA */}
+            <Flex
+              className="banner-cta"
+              as="span"
+              align="center"
+              gap={2}
+              bg="brand.900"
+              color="white"
+              px={{ base: 5, md: 6 }}
+              py={{ base: 2.5, md: 3 }}
+              borderRadius="full"
+              fontWeight="700"
+              fontSize="sm"
+              letterSpacing="0.02em"
+              flexShrink={0}
+              whiteSpace="nowrap"
+              transition="all 0.25s var(--ease-out-quart)"
+            >
+              Find My Face
+              <Box as="span" className="material-symbols-outlined" fontSize="16px">
+                arrow_forward
+              </Box>
+            </Flex>
           </Flex>
         </Link>
       </Box>

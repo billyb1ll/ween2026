@@ -2,13 +2,13 @@ import {
   Box,
   Flex,
   Heading,
-  SimpleGrid,
   Text,
   VStack,
+  HStack,
   Button,
   Spinner,
   Input,
-  Collapsible,
+  Badge,
 } from "@chakra-ui/react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,25 +22,30 @@ import { supabase } from "../lib/supabase";
 import React from "react";
 import { ImmichImage } from "../components/gallery/ImmichImage";
 
-
-
-const GridList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
-  <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)", md: "repeat(6, 1fr)", lg: "repeat(8, 1fr)" }} gap={4} p={2}>
-    {children}
-  </Box>
-));
-
-const GridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <Box {...props}>{children}</Box>
+const FaceGrid = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ style, children: _children, ...props }, ref) => (
+    <Box
+      ref={ref}
+      style={style}
+      {...props}
+      display="grid"
+      gridTemplateColumns={{
+        base: "repeat(3, 1fr)",
+        sm: "repeat(4, 1fr)",
+        md: "repeat(5, 1fr)",
+        lg: "repeat(6, 1fr)",
+      }}
+      gap={3}
+      p={2}
+    >
+      {_children}
+    </Box>
+  )
 );
 
-const PreviewGridList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ style, children, ...props }, ref) => (
-  <Box ref={ref} style={style} {...props} display="grid" gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)" }} gap={4} p={4}>
-    {children}
-  </Box>
-));
+FaceGrid.displayName = "FaceGrid";
 
-const PreviewGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const FaceGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <Box {...props}>{children}</Box>
 );
 
@@ -51,16 +56,14 @@ export function FaceClaimPage() {
 
   const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
   const [personAssets, setPersonAssets] = useState<ImmichAsset[]>([]);
-  
   const [loadingPeople, setLoadingPeople] = useState(true);
   const [loadingPersonAssets, setLoadingPersonAssets] = useState(false);
   const [claiming, setClaiming] = useState(false);
-  
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Support multi-select
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
+
+  const isGuest = !user;
 
   useEffect(() => {
     const fetchPeople = async () => {
@@ -78,24 +81,29 @@ export function FaceClaimPage() {
   }, []);
 
   const filteredPeople = useMemo(() => {
-    if (!searchQuery) return unclaimedPeople;
-    return unclaimedPeople.filter(p => p.id.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (!searchQuery.trim()) return unclaimedPeople;
+    const q = searchQuery.toLowerCase();
+    return unclaimedPeople.filter((_, i) =>
+      `face ${i + 1}`.includes(q) || String(i + 1).includes(q)
+    );
   }, [unclaimedPeople, searchQuery]);
 
-  const handleSelectPerson = async (personId: string) => {
-    setSelectedPersonIds((prev) => {
-      if (prev.includes(personId)) {
-        return prev.filter((id) => id !== personId);
-      } else {
-        return [...prev, personId];
-      }
-    });
+  const handleSelectPerson = (personId: string) => {
+    if (isGuest) {
+      // Guests can select to see the locked preview — but can't claim
+      setSelectedPersonIds((prev) =>
+        prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
+      );
+      return;
+    }
+    setSelectedPersonIds((prev) =>
+      prev.includes(personId) ? prev.filter((id) => id !== personId) : [...prev, personId]
+    );
   };
 
-  // When selection changes, fetch assets for ALL selected people
+  // Fetch preview assets for selected people (logged-in users only)
   useEffect(() => {
     let active = true;
-    // If no selection or if user is a guest (guests can't see the photos anyway), skip fetching.
     if (selectedPersonIds.length === 0 || !user) {
       Promise.resolve().then(() => {
         if (active) setPersonAssets([]);
@@ -126,7 +134,6 @@ export function FaceClaimPage() {
     try {
       let avatarUpdated = false;
 
-      // Update Supabase using the first available asset
       if (personAssets.length > 0 && !user.profile_pic_url) {
         const previewUrl = immich.assets.thumbnailUrl(personAssets[0].id, "preview");
         const success = await updateProfile({
@@ -142,35 +149,35 @@ export function FaceClaimPage() {
         if (success) avatarUpdated = true;
       }
 
-      // Dual write: Supabase user_faces table
-      const inserts = selectedPersonIds.map(id => ({
+      const inserts = selectedPersonIds.map((id) => ({
         student_id: user.student_id,
-        immich_person_id: id
+        immich_person_id: id,
       }));
-      
-      const { error: sbError } = await supabase.from('user_faces').insert(inserts);
-      if (sbError && sbError.code !== '23505') { // Ignore unique constraint violations
+
+      const { error: sbError } = await supabase.from("user_faces").insert(inserts);
+      if (sbError && sbError.code !== "23505") {
         console.error("Supabase insert error:", sbError);
       }
 
       const defaultName = `Student ${user.student_id}`;
-      const formattedName = (user.full_name && user.full_name.trim() !== "" 
-        ? `${user.nickname || "Student"} (${user.full_name.trim()})` 
-        : user.nickname) || defaultName;
+      const formattedName =
+        (user.full_name && user.full_name.trim() !== ""
+          ? `${user.nickname || "Student"} (${user.full_name.trim()})`
+          : user.nickname) || defaultName;
 
-      // Dual write: Update Immich for ALL selected people
       await Promise.all(
         selectedPersonIds.map((id) => immich.people.update(id, { name: formattedName }))
       );
 
       toaster.create({
         title: "Claim Successful",
-        description: avatarUpdated ? "Successfully claimed faces and updated profile picture." : "Successfully claimed faces.",
+        description: avatarUpdated
+          ? "Successfully claimed faces and updated profile picture."
+          : "Successfully claimed faces.",
         type: "success",
       });
 
       refreshClaimedFaceStatus();
-
       setUnclaimedPeople((prev) => prev.filter((p) => !selectedPersonIds.includes(p.id)));
       setSelectedPersonIds([]);
       setPersonAssets([]);
@@ -187,174 +194,486 @@ export function FaceClaimPage() {
   };
 
   return (
-    <Flex direction="column" position="relative" maxW="var(--container-max)" mx="auto" px={{ base: 4, md: 16 }} pt={{ base: 2, md: 28 }} pb={32} minH="100vh">
+    <Box
+      maxW="var(--container-max)"
+      mx="auto"
+      px={{ base: 4, md: 16 }}
+      pt={{ base: 2, md: 28 }}
+      pb={{ base: 32, md: 20 }}
+      minH="100vh"
+    >
+      {/* Page Header */}
       <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
-        <Heading as="h1" fontSize={{ base: "2rem", md: "3.5rem" }} color="brand.900" textAlign="center">
-          Claim Your Faces
+        <Heading
+          as="h1"
+          fontFamily="'Playfair Display', serif"
+          fontSize={{ base: "2rem", md: "3.5rem" }}
+          fontWeight={700}
+          lineHeight={1.05}
+          letterSpacing="-0.02em"
+          color="brand.900"
+          textAlign="center"
+        >
+          Find Your Face
         </Heading>
-        <Text color="fg.muted" textAlign="center" maxW="lg">
-          Select all faces that belong to you to link them to your profile.
+        <Text color="fg.muted" textAlign="center" maxW="55ch" fontSize={{ base: "sm", md: "md" }}>
+          Our AI has detected faces from orientation activities. Select any face that belongs to you.
         </Text>
       </VStack>
 
-      <Box mb={6} maxW="md" mx="auto">
-        <Input 
-          placeholder="Filter faces (e.g. by partial ID)..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          bg="white"
-          borderRadius="full"
-          boxShadow="sm"
-        />
-      </Box>
-
-      <Box mb={8}>
-        {loadingPeople ? (
-          <Flex justify="center" py={6}><Spinner size="lg" color="brand.solid" /></Flex>
-        ) : filteredPeople.length === 0 ? (
-          <Flex justify="center" py={6} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl">
-            <Text color="fg.subtle">No unclaimed faces found in the database.</Text>
-          </Flex>
-        ) : (
-          <Box w="100%">
-            <VirtuosoGrid
-              data={filteredPeople}
-              useWindowScroll
-              components={{
-                List: GridList,
-                Item: GridItem
-              }}
-              itemContent={(_, person) => {
-                const isSelected = selectedPersonIds.includes(person.id);
-                return (
-                  <VStack 
-                    onClick={() => handleSelectPerson(person.id)} 
-                    cursor="pointer" align="center" gap={2}
-                    p={2}
-                    borderRadius="xl"
-                    transition="all 0.2s var(--ease-out-quart)"
-                    _hover={{ bg: "bg.muted" }}
-                    position="relative"
-                    minH="48px"
-                    minW="48px"
-                  >
-                    <Box 
-                      w="72px" h="72px" borderRadius="full" position="relative"
-                      border={isSelected ? "3px solid var(--chakra-colors-brand-solid)" : "2px dashed var(--chakra-colors-fg-muted)"} 
-                      p="2px" 
-                      transition="all 0.2s" 
-                      transform={isSelected ? "scale(1.05)" : "none"}
-                    >
-                      <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
-                        <ImmichImage endpoint={immich.people.thumbnailUrl(person.id)} alt="Anonymous face" w="100%" h="100%" objectFit="cover" decoding="async" />
-                      </Box>
-                      {isSelected && (
-                        <Flex 
-                          position="absolute" top="-4px" right="-4px" 
-                          bg="brand.solid" w="24px" h="24px" borderRadius="full" 
-                          align="center" justify="center" color="white"
-                          boxShadow="sm"
-                        >
-                          <Box as="span" className="material-symbols-outlined" fontSize="16px">check</Box>
-                        </Flex>
-                      )}
-                    </Box>
-                  </VStack>
-                );
-              }}
-            />
-          </Box>
-        )}
-      </Box>
-
-      {/* Sticky Bottom Footer */}
-      {selectedPersonIds.length > 0 && (
-        <Box 
-          position="fixed" bottom="0" left="0" right="0" zIndex="sticky" 
-          animation="fade-in-up 0.4s var(--ease-out-expo) both"
-          pointerEvents="none"
+      {/* Guest banner */}
+      {isGuest && (
+        <Flex
+          bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 8%, white 92%)"
+          border="1.5px solid"
+          borderColor="accent.solid"
+          borderRadius="xl"
+          p={{ base: 4, md: 5 }}
+          mb={6}
+          align="center"
+          gap={4}
+          justify="space-between"
+          direction={{ base: "column", sm: "row" }}
+          animation="fade-in-up 0.5s var(--ease-out-expo) both"
         >
-          <Collapsible.Root defaultOpen={false}>
-            <Collapsible.Content>
-              <Box pointerEvents="auto" bg="whiteAlpha.950" backdropFilter="blur(8px)" borderTop="1px solid" borderColor="border.subtle" p={{ base: 4, md: 6 }} pb={0} boxShadow="0 -4px 12px rgba(0,0,0,0.05)">
-                <Box maxW="var(--container-max)" mx="auto" w="100%">
-                  {!user ? (
-                    <Flex justify="center" align="center" direction="column" py={8} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl" mb={4}>
-                      <Box as="span" className="material-symbols-outlined" fontSize="48px" color="fg.subtle" mb={4}>lock</Box>
-                      <Text color="fg.muted" mb={6} textAlign="center" maxW="sm">
-                        Login to view full photos matching this face and claim it as yours.
-                      </Text>
-                      <Button onClick={() => navigate("/login", { state: { from: location.pathname } })} bg="brand.solid" color="white" borderRadius="xl" px={8} h="48px" _hover={{ bg: "brand.600" }}>
-                        Login to Claim
-                      </Button>
-                    </Flex>
-                  ) : loadingPersonAssets ? (
-                    <SimpleGrid columns={{ base: 2, sm: 3, md: 4 }} gap={4} mb={4}>
-                      {[1, 2, 3, 4].map((n) => <Box key={n} borderRadius="xl" bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, var(--chakra-colors-white) 95%)" h="200px" animation="pulse 2s infinite ease-in-out" />)}
-                    </SimpleGrid>
-                  ) : personAssets.length === 0 ? (
-                    <Flex justify="center" py={12} bg="bg.surface" border="1px dashed" borderColor="border.subtle" borderRadius="2xl" mb={4}><Text color="fg.subtle">No photos matched this face classification.</Text></Flex>
-                  ) : (
-                    <Box flex="1" w="100%" h="400px" borderRadius="xl" overflow="hidden" border="1px solid" borderColor="border.subtle" mb={4} bg="bg.surface">
-                      <VirtuosoGrid
-                        ref={virtuosoRef}
-                        data={personAssets}
-                        useWindowScroll={false}
-                        style={{ height: '100%', width: '100%' }}
-                        components={{
-                          List: PreviewGridList,
-                          Item: PreviewGridItem
-                        }}
-                        itemContent={(index, asset) => (
-                          <Box position="relative" borderRadius="xl" overflow="hidden" cursor="pointer" onClick={() => openLightbox(index, personAssets)} transition="all 0.3s var(--ease-out-quart)" _hover={{ transform: "translateY(-2px)", boxShadow: "var(--shadow-card-hover)" }}>
-                            <Box h={{ base: "160px", sm: "200px", md: "240px" }}>
-                              <ImmichImage endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")} w="100%" h="100%" objectFit="cover" decoding="async" />
-                            </Box>
-                          </Box>
-                        )}
-                      />
-                    </Box>
-                  )}
-                </Box>
-              </Box>
-            </Collapsible.Content>
-
-            <Flex 
-              pointerEvents="auto"
-              bg="whiteAlpha.900" backdropFilter="blur(8px)" borderTop="1px solid" borderColor="border.subtle"
-              p={{ base: 4, md: 6 }} align="center" justify="center"
-              boxShadow="0 -4px 12px rgba(0,0,0,0.05)"
+          <HStack gap={3}>
+            <Box
+              as="span"
+              className="material-symbols-outlined"
+              fontSize="24px"
+              color="brand.solid"
+              flexShrink={0}
             >
-              <Flex maxW="var(--container-max)" w="100%" align="center" justify="space-between" px={{ base: 2, md: 8 }}>
-                <Collapsible.Trigger asChild>
-                  <Flex cursor="pointer" _hover={{ opacity: 0.8 }} transition="opacity 0.2s" align="center" gap={3}>
-                    <VStack align="start" gap={0}>
-                      <Text fontSize={{ base: "sm", md: "md" }} fontWeight="700" color="brand.900">
-                        {selectedPersonIds.length} Face{selectedPersonIds.length > 1 ? 's' : ''} Selected
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted" display={{ base: "none", sm: "block" }}>
-                        {user ? "Tap to review photos before confirming." : "Login to review photos and claim."}
+              lock_person
+            </Box>
+            <Text fontSize="sm" color="brand.900" fontWeight="500">
+              You are browsing as a guest. Select a face to preview — login to claim it.
+            </Text>
+          </HStack>
+          <Button
+            bg="brand.solid"
+            color="white"
+            borderRadius="xl"
+            px={6}
+            h="40px"
+            fontSize="sm"
+            fontWeight="700"
+            flexShrink={0}
+            onClick={() => navigate("/login", { state: { from: location.pathname } })}
+            _hover={{ bg: "brand.600" }}
+          >
+            Login
+          </Button>
+        </Flex>
+      )}
+
+      {/* Main split-pane layout on desktop */}
+      <Flex
+        direction={{ base: "column", lg: "row" }}
+        gap={{ base: 6, lg: 8 }}
+        align="flex-start"
+      >
+        {/* LEFT — Face Grid */}
+        <Box flex={{ base: "unset", lg: "0 0 55%" }} w={{ base: "100%", lg: "55%" }}>
+          {/* Search */}
+          <Flex
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.subtle"
+            borderRadius="xl"
+            px={4}
+            h="44px"
+            align="center"
+            gap={3}
+            mb={4}
+            _focusWithin={{ borderColor: "brand.solid", boxShadow: "0 0 0 2px color-mix(in srgb, var(--chakra-colors-brand-solid) 12%, transparent)" }}
+            transition="all 0.2s"
+          >
+            <Box as="span" className="material-symbols-outlined" fontSize="20px" color="fg.muted">
+              search
+            </Box>
+            <Input
+              border="none"
+              outline="none"
+              bg="transparent"
+              placeholder="Search by face number (e.g. 12)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              fontSize="sm"
+              color="fg.default"
+              _placeholder={{ color: "fg.subtle" }}
+              p={0}
+              h="100%"
+            />
+            {searchQuery && (
+              <Box
+                as="button"
+                onClick={() => setSearchQuery("")}
+                className="material-symbols-outlined"
+                fontSize="18px"
+                color="fg.muted"
+                cursor="pointer"
+                _hover={{ color: "fg.default" }}
+              >
+                close
+              </Box>
+            )}
+          </Flex>
+
+          {/* Stats */}
+          {!loadingPeople && (
+            <Flex gap={3} mb={4} wrap="wrap">
+              <Badge
+                px={3}
+                py={1}
+                borderRadius="full"
+                bg="bg.surface"
+                border="1px solid"
+                borderColor="border.subtle"
+                color="fg.muted"
+                fontSize="xs"
+                fontWeight="600"
+              >
+                {filteredPeople.length} unclaimed faces
+              </Badge>
+              {selectedPersonIds.length > 0 && (
+                <Badge
+                  px={3}
+                  py={1}
+                  borderRadius="full"
+                  bg="brand.solid"
+                  color="white"
+                  fontSize="xs"
+                  fontWeight="700"
+                >
+                  {selectedPersonIds.length} selected
+                </Badge>
+              )}
+            </Flex>
+          )}
+
+          {/* Face virtuoso grid */}
+          {loadingPeople ? (
+            <Flex justify="center" py={12}>
+              <Spinner size="lg" color="brand.solid" />
+            </Flex>
+          ) : filteredPeople.length === 0 ? (
+            <Flex
+              justify="center"
+              direction="column"
+              align="center"
+              py={12}
+              bg="bg.surface"
+              border="1px dashed"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              gap={3}
+            >
+              <Box as="span" className="material-symbols-outlined" fontSize="48px" color="fg.subtle">
+                face_retouching_off
+              </Box>
+              <Text color="fg.subtle" fontSize="sm">No unclaimed faces found.</Text>
+            </Flex>
+          ) : (
+            <Box
+              w="100%"
+              bg="bg.surface"
+              borderRadius="2xl"
+              border="1px solid"
+              borderColor="border.subtle"
+              overflow="hidden"
+            >
+              <VirtuosoGrid
+                data={filteredPeople}
+                useWindowScroll
+                components={{ List: FaceGrid, Item: FaceGridItem }}
+                itemContent={(index, person) => {
+                  const isSelected = selectedPersonIds.includes(person.id);
+                  const faceNumber = unclaimedPeople.indexOf(person) + 1;
+                  return (
+                    <VStack
+                      onClick={() => handleSelectPerson(person.id)}
+                      cursor="pointer"
+                      align="center"
+                      gap={1.5}
+                      p={2}
+                      borderRadius="xl"
+                      transition="all 0.2s var(--ease-out-quart)"
+                      _hover={{ bg: "bg.muted" }}
+                      position="relative"
+                    >
+                      <Box
+                        w={{ base: "60px", sm: "72px" }}
+                        h={{ base: "60px", sm: "72px" }}
+                        borderRadius="full"
+                        position="relative"
+                        border={isSelected ? "3px solid var(--chakra-colors-brand-solid)" : "2.5px solid transparent"}
+                        outline={isSelected ? "none" : "2px dashed var(--chakra-colors-border-subtle)"}
+                        outlineOffset="2px"
+                        p="2px"
+                        transition="all 0.2s"
+                        transform={isSelected ? "scale(1.08)" : "none"}
+                        boxShadow={isSelected ? "0 0 0 4px color-mix(in srgb, var(--chakra-colors-brand-solid) 16%, transparent)" : "none"}
+                      >
+                        <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
+                          <ImmichImage
+                            endpoint={immich.people.thumbnailUrl(person.id)}
+                            alt={`Face ${faceNumber}`}
+                            w="100%"
+                            h="100%"
+                            objectFit="cover"
+                            decoding="async"
+                          />
+                        </Box>
+                        {isSelected && (
+                          <Flex
+                            position="absolute"
+                            top="-4px"
+                            right="-4px"
+                            bg="brand.solid"
+                            w="22px"
+                            h="22px"
+                            borderRadius="full"
+                            align="center"
+                            justify="center"
+                            color="white"
+                            boxShadow="0 2px 6px rgba(0,0,0,0.25)"
+                          >
+                            <Box as="span" className="material-symbols-outlined" fontSize="13px">check</Box>
+                          </Flex>
+                        )}
+                      </Box>
+                      <Text fontSize="10px" fontWeight="600" color="fg.subtle" letterSpacing="0.02em">
+                        #{faceNumber}
                       </Text>
                     </VStack>
-                    <Box as="span" className="material-symbols-outlined" fontSize="24px" color="brand.600">
-                      expand_less
-                    </Box>
-                  </Flex>
-                </Collapsible.Trigger>
-                {!user ? (
-                  <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} onClick={() => navigate("/login", { state: { from: location.pathname } })} _hover={{ bg: "brand.600" }}>
-                    Login to Claim
-                  </Button>
-                ) : (
-                  <Button h={{ base: "44px", md: "52px" }} px={{ base: 6, md: 10 }} bg="brand.solid" color="white" borderRadius="xl" fontWeight="700" fontSize={{ base: "sm", md: "md" }} loading={claiming} onClick={handleExecuteClaim} _hover={{ bg: "brand.600" }}>
-                    Confirm Selection
-                  </Button>
-                )}
-              </Flex>
-            </Flex>
-          </Collapsible.Root>
+                  );
+                }}
+              />
+            </Box>
+          )}
         </Box>
-      )}
-    </Flex>
+
+        {/* RIGHT — Preview Panel */}
+        <Box
+          flex={1}
+          position={{ base: "unset", lg: "sticky" }}
+          top={{ lg: "120px" }}
+          w={{ base: "100%", lg: "auto" }}
+        >
+          {selectedPersonIds.length === 0 ? (
+            // Empty state
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              bg="bg.surface"
+              border="1.5px dashed"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              p={{ base: 8, md: 12 }}
+              gap={4}
+              minH="300px"
+            >
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="48px"
+                color="fg.subtle"
+                opacity={0.5}
+              >
+                touch_app
+              </Box>
+              <VStack gap={1}>
+                <Text fontWeight="600" color="fg.muted" fontSize="sm">
+                  Select a face to preview
+                </Text>
+                <Text fontSize="xs" color="fg.subtle" textAlign="center" maxW="28ch">
+                  Tap any face on the left to see matching photos from orientation activities.
+                </Text>
+              </VStack>
+            </Flex>
+          ) : isGuest ? (
+            // Guest locked preview
+            <Flex
+              direction="column"
+              align="center"
+              justify="center"
+              bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 5%, white 95%)"
+              border="1.5px solid"
+              borderColor="accent.solid"
+              borderRadius="2xl"
+              p={{ base: 8, md: 12 }}
+              gap={5}
+              minH="300px"
+            >
+              <Box
+                w="56px"
+                h="56px"
+                bg="accent.solid"
+                borderRadius="full"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Box as="span" className="material-symbols-outlined" fontSize="28px" color="white">
+                  lock
+                </Box>
+              </Box>
+              <VStack gap={2}>
+                <Text fontWeight="700" color="brand.900" fontSize="md">
+                  Login to see matching photos
+                </Text>
+                <Text fontSize="sm" color="fg.muted" textAlign="center" maxW="30ch">
+                  {selectedPersonIds.length} face{selectedPersonIds.length > 1 ? "s" : ""} selected. Login to view photos and claim them as yours.
+                </Text>
+              </VStack>
+              <Button
+                bg="brand.solid"
+                color="white"
+                borderRadius="xl"
+                px={8}
+                h="48px"
+                fontWeight="700"
+                onClick={() => navigate("/login", { state: { from: location.pathname } })}
+                _hover={{ bg: "brand.600" }}
+              >
+                Login to Claim
+              </Button>
+            </Flex>
+          ) : (
+            // Logged-in preview panel
+            <Box
+              bg="bg.surface"
+              border="1px solid"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              overflow="hidden"
+            >
+              {/* Preview header */}
+              <Flex
+                px={4}
+                py={3}
+                borderBottom="1px solid"
+                borderColor="border.subtle"
+                align="center"
+                justify="space-between"
+                bg="white"
+              >
+                <HStack gap={2}>
+                  <Text fontWeight="700" fontSize="sm" color="brand.900">
+                    {selectedPersonIds.length} Face{selectedPersonIds.length > 1 ? "s" : ""} Selected
+                  </Text>
+                  {!loadingPersonAssets && personAssets.length > 0 && (
+                    <Badge
+                      bg="bg.muted"
+                      color="fg.muted"
+                      fontSize="xs"
+                      borderRadius="full"
+                      px={2}
+                    >
+                      {personAssets.length} photos
+                    </Badge>
+                  )}
+                </HStack>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  color="fg.muted"
+                  fontSize="xs"
+                  borderRadius="lg"
+                  onClick={() => { setSelectedPersonIds([]); setPersonAssets([]); }}
+                  _hover={{ bg: "bg.muted" }}
+                >
+                  Clear
+                </Button>
+              </Flex>
+
+              {/* Photo preview grid */}
+              {loadingPersonAssets ? (
+                <Flex justify="center" py={10}>
+                  <Spinner size="md" color="brand.solid" />
+                </Flex>
+              ) : personAssets.length === 0 ? (
+                <Flex justify="center" py={10} direction="column" align="center" gap={2}>
+                  <Text color="fg.subtle" fontSize="sm">No photos matched this face.</Text>
+                </Flex>
+              ) : (
+                <Box h={{ base: "280px", md: "420px" }} overflowY="auto">
+                  <VirtuosoGrid
+                    ref={virtuosoRef}
+                    data={personAssets}
+                    useWindowScroll={false}
+                    style={{ height: "100%", width: "100%" }}
+                    components={{
+                      List: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+                        ({ style, children: _c, ...props }, ref) => (
+                          <Box
+                            ref={ref}
+                            style={style}
+                            {...props}
+                            display="grid"
+                            gridTemplateColumns="repeat(3, 1fr)"
+                            gap={1.5}
+                            p={2}
+                          >
+                            {_c}
+                          </Box>
+                        )
+                      ),
+                      Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+                        <Box {...props}>{children}</Box>
+                      ),
+                    }}
+                    itemContent={(index, asset) => (
+                      <Box
+                        position="relative"
+                        borderRadius="md"
+                        overflow="hidden"
+                        cursor="pointer"
+                        aspectRatio={1}
+                        onClick={() => openLightbox(index, personAssets)}
+                        transition="all 0.2s var(--ease-out-quart)"
+                        _hover={{ transform: "scale(1.04)", zIndex: 2 }}
+                      >
+                        <ImmichImage
+                          endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                          decoding="async"
+                        />
+                      </Box>
+                    )}
+                  />
+                </Box>
+              )}
+
+              {/* Claim action footer */}
+              <Box px={4} py={3} borderTop="1px solid" borderColor="border.subtle" bg="white">
+                <Text fontSize="xs" color="fg.muted" mb={2.5} lineHeight={1.4}>
+                  By confirming, you link these faces to your profile. Your name will be tagged in the orientation gallery.
+                </Text>
+                <Button
+                  w="100%"
+                  h="48px"
+                  bg="brand.solid"
+                  color="white"
+                  borderRadius="xl"
+                  fontWeight="700"
+                  fontSize="sm"
+                  loading={claiming}
+                  onClick={handleExecuteClaim}
+                  _hover={{ bg: "brand.600" }}
+                  disabled={personAssets.length === 0 && !claiming}
+                >
+                  Confirm Claim — {selectedPersonIds.length} Face{selectedPersonIds.length > 1 ? "s" : ""}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Flex>
+    </Box>
   );
 }

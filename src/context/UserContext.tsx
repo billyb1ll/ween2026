@@ -73,7 +73,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
 
-  const { data: user, isLoading: sessionLoading } = useActiveSession(sessionToken);
+  const { data: user, isLoading: sessionLoading, isError: sessionError } = useActiveSession(sessionToken);
   const { data: hasClaimedFace } = useClaimedFaceStatus(user?.student_id);
   const updateProfileMutation = useUpdateProfileMutation();
   const claimProfileMutation = useClaimProfileMutation();
@@ -82,9 +82,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     // Only trigger logout when:
     // - we have a token stored
     // - the session query has finished loading (not still in-flight)
-    // - the query returned null (token not in DB or expired on server)
-    // Errors (network, transient) are NOT treated as expiry — they will retry.
-    const sessionDefinitelyGone = !sessionLoading && !!sessionToken && user === null;
+    // - the query returned null or errored out (token not in DB or expired on server)
+    const sessionDefinitelyGone = !sessionLoading && !!sessionToken && (user === null || sessionError);
     if (!sessionDefinitelyGone) return;
 
     console.warn("Session expired — clearing credentials and redirecting to login.");
@@ -107,7 +106,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSessionExpired(true);
     setSessionToken(null);
-  }, [user, sessionLoading, sessionToken, queryClient]);
+  }, [user, sessionLoading, sessionToken, sessionError, queryClient]);
 
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;
