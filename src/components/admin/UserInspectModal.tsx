@@ -29,6 +29,10 @@ import {
 } from "../../hooks/useAdminQueries";
 import { toaster } from "../ui/toaster";
 
+import { ImmichFacePickerModal } from "./ImmichFacePickerModal";
+import { immich } from "../../lib/immich";
+import { supabase } from "../../lib/supabase";
+
 interface UserInspectModalProps {
   inspectUser: DBUser | null;
   onClose: () => void;
@@ -91,6 +95,80 @@ export function UserInspectModal({
   const { data: missions } = useAdminMissions(user?.role === "moderator");
 
   const [selectedMission, setSelectedMission] = React.useState<string>("");
+  const [claimedFaces, setClaimedFaces] = React.useState<Array<{ immich_person_id: string; created_at: string }>>([]);
+  const [loadingFaces, setLoadingFaces] = React.useState(false);
+  const [isFacePickerOpen, setIsFacePickerOpen] = React.useState(false);
+  const [unclaimingPersonId, setUnclaimingPersonId] = React.useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (inspectUser?.student_id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoadingFaces(true);
+      supabase
+        .from("user_faces")
+        .select("immich_person_id, created_at")
+        .eq("student_id", inspectUser.student_id)
+        .then(({ data, error }) => {
+          if (isMounted) {
+            if (!error && data) setClaimedFaces(data);
+            setLoadingFaces(false);
+          }
+        });
+    } else {
+      setClaimedFaces([]);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [inspectUser?.student_id]);
+
+  const handleUnclaimFace = async (personId: string) => {
+    if (!inspectUser) return;
+    if (
+      !confirm(
+        `Are you sure you want to unclaim face cluster for ${inspectUser.nickname || inspectUser.student_id}?`
+      )
+    )
+      return;
+
+    setUnclaimingPersonId(personId);
+    try {
+      const { error } = await supabase
+        .from("user_faces")
+        .delete()
+        .eq("student_id", inspectUser.student_id)
+        .eq("immich_person_id", personId);
+      if (error) throw error;
+
+      await immich.people.update(personId, { name: "" });
+
+      await supabase.from("audit_logs").insert({
+        moderator_id: user?.student_id,
+        action_type: "admin_unclaim_face",
+        target_id: inspectUser.student_id,
+        details: `Moderator unclaimed face ${personId} for student ID ${inspectUser.student_id}`,
+      });
+
+      toaster.create({
+        title: "Face Unclaimed",
+        description: `Successfully unlinked face from ${inspectUser.nickname || inspectUser.student_id}.`,
+        type: "success",
+      });
+
+      const { data } = await supabase
+        .from("user_faces")
+        .select("immich_person_id, created_at")
+        .eq("student_id", inspectUser.student_id);
+      if (data) setClaimedFaces(data);
+      onRefreshStats?.();
+    } catch (err) {
+      console.error("Error unclaiming face:", err);
+      toaster.create({ title: "Failed to unclaim face", type: "error" });
+    } finally {
+      setUnclaimingPersonId(null);
+    }
+  };
 
   const handleResetVibecheck = async () => {
     if (!inspectUser || !user || user.role !== 'moderator') return;
@@ -274,6 +352,83 @@ export function UserInspectModal({
                   </Text>
                 </Box>
               )}
+
+              {/* Facial Recognition (Claimed Faces) Section */}
+              <Box>
+                <Flex justify="space-between" align="center" mb={2}>
+                  <Text
+                    fontSize="xs"
+                    fontWeight="700"
+                    color="var(--c-muted)"
+                    textTransform="uppercase"
+                  >
+                    Claimed Faces ({claimedFaces.length})
+                  </Text>
+                  <Button
+                    size="xs"
+                    bg="accent.solid"
+                    color="brand.900"
+                    onClick={() => setIsFacePickerOpen(true)}
+                    cursor="pointer"
+                  >
+                    + Claim Face for User
+                  </Button>
+                </Flex>
+
+                {loadingFaces ? (
+                  <Flex justify="center" p={3} bg="white" borderRadius="lg" border="1px solid" borderColor="border.subtle">
+                    <Spinner size="xs" color="accent.solid" />
+                  </Flex>
+                ) : claimedFaces.length === 0 ? (
+                  <Box p={3} bg="white" borderRadius="lg" border="1px dashed" borderColor="border.subtle" textAlign="center">
+                    <Text fontSize="xs" color="fg.subtle">
+                      No facial recognition clusters currently linked.
+                    </Text>
+                  </Box>
+                ) : (
+                  <Flex wrap="wrap" gap={2.5}>
+                    {claimedFaces.map((face) => (
+                      <Flex
+                        key={face.immich_person_id}
+                        align="center"
+                        gap={2}
+                        p={2}
+                        bg="white"
+                        borderRadius="lg"
+                        border="1px solid"
+                        borderColor="border.subtle"
+                        boxShadow="sm"
+                      >
+                        <Box w="36px" h="36px" borderRadius="md" overflow="hidden" bg="gray.100" flexShrink={0}>
+                          <img
+                            src={immich.people.thumbnailUrl(face.immich_person_id)}
+                            alt="Claimed face"
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        </Box>
+                        <VStack align="start" gap={0} flex={1}>
+                          <Text fontSize="2xs" fontWeight="700" color="brand.900" maxW="100px" truncate>
+                            ID: {face.immich_person_id.slice(0, 8)}...
+                          </Text>
+                          <Text fontSize="3xs" color="fg.subtle">
+                            {new Date(face.created_at).toLocaleDateString()}
+                          </Text>
+                        </VStack>
+                        <Button
+                          size="2xs"
+                          variant="ghost"
+                          colorPalette="red"
+                          onClick={() => handleUnclaimFace(face.immich_person_id)}
+                          loading={unclaimingPersonId === face.immich_person_id}
+                          cursor="pointer"
+                        >
+                          Unclaim
+                        </Button>
+                      </Flex>
+                    ))}
+                  </Flex>
+                )}
+              </Box>
 
               {/* Statistics & Game Progress */}
               <Box>
@@ -730,6 +885,22 @@ export function UserInspectModal({
         </Dialog.Content>
         </Dialog.Positioner>
       </Portal>
+
+      <ImmichFacePickerModal
+        isOpen={isFacePickerOpen}
+        onClose={() => setIsFacePickerOpen(false)}
+        targetUser={inspectUser}
+        onClaimSuccess={async () => {
+          if (inspectUser?.student_id) {
+            const { data } = await supabase
+              .from("user_faces")
+              .select("immich_person_id, created_at")
+              .eq("student_id", inspectUser.student_id);
+            if (data) setClaimedFaces(data);
+          }
+          onRefreshStats?.();
+        }}
+      />
     </Dialog.Root>
   );
 }
