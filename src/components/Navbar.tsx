@@ -22,6 +22,7 @@ import { supabase } from "../lib/supabase";
 import { UserAvatar } from "./UserAvatar";
 import { useSystemConfigs } from "../hooks/useBoardQueries";
 import { useQueryClient } from "@tanstack/react-query";
+import { MarqueeTicker } from "./MarqueeTicker";
 
 interface NavItemProps {
   to: string;
@@ -752,19 +753,7 @@ export function Navbar() {
                 pointerEvents: "auto",
               }}
             >
-              <Box
-                className="premium-ticker-container"
-                style={{
-                  WebkitMaskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                  maskImage: "linear-gradient(to right, transparent, white 8%, white 92%, transparent)",
-                }}
-              >
-                <div className="premium-ticker-track">
-                  <span className="premium-ticker-item">{tickerText}</span>
-                  <span className="premium-ticker-item">{tickerText}</span>
-                  <span className="premium-ticker-item">{tickerText}</span>
-                </div>
-              </Box>
+              <MarqueeTicker text={tickerText} />
             </motion.div>
           )}
         </AnimatePresence>

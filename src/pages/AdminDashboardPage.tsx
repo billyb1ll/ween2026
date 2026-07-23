@@ -33,6 +33,7 @@ import {
   useUnbanUserMutation,
 } from "../hooks/useAdminQueries";
 import { supabase } from "../lib/supabase";
+import { MarqueeTicker } from "../components/MarqueeTicker";
 import { getImmichConfig } from "../utils/immich";
 import { compressImage } from "../utils/image";
 import { Link } from "react-router-dom";
@@ -2506,22 +2507,8 @@ export function AdminDashboardPage() {
                         </Badge>
                       </Flex>
                       {tickerText.trim() ? (
-                        <Box
-                          className="premium-ticker-container"
-                          borderRadius="lg"
-                          overflow="hidden"
-                        >
-                          <div className="premium-ticker-track">
-                            <span className="premium-ticker-item">
-                              {tickerText}
-                            </span>
-                            <span className="premium-ticker-item">
-                              {tickerText}
-                            </span>
-                            <span className="premium-ticker-item">
-                              {tickerText}
-                            </span>
-                          </div>
+                        <Box borderRadius="lg" overflow="hidden">
+                          <MarqueeTicker text={tickerText} previewMode />
                         </Box>
                       ) : (
                         <Box
