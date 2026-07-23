@@ -1,7 +1,46 @@
 import { Box } from '@chakra-ui/react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { lazy, Suspense, useEffect } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query'
+
+const handleGlobalAuthError = (error: unknown) => {
+  const err = error as { code?: string; status?: number; message?: string };
+  if (
+    err?.code === 'P0001' ||
+    err?.code === '42501' ||
+    err?.status === 401 ||
+    err?.message?.toLowerCase().includes('unauthorized') ||
+    err?.message?.toLowerCase().includes('jwt')
+  ) {
+    console.warn('Global Auth Interceptor: Unauthorized error detected, wiping credentials & triggering relogin.');
+    localStorage.removeItem('baan7_session_token');
+    localStorage.removeItem('baan7_student_id');
+    sessionStorage.removeItem('baan7_admin_pin');
+
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    window.dispatchEvent(new Event('baan7_session_expired'));
+  }
+};
+
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: handleGlobalAuthError,
+  }),
+  mutationCache: new MutationCache({
+    onError: handleGlobalAuthError,
+  }),
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      staleTime: 5000,
+    },
+  },
+})
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { UserProvider, useUser } from './context/UserContext'
@@ -202,14 +241,7 @@ function AppContent() {
   )
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: true,
-      staleTime: 5000,
-    },
-  },
-})
+
 
 function App() {
   return (

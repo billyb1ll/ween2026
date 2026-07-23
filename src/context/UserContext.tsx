@@ -109,6 +109,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     setSessionToken(null);
   }, [user, sessionLoading, sessionToken, sessionError, queryClient]);
 
+  useEffect(() => {
+    const handleSessionExpiredEvent = () => {
+      console.warn("Global session expired event received — clearing context state.");
+      setSessionExpired(true);
+      setSessionToken(null);
+    };
+
+    window.addEventListener("baan7_session_expired", handleSessionExpiredEvent);
+    return () => window.removeEventListener("baan7_session_expired", handleSessionExpiredEvent);
+  }, []);
+
   const refreshClaimedFaceStatus = useCallback(async (currentStudentId?: string) => {
     const studentId = currentStudentId || user?.student_id;
     if (studentId) {

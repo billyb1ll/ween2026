@@ -50,7 +50,7 @@ const FaceGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElemen
 );
 
 export function FaceClaimPage() {
-  const { user, updateProfile, refreshClaimedFaceStatus } = useUser();
+  const { user, updateProfile, refreshClaimedFaceStatus, handleUnauthorizedError } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -157,6 +157,16 @@ export function FaceClaimPage() {
       const { error: sbError } = await supabase.from("user_faces").insert(inserts);
       if (sbError && sbError.code !== "23505") {
         console.error("Supabase insert error:", sbError);
+        const errObj = sbError as { code?: string; status?: number; message?: string };
+        if (
+          errObj.code === "P0001" ||
+          errObj.code === "42501" ||
+          errObj.status === 401 ||
+          errObj.message?.includes("Unauthorized")
+        ) {
+          handleUnauthorizedError();
+          return;
+        }
       }
 
       const defaultName = `Student ${user.student_id}`;
@@ -181,8 +191,18 @@ export function FaceClaimPage() {
       setUnclaimedPeople((prev) => prev.filter((p) => !selectedPersonIds.includes(p.id)));
       setSelectedPersonIds([]);
       setPersonAssets([]);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Execute claim error:", err);
+      const errObj = err as { code?: string; status?: number; message?: string };
+      if (
+        errObj?.code === "P0001" ||
+        errObj?.code === "42501" ||
+        errObj?.status === 401 ||
+        errObj?.message?.includes("Unauthorized")
+      ) {
+        handleUnauthorizedError();
+        return;
+      }
       toaster.create({
         title: "Claim Failed",
         description: "Failed to commit face claim. Please try again.",

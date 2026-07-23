@@ -299,6 +299,14 @@ export function ThreeBlob() {
         camera={{ position: [0, 0, 3.5], fov: 45 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         dpr={[1, 1.5]} // Performance optimization: cap pixel ratio
+        onCreated={({ gl }) => {
+          const dom = gl.domElement;
+          const handleContextLost = (e: Event) => {
+            e.preventDefault();
+            console.warn("WebGL Context Lost handled cleanly — preventing unhandled crash.");
+          };
+          dom.addEventListener("webglcontextlost", handleContextLost, false);
+        }}
         style={{
           position: "sticky",
           top: 0,
