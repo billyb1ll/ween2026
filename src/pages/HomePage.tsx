@@ -1177,21 +1177,35 @@ function FeatureCardAutoScroll({
             shouldReduceMotion ? (
               <Flex gap={3} overflowX="auto" w="100%" pb={2}>
                 {images.slice(0, 4).map((img, i) => (
-                  <Box key={i} flexShrink={0} w="120px" h="100px" borderRadius="lg" overflow="hidden">
+                  <Box key={i} flexShrink={0} w="120px" h="100px" borderRadius="xl" overflow="hidden" border="1px solid" borderColor="border.subtle">
                     <img src={img.url} alt="Gallery item" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
                   </Box>
                 ))}
               </Flex>
             ) : (
-              <Box position="absolute" inset={0}
+              <Box
+                position="absolute"
+                inset={0}
                 style={{
-                  WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
-                  maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+                  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
+                  maskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
                 }}
               >
                 <div className="carousel-track" style={{ height: "100%", alignItems: "center" }}>
                   {displayImages.map((img, i) => (
-                    <Box key={i} flexShrink={0} w={isWide ? "140px" : "180px"} h={isWide ? "100px" : "140px"} borderRadius="lg" overflow="hidden" boxShadow="sm">
+                    <Box
+                      key={i}
+                      flexShrink={0}
+                      w={isWide ? "150px" : "190px"}
+                      h={isWide ? "105px" : "135px"}
+                      borderRadius="xl"
+                      overflow="hidden"
+                      boxShadow="0 8px 20px color-mix(in srgb, var(--chakra-colors-brand-900) 8%, transparent)"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      transition="all 0.3s var(--ease-out-quart)"
+                      _hover={{ transform: "scale(1.05)", borderColor: "brand.solid" }}
+                    >
                       <img src={img.url} alt="Gallery item" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
                     </Box>
                   ))}
