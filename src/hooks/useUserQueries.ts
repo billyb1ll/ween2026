@@ -34,6 +34,7 @@ export function useActiveSession(token: string | null) {
         if (
           error.code === 'PGRST301' ||
           error.code === '42501' ||
+          error.code === 'P0001' ||
           (error as { status?: number }).status === 401 ||
           error.message?.toLowerCase().includes('jwt') ||
           error.message?.toLowerCase().includes('unauthorized')

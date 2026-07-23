@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Box,
   Flex,
@@ -234,7 +234,26 @@ function BannedUsersAdmin() {
 }
 
 export function AdminDashboardPage() {
-  const { user, updateProfile, getAdminPin } = useUser();
+  const { user, updateProfile, getAdminPin, handleUnauthorizedError } = useUser();
+
+  const checkAdminError = useCallback(
+    (error: unknown) => {
+      if (!error) return false;
+      const err = error as { code?: string; status?: number; message?: string };
+      if (
+        err.code === "P0001" ||
+        err.code === "42501" ||
+        err.status === 401 ||
+        err.message?.includes("Unauthorized") ||
+        err.message?.includes("JWT")
+      ) {
+        handleUnauthorizedError();
+        return true;
+      }
+      return false;
+    },
+    [handleUnauthorizedError],
+  );
 
   // Initialize tab directly from user role to avoid cascading useEffect renders
   const [activeTab, setActiveTab] = useState<"moderator" | "media" | "staff">(
@@ -860,6 +879,7 @@ export function AdminDashboardPage() {
       toaster.create({ title: "Post Deleted!", type: "success" });
     } catch (err) {
       console.error("Delete post error:", err);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to delete post", type: "error" });
     }
   };
@@ -886,6 +906,7 @@ export function AdminDashboardPage() {
       toaster.create({ title: "Comment Deleted!", type: "success" });
     } catch (err) {
       console.error("Delete comment error:", err);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to delete comment", type: "error" });
     }
   };
@@ -1358,10 +1379,11 @@ export function AdminDashboardPage() {
       });
 
       if (error) {
-        if (error.code === "P0001" || error.message.includes("Unauthorized")) {
-          throw new Error(
-            "Admin session invalid: PIN or Role is incorrect. Please re-login as moderator.",
-          );
+        if (checkAdminError(error)) {
+          if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
+          if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
+          if (key === "enable_hype_board") setLivechatEnabled(currentVal);
+          return;
         }
         throw error;
       }
@@ -1375,12 +1397,19 @@ export function AdminDashboardPage() {
       });
     } catch (err) {
       console.error(err);
+      if (checkAdminError(err)) {
+        if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
+        if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
+        if (key === "enable_hype_board") setLivechatEnabled(currentVal);
+        return;
+      }
       toaster.create({
         title: "Failed to update setting",
         type: "error",
       });
       if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
       if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
+      if (key === "enable_hype_board") setLivechatEnabled(currentVal);
     }
   };
 
@@ -1449,6 +1478,7 @@ export function AdminDashboardPage() {
     } catch (err) {
       console.error(err);
       setHypeBoardMode(prevMode);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to update mode", type: "error" });
     }
   };
@@ -1498,6 +1528,7 @@ export function AdminDashboardPage() {
     } catch (err) {
       console.error(err);
       setGlobalMuteActive(prev);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to toggle mute", type: "error" });
     }
   };
@@ -1565,6 +1596,7 @@ export function AdminDashboardPage() {
       });
     } catch (err) {
       console.error(err);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to update ticker", type: "error" });
     } finally {
       setIsSavingTicker(false);
@@ -1625,6 +1657,7 @@ export function AdminDashboardPage() {
       });
     } catch (err) {
       console.error(err);
+      if (checkAdminError(err)) return;
       toaster.create({ title: "Failed to clear ticker", type: "error" });
     } finally {
       setIsSavingTicker(false);

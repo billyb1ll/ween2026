@@ -56,6 +56,7 @@ interface UserContextType {
   // Returns the current session's hashed PIN for admin RPC calls.
   // Stored in sessionStorage only — never in the User object or query cache.
   getAdminPin: () => string;
+  handleUnauthorizedError: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -304,6 +305,23 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return sessionStorage.getItem("baan7_admin_pin") ?? "";
   };
 
+  const handleUnauthorizedError = useCallback(() => {
+    console.warn("Session expired or credentials unauthorized — redirecting to login.");
+    localStorage.removeItem("baan7_session_token");
+    localStorage.removeItem("baan7_student_id");
+    sessionStorage.removeItem("baan7_admin_pin");
+
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        localStorage.removeItem(key);
+      }
+    }
+
+    queryClient.removeQueries({ queryKey: ["user_session"] });
+    setSessionExpired(true);
+    setSessionToken(null);
+  }, [queryClient]);
+
   // Show loading spinner while the session query is in-flight.
   // Once complete (user or null), stop blocking — let RequireAuth redirect if needed.
   const loading = !!sessionToken && sessionLoading;
@@ -324,6 +342,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         clearSessionExpired,
         getAdminPin,
+        handleUnauthorizedError,
       }}
     >
       {children}

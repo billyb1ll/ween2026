@@ -236,7 +236,7 @@ function BlobMesh({ scrollY }: BlobMeshProps) {
 
     // Update time, scroll, pointer and mouseIntensity uniforms directly on the instantiated material object
     if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
       materialRef.current.uniforms.uScroll.value = scrollRef.current;
       materialRef.current.uniforms.u_pointer.value.set(
         pointerXRef.current,
@@ -250,13 +250,13 @@ function BlobMesh({ scrollY }: BlobMeshProps) {
     if (meshRef.current) {
       // Y-axis: base rotation + scroll-driven rotation + pointer X offset (clamped to max 0.25 rad)
       meshRef.current.rotation.y =
-        state.clock.getElapsedTime() * 0.15 +
+        state.clock.elapsedTime * 0.15 +
         scrollRef.current * Math.PI * 1.5 +
         pointerXRef.current * 0.25;
 
       // X-axis: base rotation - pointer Y offset (clamped to max 0.25 rad)
       meshRef.current.rotation.x =
-        state.clock.getElapsedTime() * 0.08 - pointerYRef.current * 0.25;
+        state.clock.elapsedTime * 0.08 - pointerYRef.current * 0.25;
 
       // Scaling down gracefully as user scrolls
       const scale = 1.85 - scrollRef.current * 0.5;
