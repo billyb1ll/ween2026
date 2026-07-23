@@ -43,7 +43,6 @@ import { WhitelistTable } from "../components/admin/WhitelistTable";
 import { SystemControlPanel } from "../components/admin/SystemControlPanel";
 import { UserInspectModal } from "../components/admin/UserInspectModal";
 import { STAFF_ROLES } from "../lib/constants";
-import { MediaUploader } from "../components/admin/MediaUploader";
 import { AlbumMappingAdmin } from "../components/admin/AlbumMappingAdmin";
 import { ImmichPhotoPickerModal } from "../components/admin/ImmichPhotoPickerModal";
 
@@ -2135,7 +2134,7 @@ export function AdminDashboardPage() {
               Moderator Command Center
             </Button>
           )}
-          {user?.role === "moderator" && (
+          {(user?.role === "moderator" || user?.role === "staff") && (
             <Button
               type="button"
               onClick={() => setActiveTab("media")}
@@ -3469,7 +3468,7 @@ export function AdminDashboardPage() {
         </VStack>
       )}
       {/* TIER 2: Media Admin Panel */}
-      {activeTab === "media" && user?.role === "moderator" && (
+      {activeTab === "media" && (user?.role === "moderator" || user?.role === "staff") && (
         <VStack align="stretch" gap={6}>
           <Box
             bg="white"
@@ -3511,8 +3510,7 @@ export function AdminDashboardPage() {
                 ) : (
                   <Badge
                     colorPalette={
-                      immichConfig.isConfigured &&
-                      immichStatus.ping.includes("OK")
+                      immichStatus.ping.includes("OK") || immichStatus.ping.includes("200")
                         ? "green"
                         : "red"
                     }
@@ -3532,17 +3530,14 @@ export function AdminDashboardPage() {
                   Configured Server Endpoint
                 </Text>
                 <Text fontSize="xs" fontWeight="700" color="brand.solid">
-                  {immichConfig.url ? (
-                    <a
-                      href={immichConfig.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {immichConfig.url}
-                    </a>
-                  ) : (
-                    "None (Using local Supabase fallback)"
-                  )}
+                  <a
+                    href="http://168.144.139.236:2283"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "underline", color: "inherit" }}
+                  >
+                    http://168.144.139.236:2283
+                  </a>
                 </Text>
               </Flex>
               <Flex
@@ -3616,24 +3611,56 @@ export function AdminDashboardPage() {
               overflowY="auto"
             >
               <Text>
-                [{new Date().toISOString()}] INITIALIZING Droplet connectivity
-                check...
+                [{new Date().toISOString()}] INITIALIZING Droplet connectivity check...
               </Text>
               <Text>
-                [{new Date().toISOString()}] GET config url:{" "}
-                {immichConfig.url || "local_db"}
+                [{new Date().toISOString()}] GET config url: http://168.144.139.236:2283
               </Text>
               <Text>[{new Date().toISOString()}] CONNECTING... OK</Text>
               <Text>
-                [{new Date().toISOString()}] SYNC STATUS: Completed
-                successfully. {immichStatus.activeSyncs} background tasks
-                active.
+                [{new Date().toISOString()}] SYNC STATUS: Completed successfully. {immichStatus.totalImages} photos indexed, {immichStatus.diskUsed} disk used.
               </Text>
             </Box>
           </Box>
 
-          <MediaUploader />
-          <AlbumMappingAdmin />
+          {/* Frontend Album Mappings Section (Moderator Only) */}
+          {user?.role === "moderator" ? (
+            <AlbumMappingAdmin />
+          ) : (
+            <Box
+              bg="white"
+              p={6}
+              border="1.5px dashed"
+              borderColor="border.subtle"
+              borderRadius="2xl"
+              boxShadow="sm"
+            >
+              <Flex align="center" gap={3}>
+                <Box
+                  w="44px"
+                  h="44px"
+                  borderRadius="full"
+                  bg="color-mix(in srgb, var(--chakra-colors-accent-solid) 15%, transparent)"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="24px" color="brand.solid">
+                    lock
+                  </Box>
+                </Box>
+                <Box>
+                  <Heading size="sm" color="brand.900" fontFamily="heading" mb={1}>
+                    Frontend Album Mappings (Locked for Staff)
+                  </Heading>
+                  <Text fontSize="xs" color="fg.subtle">
+                    Album mapping and Immich gallery target configuration is restricted to Moderators only. Staff members may monitor server status and sync metrics above.
+                  </Text>
+                </Box>
+              </Flex>
+            </Box>
+          )}
         </VStack>
       )}
 
