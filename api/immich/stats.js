@@ -5,6 +5,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
+      // 1. Try global statistics (Admin API Key)
       const statsResponse = await fetch(`${IMMICH_SERVER_URL}/api/server/statistics`, { 
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(5000)
@@ -20,6 +21,46 @@ export default async function handler(req, res) {
         const usageBytes = stats.usage || 0;
         diskUsed = (usageBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
         ping = "200 OK (Droplet Live)";
+      } else if (statsResponse.status === 403) {
+        // Non-admin (Staff/User) API Key fallback
+        const pingRes = await fetch(`${IMMICH_SERVER_URL}/api/server/ping`, {
+          headers: { 'x-api-key': IMMICH_API_KEY },
+          signal: AbortSignal.timeout(3000)
+        });
+
+        if (pingRes.ok) {
+          ping = "200 OK (Droplet Live)";
+          
+          // Get user profile & quota
+          try {
+            const userRes = await fetch(`${IMMICH_SERVER_URL}/api/users/me`, {
+              headers: { 'x-api-key': IMMICH_API_KEY },
+              signal: AbortSignal.timeout(3000)
+            });
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData.quotaUsageInBytes) {
+                diskUsed = (userData.quotaUsageInBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+              }
+            }
+          } catch (_) {}
+
+          // Get indexed photos count for this user key
+          try {
+            const searchRes = await fetch(`${IMMICH_SERVER_URL}/api/search/metadata`, {
+              method: 'POST',
+              headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({}),
+              signal: AbortSignal.timeout(3000)
+            });
+            if (searchRes.ok) {
+              const searchData = await searchRes.json();
+              totalImages = searchData.assets?.total || searchData.assets?.count || 0;
+            }
+          } catch (_) {}
+        } else {
+          ping = `Failed (${pingRes.status})`;
+        }
       } else {
         ping = `Failed (${statsResponse.status})`;
       }
