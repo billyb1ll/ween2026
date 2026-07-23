@@ -1,3 +1,13 @@
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return "0 MB";
+  if (bytes < 1024 * 1024 * 1024) {
+    const mb = (bytes / (1024 * 1024)).toFixed(1);
+    return `${mb} MB`;
+  }
+  const gb = (bytes / (1024 * 1024 * 1024)).toFixed(2);
+  return `${gb} GB`;
+}
+
 export default async function handler(req, res) {
   const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
   const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
@@ -13,13 +23,13 @@ export default async function handler(req, res) {
       
       let ping = "Error";
       let totalImages = 0;
-      let diskUsed = "0 GB";
+      let diskUsed = "0 MB";
 
       if (statsResponse.ok) {
         const stats = await statsResponse.json();
         totalImages = stats.photos || 0;
         const usageBytes = stats.usage || 0;
-        diskUsed = (usageBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+        diskUsed = formatBytes(usageBytes);
         ping = "200 OK (Droplet Live)";
       } else if (statsResponse.status === 403) {
         // Non-admin (Staff/User) API Key fallback
@@ -40,7 +50,7 @@ export default async function handler(req, res) {
             if (userRes.ok) {
               const userData = await userRes.json();
               if (userData.quotaUsageInBytes) {
-                diskUsed = (userData.quotaUsageInBytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+                diskUsed = formatBytes(userData.quotaUsageInBytes);
               }
             }
           } catch (_) {}
@@ -76,7 +86,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ping: "Offline",
         totalImages: 0,
-        diskUsed: "0 GB",
+        diskUsed: "0 MB",
         activeSyncs: 0
       });
     }
