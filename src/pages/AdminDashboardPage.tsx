@@ -242,10 +242,9 @@ export function AdminDashboardPage() {
       const err = error as { code?: string; status?: number; message?: string };
       if (
         err.code === "P0001" ||
-        err.code === "42501" ||
         err.status === 401 ||
-        err.message?.includes("Unauthorized") ||
-        err.message?.includes("JWT")
+        err.message?.includes("JWT") ||
+        (err.message?.includes("Unauthorized") && err.code !== "42501")
       ) {
         handleUnauthorizedError();
         return true;

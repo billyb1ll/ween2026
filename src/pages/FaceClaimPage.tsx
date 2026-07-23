@@ -160,9 +160,8 @@ export function FaceClaimPage() {
         const errObj = sbError as { code?: string; status?: number; message?: string };
         if (
           errObj.code === "P0001" ||
-          errObj.code === "42501" ||
           errObj.status === 401 ||
-          errObj.message?.includes("Unauthorized")
+          (errObj.message?.includes("Unauthorized") && errObj.code !== "42501")
         ) {
           handleUnauthorizedError();
           return;
@@ -196,9 +195,8 @@ export function FaceClaimPage() {
       const errObj = err as { code?: string; status?: number; message?: string };
       if (
         errObj?.code === "P0001" ||
-        errObj?.code === "42501" ||
         errObj?.status === 401 ||
-        errObj?.message?.includes("Unauthorized")
+        (errObj?.message?.includes("Unauthorized") && errObj?.code !== "42501")
       ) {
         handleUnauthorizedError();
         return;

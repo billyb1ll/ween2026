@@ -7,10 +7,9 @@ const handleGlobalAuthError = (error: unknown) => {
   const err = error as { code?: string; status?: number; message?: string };
   if (
     err?.code === 'P0001' ||
-    err?.code === '42501' ||
     err?.status === 401 ||
-    err?.message?.toLowerCase().includes('unauthorized') ||
-    err?.message?.toLowerCase().includes('jwt')
+    err?.message?.toLowerCase().includes('jwt') ||
+    (err?.message?.toLowerCase().includes('unauthorized') && err?.code !== '42501')
   ) {
     console.warn('Global Auth Interceptor: Unauthorized error detected, wiping credentials & triggering relogin.');
     localStorage.removeItem('baan7_session_token');
