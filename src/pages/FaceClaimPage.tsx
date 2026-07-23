@@ -61,7 +61,7 @@ export function FaceClaimPage() {
   const [claiming, setClaiming] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPersonIds, setSelectedPersonIds] = useState<string[]>([]);
-  const { openLightbox, virtuosoRef } = useGalleryLightbox();
+  const { openLightbox } = useGalleryLightbox();
 
   const isGuest = !user;
 
@@ -210,6 +210,15 @@ export function FaceClaimPage() {
       setClaiming(false);
     }
   };
+
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
+  const PREVIEW_LIMIT = 6;
+
+  const displayedAssets = useMemo(
+    () => (showAllPhotos ? personAssets : personAssets.slice(0, PREVIEW_LIMIT)),
+    [personAssets, showAllPhotos]
+  );
 
   return (
     <Box
@@ -472,12 +481,13 @@ export function FaceClaimPage() {
           )}
         </Box>
 
-        {/* RIGHT — Preview Panel */}
+        {/* RIGHT — Preview Panel (Desktop Sticky & Mobile Bottom Sheet) */}
         <Box
           flex={1}
           position={{ base: "unset", lg: "sticky" }}
           top={{ lg: "120px" }}
           w={{ base: "100%", lg: "auto" }}
+          display={{ base: "none", lg: "block" }}
         >
           {selectedPersonIds.length === 0 ? (
             // Empty state
@@ -590,7 +600,7 @@ export function FaceClaimPage() {
                       borderRadius="full"
                       px={2}
                     >
-                      {personAssets.length} photos
+                      Showing {displayedAssets.length} of {personAssets.length} photos
                     </Badge>
                   )}
                 </HStack>
@@ -607,7 +617,7 @@ export function FaceClaimPage() {
                 </Button>
               </Flex>
 
-              {/* Photo preview grid */}
+              {/* Photo preview grid (Truncated to displayedAssets) */}
               {loadingPersonAssets ? (
                 <Flex justify="center" py={10}>
                   <Spinner size="md" color="brand.solid" />
@@ -617,42 +627,24 @@ export function FaceClaimPage() {
                   <Text color="fg.subtle" fontSize="sm">No photos matched this face.</Text>
                 </Flex>
               ) : (
-                <Box h={{ base: "280px", md: "420px" }} overflowY="auto">
-                  <VirtuosoGrid
-                    ref={virtuosoRef}
-                    data={personAssets}
-                    useWindowScroll={false}
-                    style={{ height: "100%", width: "100%" }}
-                    components={{
-                      List: React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-                        ({ style, children: _c, ...props }, ref) => (
-                          <Box
-                            ref={ref}
-                            style={style}
-                            {...props}
-                            display="grid"
-                            gridTemplateColumns="repeat(3, 1fr)"
-                            gap={1.5}
-                            p={2}
-                          >
-                            {_c}
-                          </Box>
-                        )
-                      ),
-                      Item: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-                        <Box {...props}>{children}</Box>
-                      ),
-                    }}
-                    itemContent={(index, asset) => (
+                <Box p={3}>
+                  <Box
+                    display="grid"
+                    gridTemplateColumns="repeat(3, 1fr)"
+                    gap={2}
+                  >
+                    {displayedAssets.map((asset, idx) => (
                       <Box
+                        key={asset.id}
                         position="relative"
-                        borderRadius="md"
+                        borderRadius="xl"
                         overflow="hidden"
                         cursor="pointer"
                         aspectRatio={1}
-                        onClick={() => openLightbox(index, personAssets)}
+                        onClick={() => openLightbox(idx, personAssets)}
                         transition="all 0.2s var(--ease-out-quart)"
                         _hover={{ transform: "scale(1.04)", zIndex: 2 }}
+                        boxShadow="sm"
                       >
                         <ImmichImage
                           endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
@@ -662,8 +654,30 @@ export function FaceClaimPage() {
                           decoding="async"
                         />
                       </Box>
-                    )}
-                  />
+                    ))}
+                  </Box>
+
+                  {/* Toggle Show All Photos Pill Button */}
+                  {personAssets.length > PREVIEW_LIMIT && (
+                    <Flex justify="center" mt={3}>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        borderRadius="full"
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="brand.900"
+                        borderColor="border.subtle"
+                        onClick={() => setShowAllPhotos((prev) => !prev)}
+                        cursor="pointer"
+                        _hover={{ bg: "bg.muted" }}
+                      >
+                        {showAllPhotos
+                          ? "Show Fewer Photos"
+                          : `+ View All ${personAssets.length} Photos`}
+                      </Button>
+                    </Flex>
+                  )}
                 </Box>
               )}
 
@@ -692,6 +706,176 @@ export function FaceClaimPage() {
           )}
         </Box>
       </Flex>
+
+      {/* MOBILE FLOATING ACTION MENU BAR */}
+      {selectedPersonIds.length > 0 && (
+        <Box
+          display={{ base: "block", lg: "none" }}
+          position="fixed"
+          bottom="20px"
+          left="16px"
+          right="16px"
+          zIndex={1000}
+        >
+          <Flex
+            bg="rgba(28, 18, 12, 0.94)"
+            backdropFilter="blur(16px)"
+            border="1px solid rgba(255, 255, 255, 0.18)"
+            borderRadius="24px"
+            p={3}
+            px={4}
+            align="center"
+            justify="space-between"
+            boxShadow="0 16px 40px rgba(0, 0, 0, 0.4)"
+          >
+            <HStack gap={2.5}>
+              <Badge
+                bg="accent.solid"
+                color="brand.900"
+                fontSize="xs"
+                fontWeight="800"
+                px={3}
+                py={1}
+                borderRadius="full"
+              >
+                {selectedPersonIds.length} Selected
+              </Badge>
+              {!isGuest && personAssets.length > 0 && (
+                <Text
+                  fontSize="xs"
+                  color="whiteAlpha.800"
+                  fontWeight="600"
+                  cursor="pointer"
+                  textDecoration="underline"
+                  onClick={() => setIsMobilePreviewOpen(true)}
+                >
+                  Preview ({personAssets.length} pics)
+                </Text>
+              )}
+            </HStack>
+
+            <HStack gap={2}>
+              {isGuest ? (
+                <Button
+                  size="sm"
+                  bg="accent.solid"
+                  color="brand.900"
+                  borderRadius="xl"
+                  fontWeight="700"
+                  onClick={() => navigate("/login", { state: { from: location.pathname } })}
+                >
+                  Login
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  bg="accent.solid"
+                  color="brand.900"
+                  borderRadius="xl"
+                  fontWeight="800"
+                  px={5}
+                  h="40px"
+                  loading={claiming}
+                  onClick={handleExecuteClaim}
+                  cursor="pointer"
+                >
+                  Claim ({selectedPersonIds.length})
+                </Button>
+              )}
+            </HStack>
+          </Flex>
+        </Box>
+      )}
+
+      {/* MOBILE PHOTO PREVIEW MODAL / DRAWER */}
+      {isMobilePreviewOpen && (
+        <Box
+          position="fixed"
+          inset={0}
+          zIndex={2000}
+          bg="rgba(0, 0, 0, 0.6)"
+          backdropFilter="blur(8px)"
+          display="flex"
+          alignItems="flex-end"
+          onClick={() => setIsMobilePreviewOpen(false)}
+        >
+          <Box
+            w="100%"
+            bg="var(--c-ivory)"
+            borderTopRadius="24px"
+            p={5}
+            maxH="80vh"
+            overflowY="auto"
+            onClick={(e) => e.stopPropagation()}
+            boxShadow="0 -10px 40px rgba(0,0,0,0.3)"
+          >
+            <Flex justify="space-between" align="center" mb={4}>
+              <Box>
+                <Heading size="xs" fontWeight="700" color="brand.900">
+                  Matching Photos Preview
+                </Heading>
+                <Text fontSize="xs" color="fg.subtle">
+                  Showing {displayedAssets.length} of {personAssets.length} photos
+                </Text>
+              </Box>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setIsMobilePreviewOpen(false)}
+                cursor="pointer"
+              >
+                Close
+              </Button>
+            </Flex>
+
+            <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap={2} mb={4}>
+              {displayedAssets.map((asset, idx) => (
+                <Box
+                  key={asset.id}
+                  borderRadius="lg"
+                  overflow="hidden"
+                  aspectRatio={1}
+                  onClick={() => openLightbox(idx, personAssets)}
+                >
+                  <ImmichImage
+                    endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
+                    w="100%"
+                    h="100%"
+                    objectFit="cover"
+                  />
+                </Box>
+              ))}
+            </Box>
+
+            {personAssets.length > PREVIEW_LIMIT && (
+              <Button
+                w="100%"
+                size="sm"
+                variant="outline"
+                mb={3}
+                onClick={() => setShowAllPhotos((prev) => !prev)}
+              >
+                {showAllPhotos
+                  ? "Show Fewer Photos"
+                  : `+ View All ${personAssets.length} Photos`}
+              </Button>
+            )}
+
+            <Button
+              w="100%"
+              h="44px"
+              bg="brand.solid"
+              color="white"
+              borderRadius="xl"
+              fontWeight="700"
+              loading={claiming}
+              onClick={handleExecuteClaim}
+            >
+              Confirm Claim Face
+            </Button>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }
