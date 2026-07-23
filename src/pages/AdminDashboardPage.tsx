@@ -573,14 +573,19 @@ export function AdminDashboardPage() {
     details: string,
   ) => {
     try {
-      await supabase.from("audit_logs").insert({
+      const { error } = await supabase.from("audit_logs").insert({
         moderator_id: user?.student_id,
         action_type: actionType,
         target_id: targetId,
         details: details,
       });
+      if (error) {
+        console.error("Failed to log audit activity:", error);
+        checkAdminError(error);
+      }
     } catch (err) {
       console.error("Failed to log audit activity:", err);
+      checkAdminError(err);
     }
   };
 
