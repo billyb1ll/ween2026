@@ -255,8 +255,18 @@ export function FaceClaimPage() {
         ? `${nickname} (${fullName} · ${studentId})`
         : `${nickname} (${studentId})`;
 
+      // Fetch all claimed faces for this student to sync old plain names (e.g. 'billy') to unique format 'billy (student_id)'
+      const { data: userClaimedFaces } = await supabase
+        .from("user_faces")
+        .select("immich_person_id")
+        .eq("student_id", user.student_id);
+
+      const allPersonIdsToUpdate = Array.from(
+        new Set([...selectedPersonIds, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
+      );
+
       await Promise.all(
-        selectedPersonIds.map(async (id) => {
+        allPersonIdsToUpdate.map(async (id) => {
           try {
             await immich.people.update(id, { name: formattedName });
           } catch (immichErr) {
