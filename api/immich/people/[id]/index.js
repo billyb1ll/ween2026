@@ -8,6 +8,19 @@ export default async function handler(req, res) {
   const SUPABASE_URL = process.env.VITE_SUPABASE_URL
   const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
 
+  if (req.method === 'GET') {
+    try {
+      const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${id}`, {
+        headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' }
+      })
+      if (!response.ok) return res.status(response.status).send(await response.text())
+      return res.status(200).json(await response.json())
+    } catch (error) {
+      console.error('Immich Proxy GET Person Error:', error);
+      return res.status(500).json({ error: 'Failed to fetch person from Immich' })
+    }
+  }
+
   if (req.method === 'PUT') {
     try {
       // 1. Enforce Auth
@@ -49,6 +62,6 @@ export default async function handler(req, res) {
     }
   }
 
-  res.setHeader('Allow', ['PUT'])
+  res.setHeader('Allow', ['GET', 'PUT'])
   res.status(405).end(`Method ${req.method} Not Allowed`)
 }

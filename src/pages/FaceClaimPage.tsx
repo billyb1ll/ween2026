@@ -69,8 +69,28 @@ export function FaceClaimPage() {
 
   const extractPersonId = (query: string): string | null => {
     if (!query) return null;
-    const uuidMatch = query.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
-    return uuidMatch ? uuidMatch[1] : null;
+    try {
+      const decoded = decodeURIComponent(query);
+      // Priority 1: Match /people/<uuid> pattern in full Immich URLs
+      const peopleUrlMatch = decoded.match(/\/people\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+      if (peopleUrlMatch) return peopleUrlMatch[1];
+
+      // Priority 2: Match standalone 36-char UUID
+      const uuidMatch = decoded.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+      return uuidMatch ? uuidMatch[1] : null;
+    } catch {
+      const uuidMatch = query.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+      return uuidMatch ? uuidMatch[1] : null;
+    }
+  };
+
+  const handleSearchChange = (val: string) => {
+    const extracted = extractPersonId(val);
+    if (extracted && (val.includes("http") || val.includes("/people/"))) {
+      setSearchQuery(extracted);
+    } else {
+      setSearchQuery(val);
+    }
   };
 
   useEffect(() => {
@@ -89,37 +109,62 @@ export function FaceClaimPage() {
     fetchPeople();
   }, []);
 
+  // On-demand fetch if a specific UUID/URL is searched but not in the initial list
+  useEffect(() => {
+    const extractedId = extractPersonId(searchQuery.trim());
+    if (!extractedId) return;
+
+    const exists = allPeople.some((p) => p.id.toLowerCase() === extractedId.toLowerCase());
+    if (exists) return;
+
+    let active = true;
+    immich.people
+      .getById(extractedId)
+      .then((person) => {
+        if (active && person && person.id) {
+          setAllPeople((prev) => (prev.some((p) => p.id === person.id) ? prev : [...prev, person]));
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch remote person by ID:", err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [searchQuery, allPeople]);
+
   const filteredPeople = useMemo(() => {
     const rawQ = searchQuery.trim();
     if (!rawQ) return unclaimedPeople;
     const q = rawQ.toLowerCase();
     const extractedId = extractPersonId(rawQ);
 
-    // Staff / Moderator search: can search by face number, raw UUID, or Immich URL across ALL faces (including claimed)
+    // 1. Exact UUID or extracted Immich URL match
+    if (extractedId) {
+      const matches = allPeople.filter((p) => p.id.toLowerCase() === extractedId.toLowerCase());
+      if (matches.length > 0) return matches;
+    }
+
+    // 2. Substring UUID match
+    if (q.length > 8 && /[a-f0-9-]/i.test(q)) {
+      const uuidMatches = allPeople.filter((p) => p.id.toLowerCase().includes(q));
+      if (uuidMatches.length > 0) return uuidMatches;
+    }
+
+    // 3. Numeric face number search
+    const numStr = q.replace(/^#/, "");
+    if (/^\d+$/.test(numStr)) {
+      return unclaimedPeople.filter((_, i) => String(i + 1).includes(numStr));
+    }
+
+    // 4. Staff search by person name
     if (isStaff) {
-      if (extractedId) {
-        return allPeople.filter((p) => p.id.toLowerCase() === extractedId.toLowerCase());
-      }
-      if (q.length > 8 && /[a-f0-9-]/i.test(q)) {
-        const uuidMatches = allPeople.filter((p) => p.id.toLowerCase().includes(q));
-        if (uuidMatches.length > 0) return uuidMatches;
-      }
-      const numStr = q.replace(/^#/, "");
-      if (/^\d+$/.test(numStr)) {
-        return unclaimedPeople.filter((_, i) => String(i + 1).includes(numStr));
-      }
       return allPeople.filter((p) => p.name && p.name.toLowerCase().includes(q));
     }
 
-    // Student / Regular user search: only search by face number. Silently ignore non-numeric inputs.
-    const numStr = q.replace(/^#/, "");
-    if (!/^\d+$/.test(numStr)) {
-      return unclaimedPeople;
-    }
-
-    return unclaimedPeople.filter((_, i) =>
-      `face ${i + 1}`.includes(numStr) || String(i + 1).includes(numStr)
-    );
+    // Non-numeric queries for students fallback to unclaimed list
+    return unclaimedPeople;
   }, [unclaimedPeople, allPeople, searchQuery, isStaff]);
 
   const handleSelectPerson = (personId: string) => {
@@ -358,7 +403,7 @@ export function FaceClaimPage() {
               bg="transparent"
               placeholder={isStaff ? "Search by face number or Immich Face ID/URL..." : "Search by face number (e.g. 12)..."}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               fontSize="sm"
               color="fg.default"
               _placeholder={{ color: "fg.subtle" }}
