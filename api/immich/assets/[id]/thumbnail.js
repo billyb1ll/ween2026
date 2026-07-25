@@ -11,13 +11,16 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 // Exhaustive whitelist of valid thumbnail size values accepted by Immich.
 const VALID_SIZES = ['thumbnail', 'preview'];
 
+const EMPTY_WEBP = Buffer.from(
+  'UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAQAcJaQAA3AA/v3AAA==',
+  'base64'
+);
+
 export default async function handler(req, res) {
   const { id, size } = req.query
   const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
   const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   const IMMICH_VIEWER_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY;
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
   if (req.method === 'GET') {
     if (!UUID_REGEX.test(id)) {
@@ -32,7 +35,8 @@ export default async function handler(req, res) {
       })
       
       if (!response.ok) {
-        return res.status(404).send(Buffer.from(''))
+        res.setHeader('Content-Type', 'image/webp')
+        return res.status(404).send(EMPTY_WEBP)
       }
       
       res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg')
@@ -42,7 +46,8 @@ export default async function handler(req, res) {
       return
     } catch (error) {
       console.error('Proxy assets thumbnail error:', error.message)
-      return res.status(404).send(Buffer.from(''))
+      res.setHeader('Content-Type', 'image/webp')
+      return res.status(404).send(EMPTY_WEBP)
     }
   }
 

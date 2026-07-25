@@ -9,6 +9,14 @@ interface ImmichImageProps extends Omit<ImageProps, 'src'> {
 
 export function ImmichImage({ endpoint, fallbackBg = "bg.muted", ...props }: ImmichImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [prevEndpoint, setPrevEndpoint] = useState(endpoint);
+
+  if (prevEndpoint !== endpoint) {
+    setPrevEndpoint(endpoint);
+    setIsLoaded(false);
+    setHasError(false);
+  }
 
   const directUrl = useMemo(() => {
     if (!endpoint) return "";
@@ -20,8 +28,21 @@ export function ImmichImage({ endpoint, fallbackBg = "bg.muted", ...props }: Imm
     return `${endpoint}${separator}token=${token || ''}`;
   }, [endpoint]);
 
-  if (!directUrl) {
-    return <Box bg={fallbackBg} aria-label="Error loading image" {...props} />;
+  if (!directUrl || hasError) {
+    return (
+      <Box
+        bg={fallbackBg}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        aria-label="Image unavailable"
+        {...props}
+      >
+        <Box as="span" className="material-symbols-outlined" fontSize="20px" color="fg.subtle" opacity={0.3}>
+          account_circle
+        </Box>
+      </Box>
+    );
   }
 
   const { objectFit, objectPosition, decoding, loading, alt, ...boxProps } = props;
@@ -50,6 +71,7 @@ export function ImmichImage({ endpoint, fallbackBg = "bg.muted", ...props }: Imm
         loading={loading}
         alt={alt}
         onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
         w="100%"
         h="100%"
         objectFit={objectFit}
