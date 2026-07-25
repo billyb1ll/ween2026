@@ -1168,7 +1168,13 @@ export function BoardPage() {
           {(!effectiveHypeActive && activeTab === "hype") ||
           (!effectiveMemoryActive && activeTab === "memory")
             ? "Orientation boards are currently closed by staff. Check back soon!"
-            : "Share the excitement, cheer on your peers, and build the Baan 7 community spirit!"}
+            : activeTab === "memory" ? (
+                <>
+                  จาก<Box as="span" color="brand.solid" fontWeight="700">วีน</Box>ถึง<Box as="span" color="pink.500" fontWeight="700">วีน</Box>
+                </>
+              ) : (
+                "Share the excitement, cheer on your peers, and build the Baan 7 community spirit!"
+              )}
         </Text>
 
         {/* Live Presence Badge */}

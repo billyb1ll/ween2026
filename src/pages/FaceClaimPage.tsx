@@ -54,6 +54,7 @@ export function FaceClaimPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [allPeople, setAllPeople] = useState<ImmichPerson[]>([]);
   const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
   const [personAssets, setPersonAssets] = useState<ImmichAsset[]>([]);
   const [loadingPeople, setLoadingPeople] = useState(true);
@@ -64,12 +65,20 @@ export function FaceClaimPage() {
   const { openLightbox } = useGalleryLightbox();
 
   const isGuest = !user;
+  const isStaff = !!user && ["staff", "moderator", "admin", "superadmin"].includes(user.role as string);
+
+  const extractPersonId = (query: string): string | null => {
+    if (!query) return null;
+    const uuidMatch = query.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    return uuidMatch ? uuidMatch[1] : null;
+  };
 
   useEffect(() => {
     const fetchPeople = async () => {
       try {
         const data = await immich.people.list();
         const list = data.people || [];
+        setAllPeople(list);
         setUnclaimedPeople(list.filter((p) => !p.name || p.name.trim() === ""));
       } catch (err) {
         console.error("Error fetching people:", err);
@@ -81,12 +90,37 @@ export function FaceClaimPage() {
   }, []);
 
   const filteredPeople = useMemo(() => {
-    if (!searchQuery.trim()) return unclaimedPeople;
-    const q = searchQuery.toLowerCase();
+    const rawQ = searchQuery.trim();
+    if (!rawQ) return unclaimedPeople;
+    const q = rawQ.toLowerCase();
+    const extractedId = extractPersonId(rawQ);
+
+    // Staff / Moderator search: can search by face number, raw UUID, or Immich URL across ALL faces (including claimed)
+    if (isStaff) {
+      if (extractedId) {
+        return allPeople.filter((p) => p.id.toLowerCase() === extractedId.toLowerCase());
+      }
+      if (q.length > 8 && /[a-f0-9-]/i.test(q)) {
+        const uuidMatches = allPeople.filter((p) => p.id.toLowerCase().includes(q));
+        if (uuidMatches.length > 0) return uuidMatches;
+      }
+      const numStr = q.replace(/^#/, "");
+      if (/^\d+$/.test(numStr)) {
+        return unclaimedPeople.filter((_, i) => String(i + 1).includes(numStr));
+      }
+      return allPeople.filter((p) => p.name && p.name.toLowerCase().includes(q));
+    }
+
+    // Student / Regular user search: only search by face number. Silently ignore non-numeric inputs.
+    const numStr = q.replace(/^#/, "");
+    if (!/^\d+$/.test(numStr)) {
+      return unclaimedPeople;
+    }
+
     return unclaimedPeople.filter((_, i) =>
-      `face ${i + 1}`.includes(q) || String(i + 1).includes(q)
+      `face ${i + 1}`.includes(numStr) || String(i + 1).includes(numStr)
     );
-  }, [unclaimedPeople, searchQuery]);
+  }, [unclaimedPeople, allPeople, searchQuery, isStaff]);
 
   const handleSelectPerson = (personId: string) => {
     if (isGuest) {
@@ -211,13 +245,12 @@ export function FaceClaimPage() {
     }
   };
 
-  const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
-  const PREVIEW_LIMIT = 6;
+  const PREVIEW_LIMIT = 5;
 
   const displayedAssets = useMemo(
-    () => (showAllPhotos ? personAssets : personAssets.slice(0, PREVIEW_LIMIT)),
-    [personAssets, showAllPhotos]
+    () => personAssets.slice(0, PREVIEW_LIMIT),
+    [personAssets]
   );
 
   return (
@@ -323,7 +356,7 @@ export function FaceClaimPage() {
               border="none"
               outline="none"
               bg="transparent"
-              placeholder="Search by face number (e.g. 12)..."
+              placeholder={isStaff ? "Search by face number or Immich Face ID/URL..." : "Search by face number (e.g. 12)..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               fontSize="sm"
@@ -361,7 +394,7 @@ export function FaceClaimPage() {
                 fontSize="xs"
                 fontWeight="600"
               >
-                {filteredPeople.length} unclaimed faces
+                {filteredPeople.length} {isStaff && searchQuery ? "matching" : "unclaimed"} faces
               </Badge>
               {selectedPersonIds.length > 0 && (
                 <Badge
@@ -399,7 +432,7 @@ export function FaceClaimPage() {
               <Box as="span" className="material-symbols-outlined" fontSize="48px" color="fg.subtle">
                 face_retouching_off
               </Box>
-              <Text color="fg.subtle" fontSize="sm">No unclaimed faces found.</Text>
+              <Text color="fg.subtle" fontSize="sm">No matching faces found.</Text>
             </Flex>
           ) : (
             <Box
@@ -414,9 +447,11 @@ export function FaceClaimPage() {
                 data={filteredPeople}
                 useWindowScroll
                 components={{ List: FaceGrid, Item: FaceGridItem }}
-                itemContent={(index, person) => {
+                itemContent={(_idx, person) => {
                   const isSelected = selectedPersonIds.includes(person.id);
-                  const faceNumber = unclaimedPeople.indexOf(person) + 1;
+                  const faceIndex = unclaimedPeople.indexOf(person);
+                  const faceNumber = faceIndex !== -1 ? faceIndex + 1 : null;
+                  const isClaimed = !!person.name && person.name.trim() !== "";
                   return (
                     <VStack
                       onClick={() => handleSelectPerson(person.id)}
@@ -445,7 +480,7 @@ export function FaceClaimPage() {
                         <Box w="100%" h="100%" borderRadius="full" overflow="hidden">
                           <ImmichImage
                             endpoint={immich.people.thumbnailUrl(person.id)}
-                            alt={`Face ${faceNumber}`}
+                            alt={faceNumber ? `Face ${faceNumber}` : person.name || "Face"}
                             w="100%"
                             h="100%"
                             objectFit="cover"
@@ -470,8 +505,8 @@ export function FaceClaimPage() {
                           </Flex>
                         )}
                       </Box>
-                      <Text fontSize="10px" fontWeight="600" color="fg.subtle" letterSpacing="0.02em">
-                        #{faceNumber}
+                      <Text fontSize="10px" fontWeight="600" color={isClaimed ? "pink.500" : "fg.subtle"} letterSpacing="0.02em" textAlign="center" maxW="80px" truncate>
+                        {isClaimed ? `Claimed: ${person.name}` : faceNumber ? `#${faceNumber}` : "Unclaimed"}
                       </Text>
                     </VStack>
                   );
@@ -656,28 +691,6 @@ export function FaceClaimPage() {
                       </Box>
                     ))}
                   </Box>
-
-                  {/* Toggle Show All Photos Pill Button */}
-                  {personAssets.length > PREVIEW_LIMIT && (
-                    <Flex justify="center" mt={3}>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        borderRadius="full"
-                        fontSize="xs"
-                        fontWeight="700"
-                        color="brand.900"
-                        borderColor="border.subtle"
-                        onClick={() => setShowAllPhotos((prev) => !prev)}
-                        cursor="pointer"
-                        _hover={{ bg: "bg.muted" }}
-                      >
-                        {showAllPhotos
-                          ? "Show Fewer Photos"
-                          : `+ View All ${personAssets.length} Photos`}
-                      </Button>
-                    </Flex>
-                  )}
                 </Box>
               )}
 
@@ -846,20 +859,6 @@ export function FaceClaimPage() {
                 </Box>
               ))}
             </Box>
-
-            {personAssets.length > PREVIEW_LIMIT && (
-              <Button
-                w="100%"
-                size="sm"
-                variant="outline"
-                mb={3}
-                onClick={() => setShowAllPhotos((prev) => !prev)}
-              >
-                {showAllPhotos
-                  ? "Show Fewer Photos"
-                  : `+ View All ${personAssets.length} Photos`}
-              </Button>
-            )}
 
             <Button
               w="100%"
