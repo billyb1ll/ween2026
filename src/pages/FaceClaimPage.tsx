@@ -247,14 +247,22 @@ export function FaceClaimPage() {
         }
       }
 
-      const defaultName = `Student ${user.student_id}`;
-      const formattedName =
-        (user.full_name && user.full_name.trim() !== ""
-          ? `${user.nickname || "Student"} (${user.full_name.trim()})`
-          : user.nickname) || defaultName;
+      const nickname = (user.nickname || "Student").trim();
+      const studentId = user.student_id;
+      const fullName = user.full_name?.trim();
+
+      const formattedName = fullName
+        ? `${nickname} (${fullName} · ${studentId})`
+        : `${nickname} (${studentId})`;
 
       await Promise.all(
-        selectedPersonIds.map((id) => immich.people.update(id, { name: formattedName }))
+        selectedPersonIds.map(async (id) => {
+          try {
+            await immich.people.update(id, { name: formattedName });
+          } catch (immichErr) {
+            console.warn(`Immich person name update error for face ${id}:`, immichErr);
+          }
+        })
       );
 
       toaster.create({

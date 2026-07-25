@@ -115,10 +115,13 @@ export function ImmichFacePickerModal({
         console.error("Supabase user_faces insert error:", sbError);
       }
 
-      // 2. Update name on Immich person objects (safely catch 403 or server errors)
-      const formattedName = targetUser.nickname
-        ? `${targetUser.nickname} (${targetUser.student_id})`
-        : `Student ${targetUser.student_id}`;
+      const nickname = (targetUser.nickname || "Student").trim();
+      const studentId = targetUser.student_id;
+      const fullName = targetUser.full_name?.trim();
+
+      const formattedName = fullName
+        ? `${nickname} (${fullName} · ${studentId})`
+        : `${nickname} (${studentId})`;
 
       await Promise.all(
         ids.map(async (id) => {
