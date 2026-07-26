@@ -190,7 +190,20 @@ export function useWhitelistedStaff() {
         throw error;
       }
 
-      return (data as DBStaff[]).sort((a, b) =>
+      const STAFF_ROLES = [
+        "ประธาน", "เลขา", "เหรัญญิก", "ประสานงาน", "Timer",
+        "Creative & Art", "โสต", "สวัสดิการและพัสดุ", "พยาบาล",
+        "สถานที่", "สันทนาการ", "พี่กลุ่ม", "ทะเบียน"
+      ];
+
+      const list = (data as DBStaff[]).map((s) => {
+        if (s.major && STAFF_ROLES.includes(s.major) && !s.house_position) {
+          return { ...s, house_position: s.major, major: null };
+        }
+        return s;
+      });
+
+      return list.sort((a, b) =>
         (a.nickname || "").localeCompare(b.nickname || "")
       );
     },

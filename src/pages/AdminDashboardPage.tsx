@@ -435,7 +435,7 @@ export function AdminDashboardPage() {
     const counts: Record<string, number> = {};
     whitelistedUsers.forEach((s) => {
       if (s.role !== "student") {
-        const grp = s.house_position || s.major || s.role;
+        const grp = s.house_position || (s.major && STAFF_ROLES.includes(s.major) ? s.major : null) || s.role;
         if (grp) {
           counts[grp] = (counts[grp] || 0) + 1;
         }
@@ -475,7 +475,7 @@ export function AdminDashboardPage() {
     const counts: Record<string, number> = {};
     whitelistedUsers.forEach((s) => {
       if (s.role !== "student") {
-        const grp = s.house_position || s.major || s.role;
+        const grp = s.house_position || (s.major && STAFF_ROLES.includes(s.major) ? s.major : null) || s.role;
         if (grp) {
           counts[grp] = (counts[grp] || 0) + 1;
         }
@@ -1264,8 +1264,14 @@ export function AdminDashboardPage() {
         .eq("student_id", u.student_id)
         .single();
       if (detailData) {
-        setEditMajor(detailData.major || "");
-        setEditHousePosition(detailData.house_position || "");
+        let m = detailData.major || "";
+        let hp = detailData.house_position || "";
+        if (m && STAFF_ROLES.includes(m) && !hp) {
+          hp = m;
+          m = "";
+        }
+        setEditMajor(m);
+        setEditHousePosition(hp);
       }
 
       // Fetch collection statistics
