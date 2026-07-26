@@ -23,10 +23,24 @@ export interface FacultySelectProps {
 }
 
 export function FacultySelect({ value, onChange }: FacultySelectProps) {
+  // Normalize incoming value: match by short code ("SC"), English name ("Faculty of Science"), or Thai name
+  const matchedFac = FACULTIES.find(
+    (f) =>
+      f.short.toLowerCase() === (value || "").toLowerCase() ||
+      f.en.toLowerCase() === (value || "").toLowerCase() ||
+      f.th.toLowerCase() === (value || "").toLowerCase()
+  );
+
+  // Use matching short code if found, or raw value for custom entries
+  const normalizedValue = matchedFac ? matchedFac.short : value;
+
   return (
     <SearchableSelect
-      value={value}
-      onChange={onChange}
+      value={normalizedValue}
+      onChange={(val) => {
+        const found = FACULTIES.find((f) => f.short === val || f.en === val);
+        onChange(found ? found.en : val);
+      }}
       options={FACULTY_OPTIONS}
       placeholder="พิมพ์ค้นหาคณะ / Type to search..."
       searchPlaceholder="พิมพ์ค้นหาคณะ / Type to search..."
