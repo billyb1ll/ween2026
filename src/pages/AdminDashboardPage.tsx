@@ -67,6 +67,7 @@ interface CSVRecord {
   nickname: string | null;
   faculty: string | null;
   major: string | null;
+  house_position?: string | null;
 }
 
 export interface AuditLog {
@@ -2011,6 +2012,8 @@ export function AdminDashboardPage() {
             faculty:
               (row.faculty || row["Faculty"] || "").toString().trim() || null,
             major: (row.major || row["Major"] || "").toString().trim() || null,
+            house_position:
+              (row.house_position || row["House Position"] || row["Position"] || "").toString().trim() || null,
           }))
           .filter((row) => row.student_id);
 

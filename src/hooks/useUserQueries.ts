@@ -59,7 +59,17 @@ export function useActiveSession(token: string | null) {
         return null;
       }
 
-      return data.users as unknown as User;
+      const u = data.users as unknown as User;
+      const STAFF_ROLES = [
+        "ประธาน", "เลขา", "เหรัญญิก", "ประสานงาน", "Timer",
+        "Creative & Art", "โสต", "สวัสดิการและพัสดุ", "พยาบาล",
+        "สถานที่", "สันทนาการ", "พี่กลุ่ม", "ทะเบียน"
+      ];
+      if (u && u.major && STAFF_ROLES.includes(u.major) && !u.house_position) {
+        u.house_position = u.major;
+        u.major = null;
+      }
+      return u;
     },
     enabled: !!token,
     staleTime: 0,   // Always revalidate — never serve a stale session

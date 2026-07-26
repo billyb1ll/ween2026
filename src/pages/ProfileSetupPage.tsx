@@ -39,6 +39,7 @@ export function ProfileSetupPage() {
   const [customFaculty, setCustomFaculty] = useState(isKnownFaculty ? "" : (user?.faculty || ""));
   
   const [major, setMajor] = useState(user?.major || '')
+  const [housePosition, setHousePosition] = useState(user?.house_position || '')
   const [ig, setIg] = useState(user?.ig || '')
   const [avatarColor, setAvatarColor] = useState(user?.avatar_color || PRESET_COLORS[0])
   const [submitting, setSubmitting] = useState(false)
@@ -61,11 +62,21 @@ export function ProfileSetupPage() {
       return
     }
 
+    if (isStaff && !housePosition.trim()) {
+      toaster.create({
+        title: 'Staff Position Required',
+        description: 'Please select your staff position.',
+        type: 'error',
+      })
+      return
+    }
+
     setSubmitting(true)
     const success = await updateProfile({
       nickname: nickname.trim(),
       faculty: faculty === "OTHER" ? customFaculty.trim() : faculty.trim(),
       major: major.trim(),
+      housePosition: housePosition.trim(),
       ig: ig.trim(),
       avatarColor,
     })
@@ -186,20 +197,18 @@ export function ProfileSetupPage() {
                 )}
               </VStack>
 
-              {/* Major / Staff Position */}
-              <VStack align="stretch" gap={2}>
-                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
-                  <label htmlFor="setup-major">
-                    {isStaff ? 'Staff Position' : 'Major'}{' '}
-                    <Text as="span" color="gray.500" fontSize="xs" fontWeight="normal">
-                      (Optional)
-                    </Text>
-                  </label>
-                </Box>
-                {isStaff ? (
+              {/* Staff Position (for Staff/Moderators) */}
+              {isStaff && (
+                <VStack align="stretch" gap={2}>
+                  <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
+                    <label htmlFor="setup-house-position">
+                      Staff Position <Box as="span" color="var(--c-error)">*</Box>
+                    </label>
+                  </Box>
                   <SearchableSelect
-                    value={major}
-                    onChange={(val) => setMajor(val)}
+                    id="setup-house-position"
+                    value={housePosition}
+                    onChange={(val) => setHousePosition(val)}
                     options={STAFF_ROLES.map((role) => ({
                       value: role,
                       primaryText: role,
@@ -207,24 +216,35 @@ export function ProfileSetupPage() {
                     placeholder="Select Position..."
                     searchPlaceholder="Type to search..."
                   />
-                ) : (
-                  <Input
-                    id="setup-major"
-                    placeholder="e.g. Computer Science"
-                    value={major}
-                    onChange={(e) => setMajor(e.target.value)}
-                    borderRadius="lg"
-                    border="1px solid"
-                    borderColor="gray.300"
-                    bg="transparent"
-                    _focus={{
-                      borderColor: 'var(--c-lagoon)',
-                      boxShadow: '0 0 0 1px var(--c-lagoon)',
-                    }}
-                    h="44px"
-                    fontSize="md"
-                  />
-                )}
+                </VStack>
+              )}
+
+              {/* Major (Field of Study) */}
+              <VStack align="stretch" gap={2}>
+                <Box fontSize="sm" fontWeight="600" color="var(--c-lagoon)">
+                  <label htmlFor="setup-major">
+                    Major (Field of Study){' '}
+                    <Text as="span" color="gray.500" fontSize="xs" fontWeight="normal">
+                      (Optional)
+                    </Text>
+                  </label>
+                </Box>
+                <Input
+                  id="setup-major"
+                  placeholder="e.g. Computer Science"
+                  value={major}
+                  onChange={(e) => setMajor(e.target.value)}
+                  borderRadius="lg"
+                  border="1px solid"
+                  borderColor="gray.300"
+                  bg="transparent"
+                  _focus={{
+                    borderColor: 'var(--c-lagoon)',
+                    boxShadow: '0 0 0 1px var(--c-lagoon)',
+                  }}
+                  h="44px"
+                  fontSize="md"
+                />
               </VStack>
 
               {/* Instagram Account */}
