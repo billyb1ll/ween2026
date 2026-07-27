@@ -35,6 +35,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
 import { FACULTIES } from "../lib/constants";
+import { immich } from "../lib/immich";
 
 import { RoughNotation } from "react-rough-notation";
 
@@ -2912,14 +2913,15 @@ export function BoardPage() {
                               Instagram
                             </Text>
                           </HStack>
-                          <Button
+                          <Box
                             as="a"
                             href={`https://instagram.com/${inspectedUser.ig.replace(/^@/, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            size="xs"
+                            display="inline-flex"
+                            alignItems="center"
                             h="26px"
-                            px={3}
+                            px="12px"
                             borderRadius="full"
                             bg="linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)"
                             color="white"
@@ -2927,11 +2929,12 @@ export function BoardPage() {
                             fontSize="xs"
                             cursor="pointer"
                             flexShrink={0}
-                            _hover={{ opacity: 0.88, transform: "scale(1.03)" }}
-                            transition="all 0.18s ease"
+                            textDecoration="none"
+                            style={{ transition: "opacity 0.18s ease" }}
+                            _hover={{ opacity: 0.88 }}
                           >
                             @{inspectedUser.ig.replace(/^@/, "")}
-                          </Button>
+                          </Box>
                         </HStack>
                       )}
                       {inspectedUser.created_at && (
@@ -2984,9 +2987,11 @@ export function BoardPage() {
                               bg="gray.100"
                             >
                               <ImmichImage
-                                assetId={assetId}
-                                size="thumbnail"
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                endpoint={immich.assets.thumbnailUrl(assetId, "thumbnail")}
+                                alt="photo"
+                                w="100%"
+                                h="100%"
+                                objectFit="cover"
                               />
                             </Box>
                           ))}
@@ -3712,11 +3717,12 @@ export const HypeCard = memo(function HypeCard({
           </Text>
           {!isAnon && getShortFaculty(post.author.faculty) && (
             <Text
-              fontSize="3xs"
-              fontWeight="700"
-              letterSpacing="0.04em"
+              style={{ fontSize: "9px" }}
+              fontWeight="500"
+              letterSpacing="0.06em"
               color={cardSubtleColor}
-              opacity={0.7}
+              opacity={0.55}
+              lineHeight={1}
             >
               {getShortFaculty(post.author.faculty)}
             </Text>
@@ -4098,11 +4104,12 @@ const MemoryCard = memo(function MemoryCard({
                   </Text>
                   {!isAnon && getShortFaculty(post.author.faculty) && (
                     <Text
-                      fontSize="3xs"
-                      fontWeight="700"
-                      letterSpacing="0.04em"
+                      style={{ fontSize: "9px" }}
+                      fontWeight="500"
+                      letterSpacing="0.06em"
                       color={cardSubtleColor}
-                      opacity={0.7}
+                      opacity={0.55}
+                      lineHeight={1}
                     >
                       {getShortFaculty(post.author.faculty)}
                     </Text>
@@ -4309,11 +4316,12 @@ const MemoryCard = memo(function MemoryCard({
                 </Text>
                 {!isAnon && getShortFaculty(post.author.faculty) && (
                   <Text
-                    fontSize="3xs"
-                    fontWeight="700"
-                    letterSpacing="0.04em"
+                    style={{ fontSize: "9px" }}
+                    fontWeight="500"
+                    letterSpacing="0.06em"
                     color={cardSubtleColor}
-                    opacity={0.7}
+                    opacity={0.55}
+                    lineHeight={1}
                   >
                     {getShortFaculty(post.author.faculty)}
                   </Text>
