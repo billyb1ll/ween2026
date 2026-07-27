@@ -11,7 +11,7 @@ import {
   Badge,
 } from "@chakra-ui/react";
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useUser } from "../context/UserContext";
 import { toaster } from "../components/ui/toaster";
 import { immich } from "../lib/immich";
@@ -49,10 +49,20 @@ const FaceGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElemen
   <Box {...props}>{children}</Box>
 );
 
+interface MinimalUser {
+  student_id: string;
+  nickname: string | null;
+  full_name: string | null;
+  profile_pic_url: string | null;
+  role: string;
+}
+
 export function FaceClaimPage() {
   const { user, updateProfile, refreshClaimedFaceStatus, handleUnauthorizedError } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const initialTargetStudentId = searchParams.get("targetStudentId");
 
   const [allPeople, setAllPeople] = useState<ImmichPerson[]>([]);
   const [unclaimedPeople, setUnclaimedPeople] = useState<ImmichPerson[]>([]);
@@ -66,6 +76,41 @@ export function FaceClaimPage() {
 
   const isGuest = !user;
   const isStaff = !!user && ["staff", "moderator", "admin", "superadmin"].includes(user.role as string);
+
+  // Moderator Proxy Claiming State
+  const [allUsers, setAllUsers] = useState<MinimalUser[]>([]);
+  const [selectedTargetStudentId, setSelectedTargetStudentId] = useState<string>(initialTargetStudentId || "");
+
+  useEffect(() => {
+    if (initialTargetStudentId) {
+      Promise.resolve().then(() => {
+        setSelectedTargetStudentId(initialTargetStudentId);
+      });
+    }
+  }, [initialTargetStudentId]);
+
+  useEffect(() => {
+    if (!isStaff) return;
+    const fetchAllUsers = async () => {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("student_id, nickname, full_name, profile_pic_url, role")
+          .order("student_id", { ascending: true });
+        if (data) setAllUsers(data);
+      } catch (err) {
+        console.error("Error fetching users for proxy claim:", err);
+      }
+    };
+    fetchAllUsers();
+  }, [isStaff]);
+
+  const targetUser = useMemo(() => {
+    if (!selectedTargetStudentId || selectedTargetStudentId === user?.student_id) {
+      return user;
+    }
+    return allUsers.find((u) => u.student_id === selectedTargetStudentId) || user;
+  }, [selectedTargetStudentId, user, allUsers]);
 
   const extractPersonId = (query: string): string | null => {
     if (!query) return null;
@@ -207,29 +252,37 @@ export function FaceClaimPage() {
   }, [selectedPersonIds, user]);
 
   const handleExecuteClaim = async () => {
-    if (!user || selectedPersonIds.length === 0) return;
+    if (!targetUser || selectedPersonIds.length === 0) return;
     setClaiming(true);
 
     try {
       let avatarUpdated = false;
 
-      if (personAssets.length > 0 && !user.profile_pic_url) {
+      if (personAssets.length > 0 && !targetUser.profile_pic_url) {
         const previewUrl = immich.assets.thumbnailUrl(personAssets[0].id, "preview");
-        const success = await updateProfile({
-          nickname: user.nickname || "Student",
-          faculty: user.faculty || "",
-          major: user.major || undefined,
-          ig: user.ig || undefined,
-          avatarColor: user.avatar_color,
-          bio: user.bio || undefined,
-          profilePicUrl: previewUrl,
-          immichAssetId: personAssets[0].id,
-        });
-        if (success) avatarUpdated = true;
+        if (targetUser.student_id === user?.student_id) {
+          const success = await updateProfile({
+            nickname: user.nickname || "Student",
+            faculty: user.faculty || "",
+            major: user.major || undefined,
+            ig: user.ig || undefined,
+            avatarColor: user.avatar_color,
+            bio: user.bio || undefined,
+            profilePicUrl: previewUrl,
+            immichAssetId: personAssets[0].id,
+          });
+          if (success) avatarUpdated = true;
+        } else {
+          const { error: avatarErr } = await supabase
+            .from("users")
+            .update({ profile_pic_url: previewUrl, immich_asset_id: personAssets[0].id })
+            .eq("student_id", targetUser.student_id);
+          if (!avatarErr) avatarUpdated = true;
+        }
       }
 
       const inserts = selectedPersonIds.map((id) => ({
-        student_id: user.student_id,
+        student_id: targetUser.student_id,
         immich_person_id: id,
       }));
 
@@ -247,9 +300,9 @@ export function FaceClaimPage() {
         }
       }
 
-      const nickname = (user.nickname || "Student").trim();
-      const studentId = user.student_id;
-      const fullName = user.full_name?.trim();
+      const nickname = (targetUser.nickname || "Student").trim();
+      const studentId = targetUser.student_id;
+      const fullName = targetUser.full_name?.trim();
 
       const formattedName = fullName
         ? `${nickname} (${fullName} · ${studentId})`
@@ -259,7 +312,7 @@ export function FaceClaimPage() {
       const { data: userClaimedFaces } = await supabase
         .from("user_faces")
         .select("immich_person_id")
-        .eq("student_id", user.student_id);
+        .eq("student_id", targetUser.student_id);
 
       const allPersonIdsToUpdate = Array.from(
         new Set([...selectedPersonIds, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
@@ -278,8 +331,8 @@ export function FaceClaimPage() {
       toaster.create({
         title: "Claim Successful",
         description: avatarUpdated
-          ? "Successfully claimed faces and updated profile picture."
-          : "Successfully claimed faces.",
+          ? `Successfully claimed faces for ${nickname} (${studentId}) and updated avatar.`
+          : `Successfully claimed faces for ${nickname} (${studentId}).`,
         type: "success",
       });
 
@@ -388,6 +441,87 @@ export function FaceClaimPage() {
             Login
           </Button>
         </Flex>
+      )}
+
+      {/* Moderator Proxy Target Selection */}
+      {isStaff && (
+        <Box
+          bg="bg.surface"
+          border="1.5px solid"
+          borderColor="brand.solid"
+          borderRadius="2xl"
+          p={{ base: 4, md: 5 }}
+          mb={6}
+          boxShadow="sm"
+          animation="fade-in-up 0.5s var(--ease-out-expo) both"
+        >
+          <Flex
+            direction={{ base: "column", md: "row" }}
+            align={{ base: "stretch", md: "center" }}
+            justify="space-between"
+            gap={4}
+          >
+            <VStack align="start" gap={1}>
+              <HStack gap={2} flexWrap="wrap">
+                <Badge
+                  colorPalette="purple"
+                  variant="solid"
+                  px={2.5}
+                  py={0.5}
+                  borderRadius="full"
+                  fontSize="xs"
+                  fontWeight="700"
+                  display="inline-flex"
+                  alignItems="center"
+                  gap={1}
+                >
+                  <Box as="span" className="material-symbols-outlined" fontSize="13px">
+                    shield_person
+                  </Box>
+                  MODERATOR PROXY CLAIM
+                </Badge>
+                {selectedTargetStudentId && selectedTargetStudentId !== user?.student_id && (
+                  <Badge colorPalette="amber" variant="subtle" px={2.5} py={0.5} borderRadius="full" fontSize="xs" fontWeight="700">
+                    Target: {targetUser?.nickname || "Student"} ({targetUser?.student_id})
+                  </Badge>
+                )}
+              </HStack>
+              <Text fontSize="sm" fontWeight="600" color="brand.900">
+                Select student to link claimed faces to:
+              </Text>
+            </VStack>
+
+            <Flex gap={2} align="center" flex={1} maxW={{ base: "100%", md: "400px" }}>
+              <select
+                value={selectedTargetStudentId || user?.student_id || ""}
+                onChange={(e) => setSelectedTargetStudentId(e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "44px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--chakra-colors-border-subtle)",
+                  backgroundColor: "var(--chakra-colors-bg-surface)",
+                  padding: "0 12px",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "var(--chakra-colors-brand-900)",
+                  cursor: "pointer",
+                }}
+              >
+                <option value={user?.student_id || ""}>
+                  Self: {user?.nickname || "You"} ({user?.student_id})
+                </option>
+                {allUsers
+                  .filter((u) => u.student_id !== user?.student_id)
+                  .map((u) => (
+                    <option key={u.student_id} value={u.student_id}>
+                      {u.nickname || "Student"} ({u.full_name ? `${u.full_name} · ` : ""}{u.student_id})
+                    </option>
+                  ))}
+              </select>
+            </Flex>
+          </Flex>
+        </Box>
       )}
 
       {/* Main split-pane layout on desktop */}

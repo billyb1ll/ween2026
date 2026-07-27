@@ -18,7 +18,7 @@ import {
   Portal,
 } from "@chakra-ui/react";
 import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useUser, type User } from "../context/UserContext";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -876,6 +876,28 @@ export function BoardPage() {
   const isStaff = user?.role === "moderator" || user?.role === "staff" || user?.role === "superadmin" || user?.role === "admin";
   const isBothDisabled = !livechatEnabled && !isMemoryBoardActive && !isModerator;
 
+  const [searchParams] = useSearchParams();
+  const autoCompose = searchParams.get("autoCompose") === "true";
+  const fromGallery = searchParams.get("from") === "gallery";
+
+  // Auto-compose scroll handler from Gallery redirect
+  useEffect(() => {
+    if (autoCompose) {
+      if (activeTab !== "memory") {
+        Promise.resolve().then(() => {
+          setActiveTab("memory");
+        });
+      }
+      const timer = setTimeout(() => {
+        const composerEl = document.getElementById("board-composer");
+        if (composerEl) {
+          composerEl.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoCompose, activeTab]);
+
   // Auto-redirect activeTab if only one board is enabled (for non-moderators)
   useEffect(() => {
     if (isModerator) return;
@@ -1096,6 +1118,17 @@ export function BoardPage() {
     setIsAnonymous(false);
     setSelectedTag(null);
     setMemoryImage(null);
+
+    if (fromGallery) {
+      toaster.create({
+        title: "Gallery Unlocked!",
+        description: "Thank you for sharing your memory! Redirecting to gallery...",
+        type: "success",
+      });
+      setTimeout(() => {
+        navigate("/gallery");
+      }, 800);
+    }
   };
 
   const handleSwitchTab = (tab: BoardTab) => {
