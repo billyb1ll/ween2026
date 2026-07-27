@@ -374,7 +374,7 @@ const LiveChatBubble = memo(function LiveChatBubble({
   if (message.is_deleted && !isStaff) return null;
   const badge = ROLE_BADGE_MAP[message.sender_role];
   const isSenderStaff = message.sender_role !== "student";
-  const prefix = isSenderStaff ? "P' " : "";
+  const prefix = isSenderStaff ? "P' " : "N' ";
 
   return (
     <Box
@@ -2629,67 +2629,159 @@ export function BoardPage() {
                 <Skeleton height="16px" width="100px" />
               </VStack>
             ) : inspectedUser ? (
-              <VStack gap={4} align="center" pt={4} pb={2}>
-                <UserAvatar
-                  src={inspectedUser.profile_pic_url}
-                  name={inspectedUser.nickname || inspectedUser.student_id}
-                  avatarColor={inspectedUser.avatar_color || "accent.muted"}
-                  size="100px"
-                  fontSize="2xl"
-                  boxShadow="md"
-                />
-                <VStack gap={1} align="center">
-                  <Text
-                    fontSize="2xl"
-                    fontWeight="700"
-                    color="brand.900"
-                    fontFamily="heading"
-                  >
-                    {inspectedUser.nickname
-                      ? inspectedUser.nickname.replace(
+              <VStack gap={4} align="stretch" pt={2} pb={2} w="100%">
+                {/* Header Banner & Avatar */}
+                <VStack align="center" gap={2} w="100%" position="relative">
+                  <Box position="relative">
+                    <UserAvatar
+                      src={inspectedUser.profile_pic_url}
+                      name={inspectedUser.nickname || inspectedUser.student_id}
+                      avatarColor={inspectedUser.avatar_color || "accent.muted"}
+                      size="96px"
+                      fontSize="2xl"
+                      boxShadow="0 8px 24px -4px rgba(13, 26, 54, 0.18)"
+                      border="3px solid white"
+                    />
+                    <Badge
+                      position="absolute"
+                      bottom={0}
+                      right={-1}
+                      colorPalette={
+                        inspectedUser.role === "moderator"
+                          ? "red"
+                          : inspectedUser.role === "staff"
+                          ? "orange"
+                          : "blue"
+                      }
+                      size="xs"
+                      borderRadius="full"
+                      px={2.5}
+                      py={0.5}
+                      boxShadow="sm"
+                    >
+                      {inspectedUser.role === "student"
+                        ? "Freshman"
+                        : inspectedUser.role === "moderator"
+                        ? "Moderator"
+                        : "Staff"}
+                    </Badge>
+                  </Box>
+
+                  {/* Name & House Position */}
+                  <VStack gap={1} align="center">
+                    <Text
+                      fontSize="xl"
+                      fontWeight="800"
+                      color="brand.900"
+                      fontFamily="heading"
+                    >
+                      {inspectedUser.role !== "student" ? "P' " : "N' "}
+                      {inspectedUser.nickname
+                        ? inspectedUser.nickname.replace(
+                            /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                            "",
+                          )
+                        : "Guest"}
+                    </Text>
+
+                    {inspectedUser.house_position && (
+                      <Badge
+                        colorPalette="orange"
+                        variant="subtle"
+                        size="sm"
+                        borderRadius="full"
+                        px={3}
+                      >
+                        {inspectedUser.house_position.replace(
                           /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
                           "",
-                        )
-                      : "Guest"}
-                  </Text>
-                  {inspectedUser.full_name && (
-                    <Text fontSize="md" color="fg.subtle" fontWeight="500">
-                      {inspectedUser.full_name.replace(
-                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
-                        "",
-                      )}
-                    </Text>
-                  )}
+                        )}
+                      </Badge>
+                    )}
+                  </VStack>
                 </VStack>
 
-                <Flex gap={2} mt={3} flexWrap="wrap" justify="center">
-                  {inspectedUser.house_position && (
-                    <Badge
-                      colorPalette="orange"
-                      size="md"
-                      borderRadius="full"
-                      px={3}
-                    >
-                      {inspectedUser.house_position.replace(
-                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
-                        "",
-                      )}
-                    </Badge>
-                  )}
+                {/* Bio Quote Card */}
+                {inspectedUser.bio && (
+                  <Box
+                    p={3.5}
+                    bg="#FFFDF6"
+                    border="1px dashed rgba(57, 66, 91, 0.25)"
+                    borderRadius="xl"
+                    fontFamily="'Mali', sans-serif"
+                    fontSize="xs"
+                    color="brand.900"
+                    boxShadow="inner"
+                    textAlign="center"
+                  >
+                    "{inspectedUser.bio}"
+                  </Box>
+                )}
+
+                {/* Academic & Social Details Grid */}
+                <VStack
+                  gap={2.5}
+                  w="100%"
+                  bg="bg.hero"
+                  p={4}
+                  borderRadius="xl"
+                  border="1px solid"
+                  borderColor="border.subtle"
+                >
                   {inspectedUser.faculty && (
-                    <Badge
-                      colorPalette="gray"
-                      size="md"
-                      borderRadius="full"
-                      px={3}
-                    >
-                      {inspectedUser.faculty.replace(
-                        /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
-                        "",
-                      )}
-                    </Badge>
+                    <HStack justify="space-between" w="100%" fontSize="xs">
+                      <Text color="fg.subtle" fontWeight="600">
+                        Faculty
+                      </Text>
+                      <Text
+                        color="brand.900"
+                        fontWeight="700"
+                        textAlign="right"
+                        maxW="260px"
+                        truncate
+                      >
+                        {inspectedUser.faculty}
+                      </Text>
+                    </HStack>
                   )}
-                </Flex>
+
+                  {inspectedUser.major && (
+                    <HStack justify="space-between" w="100%" fontSize="xs">
+                      <Text color="fg.subtle" fontWeight="600">
+                        Major
+                      </Text>
+                      <Text color="brand.900" fontWeight="700">
+                        {inspectedUser.major}
+                      </Text>
+                    </HStack>
+                  )}
+
+                  {inspectedUser.ig && (
+                    <HStack justify="space-between" w="100%" fontSize="xs" pt={1}>
+                      <Text color="fg.subtle" fontWeight="600">
+                        Instagram
+                      </Text>
+                      <Button
+                        as="a"
+                        href={`https://instagram.com/${inspectedUser.ig.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        size="xs"
+                        h="28px"
+                        px={3}
+                        borderRadius="full"
+                        bg="linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)"
+                        color="white"
+                        fontWeight="700"
+                        cursor="pointer"
+                        _hover={{ opacity: 0.9, transform: "scale(1.02)" }}
+                        transition="all 0.2s"
+                      >
+                        @{inspectedUser.ig.replace(/^@/, "")}
+                      </Button>
+                    </HStack>
+                  )}
+                </VStack>
               </VStack>
             ) : (
               <Text textAlign="center" py={4} color="fg.subtle">
@@ -3116,7 +3208,7 @@ function CommentSection({
 <VStack align="stretch" gap={2}>
           {comments.map((comment) => {
             const isCommentStaff = comment.author?.role !== "student";
-            const commentPrefix = isCommentStaff ? "P' " : "";
+            const commentPrefix = isCommentStaff ? "P' " : "N' ";
             const isCommentAuthor =
               user && user.student_id === comment.student_id;
             const isUserStaffOrAdmin = user && user.role !== "student";
@@ -3272,7 +3364,7 @@ export const HypeCard = memo(function HypeCard({
 
   const isAnon = post.is_anonymous;
   const isStaff = post.author.role !== "student";
-  const prefix = isStaff ? "P' " : "";
+  const prefix = isStaff ? "P' " : "N' ";
   const cardBg = isStaff ? "accent.solid" : "brand.900";
   const cardColor = isStaff ? "brand.900" : "white";
   const cardSubtleColor = isStaff ? "brand.900" : "whiteAlpha.700";
@@ -3393,10 +3485,21 @@ export const HypeCard = memo(function HypeCard({
             )}
             {!isAnon && isStaff && (
               <Badge colorPalette="teal" fontSize="3xs" alignSelf="center">
-                {post.author.role}
+                {post.author.house_position || post.author.role}
               </Badge>
             )}
           </Text>
+          {!isAnon && post.author.faculty && (
+            <Text
+              fontSize="3xs"
+              fontWeight="600"
+              color={cardSubtleColor}
+              truncate
+              maxW="180px"
+            >
+              {post.author.faculty}
+            </Text>
+          )}
           <Text fontSize="2xs" color={cardSubtleColor}>
             {getRelativeTime(post.createdAt)}
           </Text>
@@ -3610,7 +3713,7 @@ const MemoryCard = memo(function MemoryCard({
 
   const isAnon = post.is_anonymous;
   const isStaff = post.author.role !== "student";
-  const prefix = isStaff ? "P' " : "";
+  const prefix = isStaff ? "P' " : "N' ";
   // Light navy pastel background (#E2EAFB) for student cards, soft pastel rose (accent.solid) for staff cards
   const cardBg = isStaff ? "accent.solid" : "#E2EAFB";
   const cardColor = "brand.900";
@@ -3768,10 +3871,21 @@ const MemoryCard = memo(function MemoryCard({
                         fontSize="3xs"
                         alignSelf="center"
                       >
-                        {post.author.role}
+                        {post.author.house_position || post.author.role}
                       </Badge>
                     )}
                   </Text>
+                  {!isAnon && post.author.faculty && (
+                    <Text
+                      fontSize="3xs"
+                      fontWeight="600"
+                      color={cardSubtleColor}
+                      truncate
+                      maxW="180px"
+                    >
+                      {post.author.faculty}
+                    </Text>
+                  )}
                   <Text fontSize="2xs" color={cardSubtleColor}>
                     {getRelativeTime(post.createdAt)}
                   </Text>
@@ -3823,17 +3937,13 @@ const MemoryCard = memo(function MemoryCard({
               <Button
                 type="button"
                 role="group"
-                color={localLiked ? "brand.900" : "fg.subtle"}
-                bg={{
-                  base: "transparent",
-                  md: localLiked ? "bg.hero" : "transparent",
-                }}
+                color={localLiked ? "#f26475" : "brand.900"}
+                bg={localLiked ? "rgba(242, 100, 117, 0.12)" : "rgba(13, 26, 54, 0.05)"}
                 border="1px solid"
-                borderColor={localLiked ? "accent.solid" : "border.subtle"}
-                h={{ base: "40px", md: "32px" }}
-                w={{ base: "40px", md: "auto" }}
-                minW={{ base: "40px", md: "auto" }}
-                px={{ base: 0, md: 3 }}
+                borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
+                h="32px"
+                w="auto"
+                px={3}
                 borderRadius="full"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -3841,24 +3951,25 @@ const MemoryCard = memo(function MemoryCard({
                 }}
                 disabled={!user}
                 _hover={{
-                  bg: "bg.hero",
+                  bg: "rgba(59, 106, 191, 0.12)",
                   color: "brand.900",
-                  borderColor: "brand.900",
+                  borderColor: "rgba(59, 106, 191, 0.35)",
                 }}
               >
                 <Box
                   className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
                   fontSize="sm"
+                  color={localLiked ? "#f26475" : "inherit"}
                   transition="transform 0.2s"
-                  _groupHover={{ transform: "scale(1.1)" }}
+                  _groupHover={{ transform: "scale(1.15)" }}
                 >
                   favorite
                 </Box>
                 <Text
                   fontSize="xs"
-                  fontWeight="600"
-                  ml={1}
-                  display={{ base: "none", md: "block" }}
+                  fontWeight="700"
+                  ml={1.5}
+                  display="inline-block"
                 >
                   {localLikesCount > 0 ? localLikesCount : "Like"}
                 </Text>
@@ -3971,10 +4082,21 @@ const MemoryCard = memo(function MemoryCard({
                       fontSize="3xs"
                       alignSelf="center"
                     >
-                      {post.author.role}
+                      {post.author.house_position || post.author.role}
                     </Badge>
                   )}
                 </Text>
+                {!isAnon && post.author.faculty && (
+                  <Text
+                    fontSize="3xs"
+                    fontWeight="600"
+                    color={cardSubtleColor}
+                    truncate
+                    maxW="180px"
+                  >
+                    {post.author.faculty}
+                  </Text>
+                )}
                 <Text fontSize="2xs" color={cardSubtleColor}>
                   {getRelativeTime(post.createdAt)}
                 </Text>
@@ -4047,17 +4169,13 @@ const MemoryCard = memo(function MemoryCard({
             <Button
               type="button"
               role="group"
-              color={localLiked ? "brand.900" : "fg.subtle"}
-              bg={{
-                base: "transparent",
-                md: localLiked ? "bg.hero" : "transparent",
-              }}
+              color={localLiked ? "#f26475" : "brand.900"}
+              bg={localLiked ? "rgba(242, 100, 117, 0.12)" : "rgba(13, 26, 54, 0.05)"}
               border="1px solid"
-              borderColor={localLiked ? "accent.solid" : "border.subtle"}
-              h={{ base: "40px", md: "32px" }}
-              w={{ base: "40px", md: "auto" }}
-              minW={{ base: "40px", md: "auto" }}
-              px={{ base: 0, md: 3 }}
+              borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
+              h="32px"
+              w="auto"
+              px={3}
               borderRadius="full"
               onClick={(e) => {
                 e.stopPropagation();
@@ -4073,16 +4191,17 @@ const MemoryCard = memo(function MemoryCard({
               <Box
                 className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
                 fontSize="sm"
+                color={localLiked ? "#f26475" : "inherit"}
                 transition="transform 0.2s"
-                _groupHover={{ transform: "scale(1.1)" }}
+                _groupHover={{ transform: "scale(1.15)" }}
               >
                 favorite
               </Box>
               <Text
                 fontSize="xs"
-                fontWeight="600"
-                ml={1}
-                display={{ base: "none", md: "block" }}
+                fontWeight="700"
+                ml={1.5}
+                display="inline-block"
               >
                 {localLikesCount > 0 ? localLikesCount : "Like"}
               </Text>

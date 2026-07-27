@@ -20,6 +20,8 @@ export interface DBPost {
     avatar_color: string;
     role: string;
     profile_pic_url: string | null;
+    faculty?: string | null;
+    house_position?: string | null;
   };
 }
 

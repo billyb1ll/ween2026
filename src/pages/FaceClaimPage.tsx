@@ -58,7 +58,7 @@ interface MinimalUser {
 }
 
 export function FaceClaimPage() {
-  const { user, updateProfile, refreshClaimedFaceStatus, handleUnauthorizedError } = useUser();
+  const { user, refreshClaimedFaceStatus, handleUnauthorizedError } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -255,32 +255,8 @@ export function FaceClaimPage() {
     if (!targetUser || selectedPersonIds.length === 0) return;
     setClaiming(true);
 
+
     try {
-      let avatarUpdated = false;
-
-      if (personAssets.length > 0 && !targetUser.profile_pic_url) {
-        const previewUrl = immich.assets.thumbnailUrl(personAssets[0].id, "preview");
-        if (targetUser.student_id === user?.student_id) {
-          const success = await updateProfile({
-            nickname: user.nickname || "Student",
-            faculty: user.faculty || "",
-            major: user.major || undefined,
-            ig: user.ig || undefined,
-            avatarColor: user.avatar_color,
-            bio: user.bio || undefined,
-            profilePicUrl: previewUrl,
-            immichAssetId: personAssets[0].id,
-          });
-          if (success) avatarUpdated = true;
-        } else {
-          const { error: avatarErr } = await supabase
-            .from("users")
-            .update({ profile_pic_url: previewUrl, immich_asset_id: personAssets[0].id })
-            .eq("student_id", targetUser.student_id);
-          if (!avatarErr) avatarUpdated = true;
-        }
-      }
-
       const inserts = selectedPersonIds.map((id) => ({
         student_id: targetUser.student_id,
         immich_person_id: id,
@@ -330,9 +306,7 @@ export function FaceClaimPage() {
 
       toaster.create({
         title: "Claim Successful",
-        description: avatarUpdated
-          ? `Successfully claimed faces for ${nickname} (${studentId}) and updated avatar.`
-          : `Successfully claimed faces for ${nickname} (${studentId}).`,
+        description: `Successfully claimed faces for ${nickname} (${studentId}).`,
         type: "success",
       });
 

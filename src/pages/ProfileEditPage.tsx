@@ -60,9 +60,17 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const { updateProfile, refreshClaimedFaceStatus } = useUser();
 
   const [nickname, setNickname] = useState(user?.nickname || "");
-  const isKnownFaculty = (user?.faculty || "") === "" || FACULTIES.some(f => f.short === user?.faculty);
-  const [faculty, setFaculty] = useState(isKnownFaculty ? (user?.faculty || "") : "OTHER");
-  const [customFaculty, setCustomFaculty] = useState(isKnownFaculty ? "" : (user?.faculty || ""));
+  const userFac = user?.faculty || "";
+  const isKnown =
+    userFac === "" ||
+    FACULTIES.some(
+      (f) =>
+        f.short.toLowerCase() === userFac.toLowerCase() ||
+        f.en.toLowerCase() === userFac.toLowerCase() ||
+        f.th.toLowerCase() === userFac.toLowerCase()
+    );
+  const [faculty, setFaculty] = useState(isKnown ? userFac : "OTHER");
+  const [customFaculty, setCustomFaculty] = useState(isKnown ? "" : userFac);
   const [major, setMajor] = useState(user?.major || "");
   const [ig, setIg] = useState(user?.ig || "");
   const [bio, setBio] = useState(user?.bio || "");

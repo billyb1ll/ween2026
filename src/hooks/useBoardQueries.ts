@@ -43,6 +43,8 @@ function mapPost(p: any): DBPost {
       avatar_color: p.author?.avatar_color ?? "#496268",
       role: p.author?.role ?? "student",
       profile_pic_url: p.author?.profile_pic_url ?? null,
+      faculty: p.author?.faculty ?? null,
+      house_position: p.author?.house_position ?? null,
     },
   };
 }
@@ -76,7 +78,7 @@ export function useBoardPosts(activeTab: BoardTab) {
       const { data, error } = await supabase
         .from("posts")
         .select(
-          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url), comment_count:post_comments(count)",
+          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url, faculty, house_position), comment_count:post_comments(count)",
         )
         .eq("type", activeTab)
         .eq("is_hidden", false)
@@ -179,7 +181,7 @@ export function useCreatePostMutation(activeTab: BoardTab) {
           image_url: imageUrl || null,
         })
         .select(
-          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url)",
+          "*, author:users(student_id, nickname, avatar_color, role, profile_pic_url, faculty, house_position)",
         )
         .single();
 
