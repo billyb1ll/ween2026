@@ -64,12 +64,14 @@ export function GalleryPage() {
         if (user && user.role === "student" && active) {
           setCheckingMemoryPosts(true);
           const { count, error } = await supabase
-            .from("board_posts")
+            .from("posts")
             .select("*", { count: "exact", head: true })
-            .or(`student_id.eq.${user.student_id},author_id.eq.${user.student_id}`);
+            .eq("student_id", user.student_id)
+            .eq("type", "memory");
 
           if (active) {
             if (!error) setUserMemoryPostCount(count || 0);
+            else console.error("Error counting memory posts:", error);
             setCheckingMemoryPosts(false);
           }
         }
