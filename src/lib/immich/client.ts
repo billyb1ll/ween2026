@@ -83,16 +83,12 @@ export class ImmichClient {
       headers["x-api-key"] = this.apiKey;
     }
 
-    // Only send Authorization: Bearer if an explicit Immich accessToken is configured.
-    // App session tokens (baan7_session_token) are passed via x-session-token so Immich's
-    // AuthGuard does not attempt to validate Supabase UUIDs as Immich Bearer tokens (which causes 403 Forbidden).
-    if (this.config.accessToken) {
-      headers["Authorization"] = `Bearer ${this.config.accessToken}`;
-    } else if (typeof window !== "undefined") {
-      const sessionToken = localStorage.getItem("baan7_session_token");
-      if (sessionToken) {
-        headers["x-session-token"] = sessionToken;
-      }
+    const sessionToken = typeof window !== "undefined" ? localStorage.getItem("baan7_session_token") : null;
+    const token = this.config.accessToken || sessionToken;
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+      headers["x-session-token"] = token;
+      headers["x-baan7-session"] = token;
     }
 
     if (body !== undefined && !(body instanceof FormData)) {

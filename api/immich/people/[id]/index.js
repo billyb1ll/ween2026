@@ -24,41 +24,74 @@ export default async function handler(req, res) {
   if (req.method === 'PUT') {
     try {
       // 1. Enforce Auth
-      const authHeader = req.headers.authorization || req.headers['x-baan7-session'];
+      const authHeader =
+        req.headers.authorization ||
+        req.headers['x-session-token'] ||
+        req.headers['x-baan7-session'];
       if (!authHeader) {
         return res.status(401).json({ error: 'Unauthorized: Missing Authorization header' });
       }
 
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const token = authHeader.replace('Bearer ', '');
-      const { data: session } = await supabase.from('user_sessions').select('*').eq('session_token', token).maybeSingle();
+      const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+      const { data: session } = await supabase
+        .from('user_sessions')
+        .select('*')
+        .eq('session_token', token)
+        .maybeSingle();
 
       if (!session || new Date(session.expires_at) < new Date()) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        return res.status(401).json({ error: 'Unauthorized: Invalid or expired session token' });
       }
 
-      // 2. Enforce Face Claim Ownership
-      const { data: faceRecord } = await supabase.from('user_faces').select('student_id').eq('immich_person_id', id).maybeSingle();
-      if (faceRecord && faceRecord.student_id !== session.student_id) {
-         return res.status(403).json({ error: 'Forbidden: Face claimed by another user' });
+      // 2. Fetch User Role & Face Claim Ownership
+      const { data: requestingUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('student_id', session.student_id)
+        .maybeSingle();
+
+      const isStaffOrMod =
+        requestingUser && ['staff', 'moderator', 'admin', 'superadmin'].includes(requestingUser.role);
+
+      const { data: faceRecord } = await supabase
+        .from('user_faces')
+        .select('student_id')
+        .eq('immich_person_id', id)
+        .maybeSingle();
+
+      // Non-staff students can only update faces they own (or unclaimed faces)
+      if (!isStaffOrMod && faceRecord && faceRecord.student_id !== session.student_id) {
+        return res.status(403).json({ error: 'Forbidden: Face claimed by another user' });
       }
 
-      // 3. Forward to Immich
+      // 3. Forward to Immich with server API Key
       let bodyData = req.body;
       if (typeof bodyData === 'string') {
-        try { bodyData = JSON.parse(bodyData); } catch(e) {}
+        try { bodyData = JSON.parse(bodyData); } catch (e) {}
       }
 
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/people/${id}`, {
+      let response = await fetch(`${IMMICH_SERVER_URL}/api/people/${id}`, {
         method: 'PUT',
         headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
-      })
-      if (!response.ok) return res.status(response.status).send(await response.text())
-      return res.status(200).json(await response.json())
+        body: JSON.stringify(bodyData),
+      });
+
+      if (!response.ok && (response.status === 404 || response.status === 405)) {
+        response = await fetch(`${IMMICH_SERVER_URL}/api/person/${id}`, {
+          method: 'PUT',
+          headers: { 'x-api-key': IMMICH_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData),
+        });
+      }
+
+      if (!response.ok) {
+        return res.status(response.status).send(await response.text());
+      }
+      return res.status(200).json(await response.json());
     } catch (error) {
       console.error('Immich Proxy Error:', error);
-      return res.status(500).json({ error: 'Failed to proxy to Immich' })
+      return res.status(500).json({ error: 'Failed to proxy to Immich' });
     }
   }
 
