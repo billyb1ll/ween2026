@@ -3000,6 +3000,23 @@ export function BoardPage() {
                             </Box>
                           ))}
                         </HStack>
+
+                        {/* AI Beta Disclaimer */}
+                        <Box
+                          mt={1}
+                          p={2}
+                          bg="#FFFDF6"
+                          border="1px dashed #7c563f"
+                          borderRadius="lg"
+                          w="100%"
+                        >
+                          <Text fontSize="3xs" color="#7c563f" fontWeight="600" display="flex" alignItems="center" gap={1.5}>
+                            <Box as="span" className="material-symbols-outlined" fontSize="13px" flexShrink={0}>
+                              info
+                            </Box>
+                            Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Please check all photos in the main Gallery.
+                          </Text>
+                        </Box>
                       </VStack>
                     )}
 

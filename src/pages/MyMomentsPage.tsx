@@ -4,7 +4,8 @@ import {
   Heading,
   Text,
   VStack,
-  Image,
+  HStack,
+  Badge,
   Spinner,
 } from "@chakra-ui/react";
 import React, { useState, useEffect, useMemo } from "react";
@@ -16,8 +17,8 @@ import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
-
-
+import { SearchableSelect } from "../components/SearchableSelect";
+import { ImmichImage } from "../components/gallery/ImmichImage";
 
 export function MyMomentsPage() {
   const navigate = useNavigate();
@@ -29,28 +30,48 @@ export function MyMomentsPage() {
   const [selectedAlbumKey, setSelectedAlbumKey] = useState<string>("all");
   const [albumAssetsCache, setAlbumAssetsCache] = useState<Record<string, Set<string>>>({});
   
+  const isModerator = user?.role === "moderator" || user?.role === "staff" || user?.role === "superadmin";
+  const [allUsers, setAllUsers] = useState<Array<{ student_id: string; nickname: string | null; faculty: string | null; role: string }>>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+
+  const activeStudentId = selectedStudentId || user?.student_id || "";
+
+  // Fetch list of all users for Moderator selection
+  useEffect(() => {
+    if (!isModerator) return;
+    supabase
+      .from("users")
+      .select("student_id, nickname, faculty, role")
+      .order("student_id", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setAllUsers(data);
+        }
+      });
+  }, [isModerator]);
+
   // Lightbox state
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
 
-  // Redirect out if unauthenticated or has not claimed a face (and loading completed)
+  // Redirect out if unauthenticated or (for non-moderators) has not claimed a face
   useEffect(() => {
-    if (!loadingUser && (!user || !hasClaimedFace)) {
+    if (!loadingUser && (!user || (!hasClaimedFace && !isModerator))) {
       navigate("/");
     }
-  }, [user, hasClaimedFace, loadingUser, navigate]);
+  }, [user, hasClaimedFace, isModerator, loadingUser, navigate]);
 
-  // 1. Fetch user's claimed faces & corresponding photos
+  // 1. Fetch target student's claimed faces & corresponding photos (exact same logic)
   useEffect(() => {
-    if (!user) return;
+    if (!activeStudentId) return;
 
     const fetchMyMoments = async () => {
       setLoadingPhotos(true);
       try {
-        // Fetch claimed faces
+        // Fetch claimed faces for target student
         const { data, error } = await supabase
           .from('user_faces')
           .select('immich_person_id')
-          .eq('student_id', user.student_id);
+          .eq('student_id', activeStudentId);
           
         if (error) {
           console.error("Error fetching user faces:", error);
@@ -71,14 +92,14 @@ export function MyMomentsPage() {
         setPhotos(res.assets?.items || []);
         
       } catch (err) {
-        console.error("Error fetching my moments:", err);
+        console.error("Error fetching moments:", err);
       } finally {
         setLoadingPhotos(false);
       }
     };
     
     fetchMyMoments();
-  }, [user]);
+  }, [activeStudentId]);
 
   // 2. Parallel Pre-fetch all activity album mappings into albumAssetsCache concurrently
   useEffect(() => {
@@ -179,12 +200,61 @@ export function MyMomentsPage() {
   return (
     <Flex direction="column" position="relative" zIndex={10} maxW="var(--container-max)" mx="auto" px={{ base: 4, md: 16 }} pt={{ base: 2, md: 28 }} pb={{ base: 4, md: 20 }} minH="100vh">
       
+      {/* Moderator Inspection Selector */}
+      {isModerator && (
+        <Box
+          mb={6}
+          p={4}
+          bg="white"
+          borderRadius="2xl"
+          border="1.5px solid var(--c-lagoon)"
+          boxShadow="0 8px 24px -4px rgba(73,98,104,0.15)"
+          animation="fade-in-up 0.5s var(--ease-out-expo) both"
+        >
+          <Flex justify="space-between" align="center" flexWrap="wrap" gap={3} mb={3}>
+            <HStack gap={2}>
+              <Box
+                as="span"
+                className="material-symbols-outlined"
+                fontSize="20px"
+                color="var(--c-lagoon)"
+              >
+                admin_panel_settings
+              </Box>
+              <Text fontSize="sm" fontWeight="700" color="brand.900">
+                Moderator View: Inspect Student Moments
+              </Text>
+            </HStack>
+            {activeStudentId && (
+              <Badge colorPalette="teal" variant="subtle" px={2.5} py={1} borderRadius="full">
+                Inspecting: {activeStudentId}
+              </Badge>
+            )}
+          </Flex>
+
+          <SearchableSelect
+            value={selectedStudentId || user?.student_id || ""}
+            onChange={(val) => setSelectedStudentId(val)}
+            options={allUsers.map((u) => ({
+              value: u.student_id,
+              primaryText: `${u.student_id} - ${u.nickname || "Pending Onboarding"}`,
+              secondaryText: u.faculty ? `Faculty: ${u.faculty}` : undefined,
+              badge: u.role.toUpperCase(),
+            }))}
+            placeholder="Select a student to inspect their moments..."
+            searchPlaceholder="Search student ID, nickname, or faculty..."
+          />
+        </Box>
+      )}
+
       <VStack gap={2} mb={{ base: 6, md: 8 }} animation="fade-in-up 0.6s var(--ease-out-expo) both">
         <Heading as="h1" fontFamily="'Playfair Display', serif" fontSize={{ base: "2rem", md: "3.5rem" }} fontWeight={700} lineHeight={1.1} letterSpacing="-0.02em" color="brand.900" textAlign="center">
-          My Moments
+          {isModerator && activeStudentId !== user?.student_id ? `Moments of Student ${activeStudentId}` : "My Moments"}
         </Heading>
         <Text color="fg.muted" fontSize={{ base: "sm", md: "lg" }} textAlign="center" maxW="lg">
-          Your personal gallery featuring photos you've been tagged in.
+          {isModerator && activeStudentId !== user?.student_id
+            ? `Inspecting identified gallery photos for student ID ${activeStudentId}.`
+            : "Your personal gallery featuring photos you've been tagged in."}
         </Text>
       </VStack>
 
@@ -268,10 +338,12 @@ export function MyMomentsPage() {
               )
             }}
             itemContent={(index, asset) => (
-              <Image 
-                src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} 
-                alt="My moment" 
-                w="100%" h="100%" objectFit="cover" loading="lazy" 
+              <ImmichImage
+                endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
+                alt="My moment"
+                w="100%"
+                h="100%"
+                objectFit="cover"
                 onClick={() => openLightbox(index, filteredPhotos)}
               />
             )}
