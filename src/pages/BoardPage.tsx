@@ -872,12 +872,13 @@ export function BoardPage() {
     deleteMessage,
   } = useLiveChat("hype", user, getAdminPin());
 
-  const isStaff = user?.role === "moderator" || user?.role === "staff";
-  const isBothDisabled = !livechatEnabled && !isMemoryBoardActive && !isStaff;
+  const isModerator = user?.role === "moderator" || user?.role === "superadmin" || user?.role === "admin";
+  const isStaff = user?.role === "moderator" || user?.role === "staff" || user?.role === "superadmin" || user?.role === "admin";
+  const isBothDisabled = !livechatEnabled && !isMemoryBoardActive && !isModerator;
 
-  // Auto-redirect activeTab if only one board is enabled (for non-staff)
+  // Auto-redirect activeTab if only one board is enabled (for non-moderators)
   useEffect(() => {
-    if (isStaff) return;
+    if (isModerator) return;
     if (!livechatEnabled && isMemoryBoardActive && activeTab === "hype") {
       Promise.resolve().then(() => {
         setActiveTab("memory");
@@ -887,7 +888,7 @@ export function BoardPage() {
         setActiveTab("hype");
       });
     }
-  }, [livechatEnabled, isMemoryBoardActive, activeTab, isStaff]);
+  }, [livechatEnabled, isMemoryBoardActive, activeTab, isModerator]);
 
   const visibleChatMessages = useMemo(() => {
     return chatMessages.filter((msg) => isStaff || !msg.is_deleted);
@@ -956,8 +957,8 @@ export function BoardPage() {
 
   const isCooldownActive =
     !isStaff && hypeBoardMode === "slow_3s" && cooldownRemaining > 0;
-  const effectiveHypeActive = hypeActive || isStaff;
-  const effectiveMemoryActive = memoryActive || isStaff;
+  const effectiveHypeActive = hypeActive || isModerator;
+  const effectiveMemoryActive = memoryActive || isModerator;
   const isMemoryAccessible = true;
 
   useEffect(() => {
@@ -1191,8 +1192,8 @@ export function BoardPage() {
         )}
       </VStack>
 
-      {/* Tab Toggle (only shown when both boards are accessible or for staff) */}
-      {!isBothDisabled && (livechatEnabled || isStaff) && (isMemoryBoardActive || isStaff) && (
+      {/* Tab Toggle (only shown when both boards are accessible or for moderators) */}
+      {!isBothDisabled && (livechatEnabled || isModerator) && (isMemoryBoardActive || isModerator) && (
         <Flex justify="center" mb={6} position="relative" zIndex={2}>
           <HStack
             role="tablist"
@@ -1301,7 +1302,7 @@ export function BoardPage() {
           </HStack>
         </Flex>
       ) : activeTab === "hype" ? (
-        !livechatEnabled && !isStaff ? (
+        !livechatEnabled && !isModerator ? (
           /* Live Chat Disabled Placeholder */
           <Flex
             justify="center"

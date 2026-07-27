@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, HStack, Text, VStack } from "@chakra-ui/react";
+import { Badge, Box, Flex, Heading, HStack, Text, VStack } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getImmichConfig } from "../utils/immich";
@@ -440,6 +440,125 @@ export function HomePage() {
               <Box as="span" className="material-symbols-outlined" color="brand.solid" display={{ base: "none", md: "block" }}>arrow_forward</Box>
             </Flex>
           </Link>
+        </Box>
+
+        {/* Memory & Hype Board Showcase Section */}
+        <Box mb={10} animation="fade-in-up 0.8s var(--ease-out-expo) both">
+          <Box
+            position="relative"
+            overflow="hidden"
+            bg="linear-gradient(135deg, #1C2D37 0%, #2A434F 100%)"
+            color="white"
+            borderRadius="3xl"
+            p={{ base: 6, md: 10 }}
+            boxShadow="0 20px 40px -15px rgba(28, 45, 55, 0.4)"
+            border="1px solid rgba(255, 255, 255, 0.1)"
+          >
+            {/* Decorative background glow */}
+            <Box
+              position="absolute"
+              top="-50px"
+              right="-50px"
+              w="220px"
+              h="220px"
+              bg="var(--c-clay)"
+              filter="blur(70px)"
+              opacity={0.3}
+              borderRadius="full"
+              pointerEvents="none"
+            />
+
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              align="center"
+              justify="space-between"
+              gap={6}
+              position="relative"
+              zIndex={1}
+            >
+              <VStack align={{ base: "center", md: "start" }} gap={3} maxW="2xl">
+                <HStack gap={2}>
+                  <Box
+                    bg="rgba(255, 255, 255, 0.15)"
+                    backdropFilter="blur(8px)"
+                    px={3}
+                    py={1}
+                    borderRadius="full"
+                    display="flex"
+                    alignItems="center"
+                    gap={1.5}
+                  >
+                    <Box
+                      as="span"
+                      className="material-symbols-outlined"
+                      fontSize="16px"
+                      color="accent.solid"
+                    >
+                      forum
+                    </Box>
+                    <Text fontSize="xs" fontWeight="700" letterSpacing="0.05em" textTransform="uppercase">
+                      Live Community Board
+                    </Text>
+                  </Box>
+                  {hypeBoardEnabled ? (
+                    <Badge colorPalette="green" variant="solid" px={2.5} py={0.5} borderRadius="full" fontSize="xs">
+                      ⚡ LIVE NOW
+                    </Badge>
+                  ) : (
+                    <Badge colorPalette="amber" variant="subtle" px={2.5} py={0.5} borderRadius="full" fontSize="xs">
+                      📌 MEMORY ARCHIVE
+                    </Badge>
+                  )}
+                </HStack>
+
+                <Heading
+                  as="h2"
+                  fontFamily="'Playfair Display', serif"
+                  fontSize={{ base: "xl", md: "2xl" }}
+                  fontWeight="700"
+                  color="white"
+                  textAlign={{ base: "center", md: "left" }}
+                >
+                  Memory & Hype Board บ้าน 7
+                </Heading>
+
+                <Text
+                  fontSize={{ base: "sm", md: "md" }}
+                  color="rgba(255, 255, 255, 0.82)"
+                  textAlign={{ base: "center", md: "left" }}
+                  lineHeight={1.6}
+                >
+                  ส่งข้อความสด ทักทายเพื่อนๆ โพสต์รูปความทรงจำกิจกรรมรับน้อง และส่งสติ๊กเกอร์ให้กำลังใจกันแบบเรียลไทม์ได้ที่นี่!
+                </Text>
+              </VStack>
+
+              <Link to="/board">
+                <HStack
+                  bg="accent.solid"
+                  color="brand.900"
+                  px={{ base: 6, md: 8 }}
+                  py={{ base: 3.5, md: 4 }}
+                  borderRadius="full"
+                  fontWeight="700"
+                  fontSize="md"
+                  gap={2}
+                  whiteSpace="nowrap"
+                  transition="all 0.3s var(--ease-out-quart)"
+                  boxShadow="0 8px 24px rgba(0, 0, 0, 0.2)"
+                  _hover={{
+                    transform: "translateY(-3px) scale(1.02)",
+                    boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3)",
+                  }}
+                  _active={{ transform: "scale(0.97)" }}
+                >
+                  <Text>ไปยัง Memory Board</Text>
+                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                    arrow_forward
+                  </Box>
+                </HStack>
+              </Link>
+            </Flex>
+          </Box>
         </Box>
 
         {/* Featured Carousel — only when both modules are live */}
