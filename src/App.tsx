@@ -172,7 +172,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 function AppContent() {
   return (
     <GalleryLightboxProvider>
-      <Box minH="100vh" bg="bg.canvas" position="relative">
+      <Box minH="100vh" maxW="100vw" bg="bg.canvas" position="relative" overflowX="hidden">
         <a href="#main-content" className="skip-link">
           Skip to content
       </a>
@@ -184,6 +184,8 @@ function AppContent() {
         as="main"
         id="main-content"
         tabIndex={-1}
+        maxW="100vw"
+        overflowX="hidden"
         pb={{ base: 'calc(var(--dock-height) + 16px)', md: 0 }}
         style={{ outline: 'none' }}
       >

@@ -1774,7 +1774,7 @@ export function BoardPage() {
         )
       ) : (
         /* ═══ MEMORY BOARD (Memory Tab) ═══════════════════════════════════ */
-        <Box maxW="4xl" mx="auto" w="100%" h="auto" maxH="none" minH="auto">
+        <Box maxW="4xl" mx="auto" w="100%" minW={0} px={{ base: 3, md: 0 }} overflowX="hidden" h="auto" maxH="none" minH="auto">
           {/* 1. Governance Configuration Panel for Moderator / Admin */}
           {(user?.role === "moderator" ||
             (user?.role as string) === "superadmin" ||
@@ -1902,9 +1902,12 @@ export function BoardPage() {
                 px={{ base: 3, md: 5 }}
                 py={3}
                 mb={{ base: 4, md: 6 }}
+                w="100%"
+                minW={0}
+                maxW="100%"
                 animation="fade-in-up 0.6s var(--ease-out-expo) 0.1s both"
               >
-                <Flex align="center" gap={{ base: 2, md: 3 }} flexWrap="wrap">
+                <Flex align="center" gap={{ base: 2, md: 3 }} flexWrap="wrap" w="100%" minW={0} maxW="100%">
                   <Text
                     fontSize="xs"
                     fontWeight="600"
@@ -1919,6 +1922,8 @@ export function BoardPage() {
                     overflowX="auto"
                     whiteSpace="nowrap"
                     w="100%"
+                    minW={0}
+                    maxW="100%"
                     css={{
                       "&::-webkit-scrollbar": { display: "none" },
                       msOverflowStyle: "none",
@@ -1974,9 +1979,9 @@ export function BoardPage() {
               </Box>
 
               {/* Main Column */}
-              <Box maxW="4xl" mx="auto" w="100%">
+              <Box maxW="4xl" mx="auto" w="100%" minW={0}>
                 {/* Posts Column */}
-                <VStack align="stretch" gap={{ base: 4, md: 6 }}>
+                <VStack align="stretch" gap={{ base: 4, md: 6 }} w="100%" minW={0} maxW="100%">
                   {/* Composer */}
                   <Box
                     display="block"
@@ -1985,9 +1990,12 @@ export function BoardPage() {
                     borderColor="border.subtle"
                     borderRadius="2xl"
                     p={{ base: 3.5, md: 6 }}
+                    w="100%"
+                    minW={0}
+                    maxW="100%"
                     animation="fade-in-up 0.6s var(--ease-out-expo) 0.15s both"
                   >
-                    <Flex gap={{ base: 3, md: 4 }} align="start">
+                    <Flex gap={{ base: 3, md: 4 }} align="start" w="100%" minW={0} maxW="100%">
                       {user ? (
                         <UserAvatar
                           src={user.profile_pic_url}
@@ -2016,7 +2024,7 @@ export function BoardPage() {
                           </Box>
                         </Box>
                       )}
-                      <Box flex={1}>
+                      <Box flex={1} minW={0} maxW="100%">
                         {user && (
                           <Flex align="center" gap={3} mb={2} flexWrap="wrap">
                             <Flex align="center" gap={1.5}>
@@ -2238,6 +2246,9 @@ export function BoardPage() {
                               fontFamily="'Mali', sans-serif"
                               fontSize="sm"
                               minH="60px"
+                              w="100%"
+                              minW={0}
+                              maxW="100%"
                               position="relative"
                               boxShadow="inner"
                               pl="36px"
@@ -2279,7 +2290,7 @@ export function BoardPage() {
                         )}
 
                         {user && (
-                          <VStack align="start" gap={2} my={3} w="100%">
+                          <VStack align="start" gap={2} my={3} w="100%" minW={0} maxW="100%">
                             <Text
                               fontSize="xs"
                               fontWeight="700"
@@ -2300,6 +2311,8 @@ export function BoardPage() {
                               overflowX="auto"
                               whiteSpace="nowrap"
                               w="100%"
+                              minW={0}
+                              maxW="100%"
                               css={{
                                 "&::-webkit-scrollbar": { display: "none" },
                                 msOverflowStyle: "none",
@@ -2353,6 +2366,9 @@ export function BoardPage() {
                           mt={2}
                           flexWrap="wrap"
                           gap={3}
+                          w="100%"
+                          minW={0}
+                          maxW="100%"
                         >
                           <HStack gap={3}>
                             {user && (
@@ -2455,7 +2471,7 @@ export function BoardPage() {
                       </Text>
                     </Flex>
                   ) : (
-                    <VStack align="stretch" w="100%" gap={6}>
+                    <VStack align="stretch" w="100%" minW={0} maxW="100%" gap={6}>
                       <Box
                         display="grid"
                         gridTemplateColumns={{
@@ -2467,6 +2483,10 @@ export function BoardPage() {
                         gridAutoFlow="dense"
                         gap={{ base: 4, md: 6 }}
                         w="100%"
+                        minW={0}
+                        maxW="100%"
+                        overflow="hidden"
+                        px={{ base: 1, md: 0 }}
                         mx="auto"
                       >
                         {visiblePosts.map((post: DBPost, index: number) => {
