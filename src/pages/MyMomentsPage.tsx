@@ -188,7 +188,7 @@ export function MyMomentsPage() {
         </Text>
       </VStack>
 
-      <Flex justify="center" mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
+      <Flex justify="center" mb={6} animation="fade-in-up 0.7s var(--ease-out-expo) both">
         <Box maxW="300px" w="100%">
           <select
             aria-label="Filter photos by album"
@@ -219,6 +219,21 @@ export function MyMomentsPage() {
           </select>
         </Box>
       </Flex>
+
+      <Box
+        mb={4}
+        p={3}
+        bg="#FFFDF6"
+        border="1.5px dashed #7c563f"
+        borderRadius="16px"
+      >
+        <Text fontSize="xs" color="#7c563f" fontWeight="600" display="flex" alignItems="center" gap={2}>
+          <Box as="span" className="material-symbols-outlined" fontSize="18px" flexShrink={0}>
+            info
+          </Box>
+          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Please check all photos in the main Gallery.
+        </Text>
+      </Box>
 
       <Text fontSize="xs" fontWeight="700" color="fg.muted" mb={4} textTransform="uppercase" letterSpacing="0.05em">
         {selectedAlbumKey === "all" ? "All Photos" : `${mappings.find(m => m.key === selectedAlbumKey)?.label}`}

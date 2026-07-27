@@ -28,9 +28,9 @@ import {
   useAdminMissions,
 } from "../../hooks/useAdminQueries";
 import { toaster } from "../ui/toaster";
-
+import { immich, type ImmichAsset } from "../../lib/immich";
+import { ImmichImage } from "../gallery/ImmichImage";
 import { ImmichFacePickerModal, extractPersonId } from "./ImmichFacePickerModal";
-import { immich } from "../../lib/immich";
 import { supabase } from "../../lib/supabase";
 
 interface UserInspectModalProps {
@@ -102,10 +102,12 @@ export function UserInspectModal({
   const [directFaceInput, setDirectFaceInput] = React.useState("");
   const [linkingFace, setLinkingFace] = React.useState(false);
 
+  const [inspectPhotos, setInspectPhotos] = React.useState<ImmichAsset[]>([]);
+  const [loadingInspectPhotos, setLoadingInspectPhotos] = React.useState(false);
+
   useEffect(() => {
     let isMounted = true;
     if (inspectUser?.student_id) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoadingFaces(true);
       supabase
         .from("user_faces")
@@ -124,6 +126,31 @@ export function UserInspectModal({
       isMounted = false;
     };
   }, [inspectUser?.student_id]);
+
+  useEffect(() => {
+    if (claimedFaces.length === 0) {
+      setInspectPhotos([]);
+      return;
+    }
+    let isMounted = true;
+    setLoadingInspectPhotos(true);
+    const personIds = claimedFaces.map((f) => f.immich_person_id);
+    immich.assets
+      .searchMetadata({ personIds })
+      .then((res) => {
+        if (isMounted) {
+          setInspectPhotos(res.assets?.items || []);
+          setLoadingInspectPhotos(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching inspected user photos:", err);
+        if (isMounted) setLoadingInspectPhotos(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [claimedFaces]);
 
   const handleDirectFaceClaim = async () => {
     if (!inspectUser || !directFaceInput.trim()) return;
@@ -568,6 +595,75 @@ export function UserInspectModal({
                       </Flex>
                     ))}
                   </Flex>
+                )}
+
+                {/* Identified Photos (My Moments) for Inspected User */}
+                {claimedFaces.length > 0 && (
+                  <Box mt={4}>
+                    <Flex justify="space-between" align="center" mb={2}>
+                      <Text
+                        fontSize="xs"
+                        fontWeight="700"
+                        color="var(--c-muted)"
+                        textTransform="uppercase"
+                      >
+                        Identified Photos ({inspectPhotos.length})
+                      </Text>
+                      {loadingInspectPhotos && <Spinner size="xs" color="brand.900" />}
+                    </Flex>
+                    {inspectPhotos.length === 0 && !loadingInspectPhotos ? (
+                      <Box p={3} bg="white" borderRadius="lg" border="1px dashed" borderColor="border.subtle">
+                        <Text fontSize="xs" color="fg.subtle">
+                          No photos matched for linked face clusters yet.
+                        </Text>
+                      </Box>
+                    ) : (
+                      <Box
+                        display="grid"
+                        gridTemplateColumns="repeat(4, 1fr)"
+                        gap={2}
+                        maxH="220px"
+                        overflowY="auto"
+                        p={1}
+                      >
+                        {inspectPhotos.map((asset) => (
+                          <Box
+                            key={asset.id}
+                            borderRadius="lg"
+                            overflow="hidden"
+                            border="1px solid rgba(124,86,63,0.12)"
+                            bg="gray.100"
+                            h="64px"
+                            cursor="pointer"
+                          >
+                            <ImmichImage
+                              endpoint={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
+                              alt="Inspected photo"
+                              w="100%"
+                              h="100%"
+                              objectFit="cover"
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+
+                    {/* AI Beta Disclaimer */}
+                    <Box
+                      mt={2.5}
+                      p={2.5}
+                      bg="#FFFDF6"
+                      border="1.5px dashed #7c563f"
+                      borderRadius="xl"
+                    >
+                      <Text fontSize="3xs" color="#7c563f" fontWeight="600" display="flex" alignItems="center" gap={1.5}>
+                        <Box as="span" className="material-symbols-outlined" fontSize="14px" flexShrink={0}>
+                          info
+                        </Box>
+                        Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Please check all photos in the main Gallery.
+                      </Text>
+                    </Box>
+                  </Box>
                 )}
               </Box>
 

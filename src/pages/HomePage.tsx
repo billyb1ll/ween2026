@@ -356,6 +356,10 @@ export function HomePage() {
                   boxShadow:
                     "0 10px 30px color-mix(in srgb, var(--chakra-colors-accent-solid) 35%, transparent)",
                 }}
+                _focusVisible={{
+                  outline: "2.5px solid #496268",
+                  outlineOffset: "3px",
+                }}
                 _active={{ transform: "scale(0.97)" }}
               >
                 <Text>Start Exploring</Text>
@@ -383,6 +387,10 @@ export function HomePage() {
                 _hover={{
                   bg: "bg.hero",
                   transform: "translateY(-1px)",
+                }}
+                _focusVisible={{
+                  outline: "2.5px solid #496268",
+                  outlineOffset: "3px",
                 }}
               >
                 <Text>Explore Features</Text>
@@ -427,7 +435,21 @@ export function HomePage() {
         {/* Face Claim Banner */}
         <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
           <Link to="/face-claim">
-            <Flex w="100%" bg="white" border="2px dashed" borderColor="brand.solid" borderRadius="2xl" p={{ base: 5, md: 8 }} align="center" justify="center" direction={{ base: "column", md: "row" }} gap={4} transition="all 0.3s var(--ease-out-quart)" _hover={{ bg: "brand.subtle", transform: "translateY(-4px)", boxShadow: "var(--shadow-card-hover)" }}>
+            <Flex
+              w="100%"
+              bg="white"
+              border="2px dashed"
+              borderColor="brand.solid"
+              borderRadius="2xl"
+              p={{ base: 5, md: 8 }}
+              align="center"
+              justify="center"
+              direction={{ base: "column", md: "row" }}
+              gap={4}
+              transition="all 0.3s var(--ease-out-quart)"
+              _hover={{ bg: "brand.subtle", transform: "translateY(-4px)", boxShadow: "var(--shadow-card-hover)" }}
+              _focusVisible={{ outline: "2.5px solid #496268", outlineOffset: "3px" }}
+            >
               <Flex bg="brand.solid" color="white" w={12} h={12} borderRadius="full" align="center" justify="center" flexShrink={0}>
                 <Box as="span" className="material-symbols-outlined" fontSize="24px">face</Box>
               </Flex>

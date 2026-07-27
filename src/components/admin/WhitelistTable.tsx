@@ -260,7 +260,7 @@ export function WhitelistTable({
           onSubmit={handleAddWhitelist}
           gap={3}
           flexWrap="wrap"
-          align="end"
+          align="flex-start"
           mb={6}
         >
           <VStack align="start" gap={1}>
@@ -282,11 +282,11 @@ export function WhitelistTable({
               borderRadius="xl"
               border="1.5px solid var(--c-outline)"
               bg="var(--c-ivory)"
-              maxW="200px"
+              w="180px"
               required
             />
           </VStack>
-          <VStack align="start" gap={1}>
+          <VStack align="start" gap={1} flex={1} minW="240px" maxW="340px">
             <Box
               fontSize="xs"
               fontWeight="700"
@@ -310,26 +310,28 @@ export function WhitelistTable({
               {getRoleDescription(newRole)}
             </Text>
           </VStack>
-          <Button
-            type="submit"
-            bg="var(--c-lagoon)"
-            color="white"
-            h="44px"
-            py={2}
-            px={6}
-            borderRadius="xl"
-            cursor="pointer"
-            _hover={{
-              bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
-            }}
-          >
-            Whitelist ID
-          </Button>
+          <VStack align="start" gap={1}>
+            <Box h="18px" />
+            <Button
+              type="submit"
+              bg="var(--c-lagoon)"
+              color="white"
+              h="44px"
+              py={2}
+              px={6}
+              borderRadius="xl"
+              cursor="pointer"
+              _hover={{
+                bg: "color-mix(in srgb, var(--c-lagoon) 85%, black)",
+              }}
+            >
+              Whitelist ID
+            </Button>
+          </VStack>
         </Flex>
 
         {/* Whitelist tab filters */}
         <Tabs.Root
-          defaultValue="student"
           value={whitelistRoleTab}
           onValueChange={(details) =>
             setWhitelistRoleTab(details.value as "student" | "staff")
@@ -337,46 +339,50 @@ export function WhitelistTable({
           variant="line"
           mb={4}
         >
-          <Tabs.List borderColor="border.subtle">
+          <Tabs.List gap={6}>
             <Tabs.Trigger
               value="student"
-              cursor="pointer"
-              fontSize="xs"
               fontWeight="700"
-              px={4}
-              py={2}
-              h={{ base: "40px", md: "auto" }}
+              fontSize="sm"
+              color={
+                whitelistRoleTab === "student" ? "brand.900" : "var(--c-muted)"
+              }
+              _selected={{
+                color: "brand.900",
+                borderColor: "accent.solid",
+              }}
             >
               Freshmen Only (
-              {
-                whitelistedUsers.filter((u) => u.role === "student")
-                  .length
-              }
-              )
+              {whitelistedUsers.filter((u) => u.role === "student").length})
             </Tabs.Trigger>
             <Tabs.Trigger
               value="staff"
-              cursor="pointer"
-              fontSize="xs"
               fontWeight="700"
-              px={4}
-              py={2}
-              h={{ base: "40px", md: "auto" }}
+              fontSize="sm"
+              color={
+                whitelistRoleTab === "staff" ? "brand.900" : "var(--c-muted)"
+              }
+              _selected={{
+                color: "brand.900",
+                borderColor: "accent.solid",
+              }}
             >
               Staff & Moderators (
-              {
-                whitelistedUsers.filter((u) => u.role !== "student")
-                  .length
-              }
-              )
+              {whitelistedUsers.filter((u) => u.role !== "student").length})
             </Tabs.Trigger>
           </Tabs.List>
         </Tabs.Root>
 
-        {/* Search / Filter / Sort Bar */}
-        <Flex align="center" gap={3} mb={4} flexWrap="wrap">
-          <HStack gap={2} flex={1} minW="300px">
-            <Box position="relative" flex={2}>
+        {/* Search & Counter Controls */}
+        <Flex
+          justify="space-between"
+          align="center"
+          mb={4}
+          gap={4}
+          flexWrap="wrap"
+        >
+          <HStack gap={3} flex={1} maxW="480px">
+            <Box position="relative" flex={1}>
               <Box
                 as="span"
                 className="material-symbols-outlined"
@@ -396,7 +402,7 @@ export function WhitelistTable({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 h="40px"
                 pl="38px"
-                borderRadius="lg"
+                borderRadius="xl"
                 border="1.5px solid var(--c-outline)"
                 bg="var(--c-white)"
                 fontSize="xs"
@@ -406,7 +412,6 @@ export function WhitelistTable({
                 }}
               />
             </Box>
-
           </HStack>
           <Text
             fontSize="xs"
@@ -514,25 +519,22 @@ export function WhitelistTable({
                   )}
                   <Table.Cell>
                     {u.nickname ? (
-                      <Tooltip label={u.created_at ? `Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Registered"}>
+                      <Tooltip label={`Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}>
                         <Badge
                           colorPalette="green"
                           cursor="help"
-                          title={u.created_at ? `Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Registered"}
+                          title={`Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}
                         >
                           Registered
                         </Badge>
                       </Tooltip>
                     ) : (
-                      <Tooltip label={u.created_at ? `Whitelisted on: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Whitelisted (Unregistered)"}>
-                        <Badge
-                          colorPalette="yellow"
-                          cursor="help"
-                          title={u.created_at ? `Whitelisted on: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Whitelisted (Unregistered)"}
-                        >
-                          Whitelisted
-                        </Badge>
-                      </Tooltip>
+                      <Badge
+                        colorPalette="yellow"
+                        title="Whitelisted (Pending Registration)"
+                      >
+                        Whitelisted
+                      </Badge>
                     )}
                   </Table.Cell>
                   <Table.Cell textAlign="right">
