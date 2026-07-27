@@ -3591,9 +3591,10 @@ const MemoryCard = memo(function MemoryCard({
   const isAnon = post.is_anonymous;
   const isStaff = post.author.role !== "student";
   const prefix = isStaff ? "P' " : "";
-  const cardBg = isStaff ? "accent.solid" : "brand.900";
-  const cardColor = isStaff ? "brand.900" : "white";
-  const cardSubtleColor = isStaff ? "brand.900" : "whiteAlpha.700";
+  // Light navy pastel background (#E2EAFB) for student cards, soft pastel rose (accent.solid) for staff cards
+  const cardBg = isStaff ? "accent.solid" : "#E2EAFB";
+  const cardColor = "brand.900";
+  const cardSubtleColor = "rgba(13, 26, 54, 0.65)";
 
   const displayAuthorName =
     isAnon && currentUserRole !== "moderator"
@@ -3630,8 +3631,12 @@ const MemoryCard = memo(function MemoryCard({
       overflow="visible"
       bg={cardBg}
       color={cardColor}
-      border="none"
-      borderColor="transparent"
+      border="1px solid"
+      borderColor={
+        isStaff
+          ? "rgba(242, 100, 117, 0.25)"
+          : "rgba(59, 106, 191, 0.20)"
+      }
       borderRadius="2xl"
       px={{ base: 4.5, md: 6 }}
       py={{ base: 4, md: 5 }}
@@ -4040,9 +4045,9 @@ const MemoryCard = memo(function MemoryCard({
               }}
               disabled={!user}
               _hover={{
-                bg: isStaff ? "rgba(59,106,191,0.08)" : "rgba(255,255,255,0.10)",
-                color: isStaff ? "brand.900" : "white",
-                borderColor: isStaff ? "brand.solid" : "rgba(255,255,255,0.35)",
+                bg: "rgba(59, 106, 191, 0.12)",
+                color: "brand.900",
+                borderColor: "rgba(59, 106, 191, 0.35)",
               }}
             >
               <Box
