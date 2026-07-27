@@ -40,6 +40,18 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+// Official Vite dynamic module import failure handler
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (event) => {
+    console.warn('[Vite] Preload error detected for dynamic asset, reloading page:', event);
+    const hasReloaded = sessionStorage.getItem('vite_preload_reloaded');
+    if (!hasReloaded) {
+      sessionStorage.setItem('vite_preload_reloaded', 'true');
+      window.location.reload();
+    }
+  });
+}
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { UserProvider, useUser } from './context/UserContext'
@@ -48,20 +60,58 @@ import { toaster } from './components/ui/toaster'
 import { LoadingFallback } from './components/LoadingFallback'
 import { TermsOfUseModal } from './components/TermsOfUseModal'
 import { GalleryLightboxProvider } from './context/GalleryLightboxContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
+/**
+ * Safe Lazy Loader for Dynamic Module Imports
+ * Automatically retries dynamic chunk imports and reloads stale build manifests
+ * when Vite serves an index.html 404 fallback ('text/html is not a valid JavaScript MIME type').
+ */
+function safeLazy<T extends React.ComponentType<Record<string, unknown>>>(
+  importFn: () => Promise<Record<string, unknown>>,
+  exportName: string
+) {
+  return lazy(async () => {
+    try {
+      const module = await importFn();
+      return { default: (module[exportName] || module.default) as T };
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.warn(`[SafeLazy] Dynamic chunk import for ${exportName} failed:`, error);
+      const isMimeOrChunkError =
+        error?.message?.includes("MIME type") ||
+        error?.message?.includes("dynamically imported module") ||
+        error?.message?.includes("Importing a module script failed") ||
+        error?.name === "TypeError";
 
-// Dynamic Route Splitting for Named Exports
-const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })))
-const VibeCheckPage = lazy(() => import('./pages/VibeCheckPage').then((module) => ({ default: module.VibeCheckPage })))
-const BoardPage = lazy(() => import('./pages/BoardPage').then((module) => ({ default: module.BoardPage })))
-const GalleryPage = lazy(() => import('./pages/GalleryPage').then((module) => ({ default: module.GalleryPage })))
-const MyMomentsPage = lazy(() => import('./pages/MyMomentsPage').then((module) => ({ default: module.MyMomentsPage })))
-const FaceClaimPage = lazy(() => import('./pages/FaceClaimPage').then((module) => ({ default: module.FaceClaimPage })))
-const LoginPage = lazy(() => import('./pages/LoginPage').then((module) => ({ default: module.LoginPage })))
-const ProfileSetupPage = lazy(() => import('./pages/ProfileSetupPage').then((module) => ({ default: module.ProfileSetupPage })))
-const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage').then((module) => ({ default: module.ProfileEditPage })))
-const AdminKpiPage = lazy(() => import('./pages/AdminKpiPage').then((module) => ({ default: module.AdminKpiPage })))
-const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })))
+      const storageKey = `retry_lazy_${exportName}`;
+      const hasRetried = sessionStorage.getItem(storageKey);
+
+      if (isMimeOrChunkError && !hasRetried) {
+        sessionStorage.setItem(storageKey, "true");
+        console.warn(`[SafeLazy] Refreshing browser for updated app manifest (${exportName})...`);
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+
+      sessionStorage.removeItem(storageKey);
+      throw error;
+    }
+  });
+}
+
+// Dynamic Route Splitting for Named Exports with Safe Lazy Recovery
+const HomePage = safeLazy(() => import('./pages/HomePage'), 'HomePage')
+const VibeCheckPage = safeLazy(() => import('./pages/VibeCheckPage'), 'VibeCheckPage')
+const BoardPage = safeLazy(() => import('./pages/BoardPage'), 'BoardPage')
+const GalleryPage = safeLazy(() => import('./pages/GalleryPage'), 'GalleryPage')
+const MyMomentsPage = safeLazy(() => import('./pages/MyMomentsPage'), 'MyMomentsPage')
+const FaceClaimPage = safeLazy(() => import('./pages/FaceClaimPage'), 'FaceClaimPage')
+const LoginPage = safeLazy(() => import('./pages/LoginPage'), 'LoginPage')
+const ProfileSetupPage = safeLazy(() => import('./pages/ProfileSetupPage'), 'ProfileSetupPage')
+const ProfileEditPage = safeLazy(() => import('./pages/ProfileEditPage'), 'ProfileEditPage')
+const AdminKpiPage = safeLazy(() => import('./pages/AdminKpiPage'), 'AdminKpiPage')
+const AdminDashboardPage = safeLazy(() => import('./pages/AdminDashboardPage'), 'AdminDashboardPage')
 
 // Global Auth Expiry Listener — intercepts sessionExpired on ANY route and redirects to /login
 function GlobalAuthListener() {
@@ -190,51 +240,53 @@ function AppContent() {
         style={{ outline: 'none' }}
       >
 
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            {/* Public/Standard Routes */}
-            <Route path="/" element={<RequireCompleteProfile><HomePage /></RequireCompleteProfile>} />
-            <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
-            <Route path="/face-claim" element={<FaceClaimPage />} />
-            
-            {/* Authenticated Routes without complete profile requirement */}
-            <Route path="/setup" element={<RequireAuth><RequireIncompleteProfile><ProfileSetupPage /></RequireIncompleteProfile></RequireAuth>} />
-            <Route path="/profile-edit" element={<RequireAuth><ProfileEditPage /></RequireAuth>} />
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public/Standard Routes */}
+              <Route path="/" element={<RequireCompleteProfile><HomePage /></RequireCompleteProfile>} />
+              <Route path="/login" element={<RequireGuest><LoginPage /></RequireGuest>} />
+              <Route path="/face-claim" element={<FaceClaimPage />} />
+              
+              {/* Authenticated Routes without complete profile requirement */}
+              <Route path="/setup" element={<RequireAuth><RequireIncompleteProfile><ProfileSetupPage /></RequireIncompleteProfile></RequireAuth>} />
+              <Route path="/profile-edit" element={<RequireAuth><ProfileEditPage /></RequireAuth>} />
 
-            {/* Platform Feature Routes (Protected by Auth + Profile Setup Completion) */}
-            <Route path="/vibe-check" element={<RequireAuth><RequireCompleteProfile><VibeCheckPage /></RequireCompleteProfile></RequireAuth>} />
-            <Route path="/board" element={<RequireAuth><RequireCompleteProfile><BoardPage /></RequireCompleteProfile></RequireAuth>} />
-            <Route path="/gallery" element={<GalleryPage />} />
-            <Route path="/my-moments" element={<RequireAuth><RequireCompleteProfile><MyMomentsPage /></RequireCompleteProfile></RequireAuth>} />
+              {/* Platform Feature Routes (Protected by Auth + Profile Setup Completion) */}
+              <Route path="/vibe-check" element={<RequireAuth><RequireCompleteProfile><VibeCheckPage /></RequireCompleteProfile></RequireAuth>} />
+              <Route path="/board" element={<RequireAuth><RequireCompleteProfile><BoardPage /></RequireCompleteProfile></RequireAuth>} />
+              <Route path="/gallery" element={<GalleryPage />} />
+              <Route path="/my-moments" element={<RequireAuth><RequireCompleteProfile><MyMomentsPage /></RequireCompleteProfile></RequireAuth>} />
 
 
-            {/* Administrative Dashboard Route (Unified) */}
-            <Route
-              path="/admin"
-              element={
-                <RequireAuth>
-                  <RequireAdmin>
-                    <RequireCompleteProfile>
-                      <AdminDashboardPage />
-                    </RequireCompleteProfile>
-                  </RequireAdmin>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/admin/kpi"
-              element={
-                <RequireAuth>
-                  <RequireAdmin>
-                    <RequireCompleteProfile>
-                      <AdminKpiPage />
-                    </RequireCompleteProfile>
-                  </RequireAdmin>
-                </RequireAuth>
-              }
-            />
-          </Routes>
-        </Suspense>
+              {/* Administrative Dashboard Route (Unified) */}
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth>
+                    <RequireAdmin>
+                      <RequireCompleteProfile>
+                        <AdminDashboardPage />
+                      </RequireCompleteProfile>
+                    </RequireAdmin>
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/kpi"
+                element={
+                  <RequireAuth>
+                    <RequireAdmin>
+                      <RequireCompleteProfile>
+                        <AdminKpiPage />
+                      </RequireCompleteProfile>
+                    </RequireAdmin>
+                  </RequireAuth>
+                }
+              />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Box>
       <Footer />
     </Box>
