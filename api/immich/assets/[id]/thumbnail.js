@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       }
       
       res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg')
-      res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=43200')
+      res.setHeader('Cache-Control', 'public, max-age=31536000, s-maxage=31536000, immutable')
       
       Readable.fromWeb(response.body).pipe(res)
       return
