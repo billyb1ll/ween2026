@@ -600,7 +600,7 @@ const LiveChatBubble = memo(function LiveChatBubble({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function BoardPage() {
-  const { user, loading, getAdminPin } = useUser();
+  const { user, loading, getAdminPin, touchSession } = useUser();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<BoardTab>("hype");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -1114,6 +1114,7 @@ export function BoardPage() {
       isAnonymous,
       imageUrl,
     );
+    touchSession();
     setNewPostText("");
     setIsAnonymous(false);
     setSelectedTag(null);
@@ -1126,7 +1127,7 @@ export function BoardPage() {
         type: "success",
       });
       setTimeout(() => {
-        navigate("/gallery");
+        navigate("/gallery?unlocked=1");
       }, 800);
     }
   };

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../utils/crypto";
@@ -57,6 +57,8 @@ interface UserContextType {
   // Stored in sessionStorage only — never in the User object or query cache.
   getAdminPin: () => string;
   handleUnauthorizedError: () => void;
+  /** Slide the session TTL by +7 days. Call on meaningful user actions. Debounced to once per 30 min. */
+  touchSession: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -109,6 +111,24 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     setSessionToken(null);
   }, [user, sessionLoading, sessionToken, sessionError, queryClient]);
 
+  // ── Gap 1: Window focus re-validation ──────────────────────────────────
+  // When user returns to a stale tab, re-check session freshness.
+  // Debounced to at most once per 60 seconds to avoid hammering Supabase.
+  const lastFocusCheckRef = useRef<number>(0);
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && sessionToken) {
+        const now = Date.now();
+        if (now - lastFocusCheckRef.current > 60_000) {
+          lastFocusCheckRef.current = now;
+          queryClient.invalidateQueries({ queryKey: userQueryKeys.session(sessionToken) });
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [sessionToken, queryClient]);
+
   useEffect(() => {
     const handleSessionExpiredEvent = () => {
       console.warn("Global session expired event received — clearing context state.");
@@ -126,6 +146,27 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       await queryClient.invalidateQueries({ queryKey: userQueryKeys.claimedFace(studentId) });
     }
   }, [user?.student_id, queryClient]);
+
+  // ── Gap 2: Sliding session expiry (touch) ──────────────────────────────
+  // Bumps expires_at by +7 days on successful write actions.
+  // Debounced to at most once per 30 minutes per session.
+  const lastTouchRef = useRef<number>(0);
+  const touchSession = useCallback(async () => {
+    if (!sessionToken) return;
+    const now = Date.now();
+    if (now - lastTouchRef.current < 30 * 60_000) return; // max once per 30 min
+    lastTouchRef.current = now;
+    try {
+      const newExpiry = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase
+        .from('user_sessions')
+        .update({ expires_at: newExpiry })
+        .eq('session_token', sessionToken);
+    } catch (err) {
+      // Non-fatal: silently ignore — session will expire naturally
+      console.warn('[touchSession] Failed to extend session TTL:', err);
+    }
+  }, [sessionToken]);
 
   const checkStudentId = async (studentId: string) => {
     try {
@@ -354,6 +395,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         clearSessionExpired,
         getAdminPin,
         handleUnauthorizedError,
+        touchSession,
       }}
     >
       {children}

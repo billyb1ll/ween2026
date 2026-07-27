@@ -193,6 +193,22 @@ export function useCreatePostMutation(activeTab: BoardTab) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: boardQueryKeys.posts(activeTab) });
     },
+    onError: (error: unknown) => {
+      // Gap 4: Mid-action auth error recovery
+      // If the session expired while the user was composing a post,
+      // fire the global session-expired event so GlobalAuthListener
+      // cleanly redirects to /login with location.state.from preserved.
+      const e = error as { code?: string; status?: number; message?: string };
+      const isAuthError =
+        e?.status === 401 ||
+        e?.code === 'PGRST301' ||
+        e?.code === 'P0001' ||
+        e?.message?.toLowerCase().includes('jwt') ||
+        e?.message?.toLowerCase().includes('unauthorized');
+      if (isAuthError) {
+        window.dispatchEvent(new Event('baan7_session_expired'));
+      }
+    },
   });
 }
 

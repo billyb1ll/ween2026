@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Box,
@@ -18,8 +18,13 @@ import { toaster } from "../components/ui/toaster";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user, checkStudentId, login, registerPin, loading } = useUser();
+
+  // Where to redirect after successful login — set by GlobalAuthListener when session expires
+  const rawFromPath = (location.state as { from?: Location })?.from?.pathname;
+  const fromPath = rawFromPath && rawFromPath !== "/login" && rawFromPath !== "/setup" ? rawFromPath : null;
 
   const userRef = useRef(user);
   useEffect(() => {
@@ -42,15 +47,15 @@ export function LoginPage() {
   const [checkmarkText, setCheckmarkText] = useState("Welcome Back!");
 
   useEffect(() => {
-    // If already logged in and has profile nickname, redirect to homepage
+    // If already logged in, redirect to where they were (or home/setup)
     if (user && !showCheckmark) {
       if (!user.nickname || !user.faculty) {
         navigate("/setup");
       } else {
-        navigate("/");
+        navigate(fromPath || "/", { replace: true });
       }
     }
-  }, [user, navigate, showCheckmark]);
+  }, [user, navigate, showCheckmark, fromPath]);
 
   const keyboardHandlersRef = useRef<{
     handleKeypadPress: (val: string) => void;
@@ -276,7 +281,8 @@ export function LoginPage() {
         if (!currentUser || !currentUser.nickname || !currentUser.faculty) {
           navigate("/setup");
         } else {
-          navigate("/");
+          // Redirect back to original page if coming from session expiry, else home
+          navigate(fromPath || "/", { replace: true });
         }
       }, 1200);
     } else {

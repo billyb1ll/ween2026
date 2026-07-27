@@ -12,7 +12,7 @@ import React, { useState, useEffect } from "react";
 import { immich } from "../lib/immich";
 import type { ImmichAsset } from "../lib/immich";
 import { VirtuosoGrid } from "react-virtuoso";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings } from "../config/album-mapping";
 import { ImmichImage } from "../components/gallery/ImmichImage";
@@ -21,8 +21,17 @@ import { supabase } from "../lib/supabase";
 
 export function GalleryPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: loadingUser } = useUser();
   const { mappings, loading: loadingMappings } = useAlbumMappings();
+
+  // Show celebration toast when coming back from board after posting a memory
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("unlocked") === "1") {
+      navigate("/gallery", { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [activeDay, setActiveDay] = useState<string>("");
   const [photos, setPhotos] = useState<ImmichAsset[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
@@ -84,7 +93,7 @@ export function GalleryPage() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, location.key]);
 
   // Lightbox from global context
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
