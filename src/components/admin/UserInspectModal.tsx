@@ -413,6 +413,19 @@ export function UserInspectModal({
                       IG: {inspectUser.ig}
                     </Text>
                   )}
+                  {inspectUser.created_at && (
+                    <Text fontSize="xs" color="fg.subtle">
+                      Registered:{" "}
+                      {new Date(inspectUser.created_at).toLocaleString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </Text>
+                  )}
                 </VStack>
               </Flex>
 

@@ -295,19 +295,20 @@ export function WhitelistTable({
             >
               <label htmlFor="add-user-role">Role Assignment</label>
             </Box>
-            <Tooltip label={getRoleDescription(newRole)}>
-              <SearchableSelect
-                value={newRole}
-                onChange={(val) => setNewRole(val)}
-                options={[
-                  { value: "student", primaryText: "Student (Freshman)", badge: "STUDENT" },
-                  { value: "staff", primaryText: "Staff (General Ops)", badge: "STAFF" },
-                  { value: "moderator", primaryText: "Moderator (Full Access)", badge: "MOD" },
-                ]}
-                placeholder="Select Role..."
-                searchPlaceholder="พิมพ์ค้นหาบทบาท / Type to search..."
-              />
-            </Tooltip>
+            <SearchableSelect
+              value={newRole}
+              onChange={(val) => setNewRole(val)}
+              options={[
+                { value: "student", primaryText: "Student (Freshman)", badge: "STUDENT" },
+                { value: "staff", primaryText: "Staff (General Ops)", badge: "STAFF" },
+                { value: "moderator", primaryText: "Moderator (Full Access)", badge: "MOD" },
+              ]}
+              placeholder="Select Role..."
+              searchPlaceholder="พิมพ์ค้นหาบทบาท / Type to search..."
+            />
+            <Text fontSize="3xs" color="fg.subtle">
+              {getRoleDescription(newRole)}
+            </Text>
           </VStack>
           <Button
             type="submit"
@@ -514,11 +515,23 @@ export function WhitelistTable({
                   <Table.Cell>
                     {u.nickname ? (
                       <Tooltip label={u.created_at ? `Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Registered"}>
-                        <Badge colorPalette="green" cursor="help">Registered</Badge>
+                        <Badge
+                          colorPalette="green"
+                          cursor="help"
+                          title={u.created_at ? `Registered: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Registered"}
+                        >
+                          Registered
+                        </Badge>
                       </Tooltip>
                     ) : (
                       <Tooltip label={u.created_at ? `Whitelisted on: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Whitelisted (Unregistered)"}>
-                        <Badge colorPalette="yellow" cursor="help">Whitelisted</Badge>
+                        <Badge
+                          colorPalette="yellow"
+                          cursor="help"
+                          title={u.created_at ? `Whitelisted on: ${new Date(u.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Whitelisted (Unregistered)"}
+                        >
+                          Whitelisted
+                        </Badge>
                       </Tooltip>
                     )}
                   </Table.Cell>

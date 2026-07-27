@@ -8,22 +8,25 @@ export interface TooltipProps {
 }
 
 export function Tooltip({ label, children, disabled }: TooltipProps) {
-  if (disabled) return children
+  if (disabled || !label) return children
 
   return (
-    <ChakraTooltip.Root>
-      <ChakraTooltip.Trigger asChild>{children}</ChakraTooltip.Trigger>
+    <ChakraTooltip.Root openDelay={150} closeDelay={100}>
+      <ChakraTooltip.Trigger asChild>
+        <span style={{ display: "inline-flex", cursor: "help" }}>{children}</span>
+      </ChakraTooltip.Trigger>
       <Portal>
         <ChakraTooltip.Content
-          bg="accent.solid"
-          color="brand.900"
+          bg="#1b1c1c"
+          color="white"
           fontSize="2xs"
+          fontWeight="600"
           px={3}
           py={1.5}
-          borderRadius="md"
-          boxShadow="md"
-          maxW="240px"
-          zIndex={5000}
+          borderRadius="8px"
+          boxShadow="0 8px 24px -4px rgba(0,0,0,0.3)"
+          maxW="300px"
+          zIndex={9999}
         >
           <ChakraTooltip.Arrow />
           {label}

@@ -2946,14 +2946,17 @@ export function BoardPage() {
                             color="#496268"
                             flexShrink={0}
                           >
-                            calendar_today
+                            schedule
                           </Box>
                           <Text fontSize="xs" color="fg.subtle" fontWeight="500">
-                            Member since{" "}
-                            {new Date(inspectedUser.created_at).toLocaleDateString("en-GB", {
+                            Registered:{" "}
+                            {new Date(inspectedUser.created_at).toLocaleString("en-GB", {
                               day: "numeric",
                               month: "short",
                               year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
                             })}
                           </Text>
                         </HStack>
