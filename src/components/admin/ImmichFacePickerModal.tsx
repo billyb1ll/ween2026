@@ -30,6 +30,24 @@ interface ImmichFacePickerModalProps {
   onClaimSuccess?: () => void;
 }
 
+export const extractPersonId = (query: string): string | null => {
+  if (!query) return null;
+  try {
+    const decoded = decodeURIComponent(query);
+    const peopleUrlMatch = decoded.match(/\/people\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    if (peopleUrlMatch) return peopleUrlMatch[1];
+
+    const personParamMatch = decoded.match(/(?:personId|person)=([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    if (personParamMatch) return personParamMatch[1];
+
+    const uuidMatch = decoded.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    return uuidMatch ? uuidMatch[1] : null;
+  } catch {
+    const uuidMatch = query.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    return uuidMatch ? uuidMatch[1] : null;
+  }
+};
+
 export function ImmichFacePickerModal({
   isOpen,
   onClose,
@@ -41,6 +59,7 @@ export function ImmichFacePickerModal({
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [directInput, setDirectInput] = useState("");
   const [filterTab, setFilterTab] = useState<"unclaimed" | "all">("unclaimed");
   const [selectedPersonIds, setSelectedPersonIds] = useState<Set<string>>(new Set());
 
@@ -64,11 +83,80 @@ export function ImmichFacePickerModal({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedPersonIds(new Set());
     setSearchQuery("");
+    setDirectInput("");
 
     return () => {
       isMounted = false;
     };
   }, [isOpen]);
+
+  const handleAddPersonById = async (rawInput: string) => {
+    const extractedId = extractPersonId(rawInput);
+    if (!extractedId) {
+      toaster.create({
+        title: "Invalid URL or Face ID",
+        description: "Could not find a valid 36-character Immich Face UUID in the input.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Auto select if already exists in list
+    const existing = people.find((p) => p.id.toLowerCase() === extractedId.toLowerCase());
+    if (existing) {
+      setSelectedPersonIds((prev) => new Set(prev).add(existing.id));
+      toaster.create({
+        title: "Face Found & Selected!",
+        description: `Selected face ID ${extractedId.slice(0, 8)}... from the list.`,
+        type: "success",
+      });
+      setDirectInput("");
+      setSearchQuery("");
+      return;
+    }
+
+    // Try fetching person directly from Immich
+    setLoading(true);
+    try {
+      const fetchedPerson = await immich.people.getById(extractedId);
+      if (fetchedPerson) {
+        setPeople((prev) => [fetchedPerson, ...prev]);
+        setSelectedPersonIds((prev) => new Set(prev).add(fetchedPerson.id));
+        toaster.create({
+          title: "Face ID Resolved & Selected",
+          description: `Added face ID ${extractedId.slice(0, 8)}... to selection list.`,
+          type: "success",
+        });
+        setDirectInput("");
+        setSearchQuery("");
+        return;
+      }
+    } catch {
+      // Fallback: Add synthetic person object so staff can claim hidden/direct IDs
+      const syntheticPerson: ImmichPerson = { id: extractedId, name: "", thumbnailPath: "", isHidden: false };
+      setPeople((prev) => [syntheticPerson, ...prev]);
+      setSelectedPersonIds((prev) => new Set(prev).add(extractedId));
+      toaster.create({
+        title: "Face ID Added & Selected",
+        description: `Direct face ID ${extractedId.slice(0, 8)}... added to selection.`,
+        type: "info",
+      });
+      setDirectInput("");
+      setSearchQuery("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearchChange = (val: string) => {
+    const extracted = extractPersonId(val);
+    if (extracted && (val.includes("http") || val.includes("/people/"))) {
+      setSearchQuery(extracted);
+      handleAddPersonById(val);
+    } else {
+      setSearchQuery(val);
+    }
+  };
 
   const filteredPeople = useMemo(() => {
     let list = people;
@@ -217,6 +305,45 @@ export function ImmichFacePickerModal({
             </Dialog.Header>
 
             <Dialog.Body p={0} flex={1} overflowY="auto" display="flex" flexDirection="column" gap={4}>
+              {/* Quick Direct Link / Face ID Input Bar */}
+              <Box bg="white" p={3} borderRadius="xl" border="1px solid" borderColor="border.subtle">
+                <Text fontSize="xs" fontWeight="700" color="brand.900" mb={1.5}>
+                  Paste Immich Face URL or Person UUID
+                </Text>
+                <HStack gap={2}>
+                  <Input
+                    placeholder="e.g. http://immich.../people/<uuid> or 12345678-..."
+                    value={directInput}
+                    onChange={(e) => {
+                      setDirectInput(e.target.value);
+                      const extracted = extractPersonId(e.target.value);
+                      if (extracted && (e.target.value.includes("http") || e.target.value.includes("/people/"))) {
+                        handleAddPersonById(e.target.value);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && directInput.trim()) {
+                        handleAddPersonById(directInput);
+                      }
+                    }}
+                    size="sm"
+                    bg="var(--c-ivory)"
+                    borderRadius="md"
+                  />
+                  <Button
+                    size="sm"
+                    bg="accent.solid"
+                    color="brand.900"
+                    onClick={() => handleAddPersonById(directInput)}
+                    disabled={!directInput.trim()}
+                    cursor="pointer"
+                    px={4}
+                  >
+                    + Link ID
+                  </Button>
+                </HStack>
+              </Box>
+
               {/* Filter Tabs & Search Bar */}
               <Flex gap={3} flexWrap="wrap" align="center" justify="space-between">
                 <HStack gap={2}>
@@ -243,9 +370,9 @@ export function ImmichFacePickerModal({
                 </HStack>
 
                 <Input
-                  placeholder="Search face # or name..."
+                  placeholder="Search face # or paste URL..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   size="sm"
                   maxW="220px"
                   bg="white"

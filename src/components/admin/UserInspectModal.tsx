@@ -29,7 +29,7 @@ import {
 } from "../../hooks/useAdminQueries";
 import { toaster } from "../ui/toaster";
 
-import { ImmichFacePickerModal } from "./ImmichFacePickerModal";
+import { ImmichFacePickerModal, extractPersonId } from "./ImmichFacePickerModal";
 import { immich } from "../../lib/immich";
 import { supabase } from "../../lib/supabase";
 
@@ -99,6 +99,8 @@ export function UserInspectModal({
   const [loadingFaces, setLoadingFaces] = React.useState(false);
   const [isFacePickerOpen, setIsFacePickerOpen] = React.useState(false);
   const [unclaimingPersonId, setUnclaimingPersonId] = React.useState<string | null>(null);
+  const [directFaceInput, setDirectFaceInput] = React.useState("");
+  const [linkingFace, setLinkingFace] = React.useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -122,6 +124,65 @@ export function UserInspectModal({
       isMounted = false;
     };
   }, [inspectUser?.student_id]);
+
+  const handleDirectFaceClaim = async () => {
+    if (!inspectUser || !directFaceInput.trim()) return;
+    const personId = extractPersonId(directFaceInput);
+    if (!personId) {
+      toaster.create({
+        title: "Invalid URL or Face ID",
+        description: "Could not find a valid 36-character Immich Face UUID in input.",
+        type: "error",
+      });
+      return;
+    }
+
+    setLinkingFace(true);
+    try {
+      const { error: sbError } = await supabase
+        .from("user_faces")
+        .insert({ student_id: inspectUser.student_id, immich_person_id: personId });
+      if (sbError && sbError.code !== "23505") {
+        throw sbError;
+      }
+
+      const nickname = (inspectUser.nickname || "Student").trim();
+      const studentId = inspectUser.student_id;
+      const formattedName = `${nickname} (${studentId})`;
+
+      try {
+        await immich.people.update(personId, { name: formattedName });
+      } catch (immichErr) {
+        console.warn(`Immich person name update error for ${personId}:`, immichErr);
+      }
+
+      await supabase.from("audit_logs").insert({
+        moderator_id: user?.student_id,
+        action_type: "admin_claim_face",
+        target_id: inspectUser.student_id,
+        details: `Moderator claimed face ${personId} via direct URL/ID for ${inspectUser.student_id}`,
+      });
+
+      toaster.create({
+        title: "Face Claimed Successfully!",
+        description: `Linked face ID ${personId.slice(0, 8)}... to ${inspectUser.nickname || inspectUser.student_id}.`,
+        type: "success",
+      });
+
+      setDirectFaceInput("");
+      const { data } = await supabase
+        .from("user_faces")
+        .select("immich_person_id, created_at")
+        .eq("student_id", inspectUser.student_id);
+      if (data) setClaimedFaces(data);
+      onRefreshStats?.();
+    } catch (err) {
+      console.error("Direct face claim error:", err);
+      toaster.create({ title: "Failed to claim face", type: "error" });
+    } finally {
+      setLinkingFace(false);
+    }
+  };
 
   const handleUnclaimFace = async (personId: string) => {
     if (!inspectUser) return;
@@ -375,9 +436,43 @@ export function UserInspectModal({
                     onClick={() => setIsFacePickerOpen(true)}
                     cursor="pointer"
                   >
-                    + Claim Face for User
+                    + Browse Picker
                   </Button>
                 </Flex>
+
+                {/* Quick Direct URL / Face ID Claim Bar */}
+                <Box bg="white" p={2.5} borderRadius="lg" border="1px solid" borderColor="border.subtle" mb={3}>
+                  <Text fontSize="2xs" fontWeight="700" color="brand.900" mb={1}>
+                    Direct URL or Face UUID Claim
+                  </Text>
+                  <HStack gap={2}>
+                    <Input
+                      placeholder="Paste Immich URL or Face ID..."
+                      value={directFaceInput}
+                      onChange={(e) => setDirectFaceInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && directFaceInput.trim()) {
+                          handleDirectFaceClaim();
+                        }
+                      }}
+                      size="xs"
+                      bg="var(--c-ivory)"
+                      borderRadius="md"
+                    />
+                    <Button
+                      size="xs"
+                      bg="brand.900"
+                      color="white"
+                      onClick={handleDirectFaceClaim}
+                      loading={linkingFace}
+                      disabled={!directFaceInput.trim()}
+                      cursor="pointer"
+                      px={3}
+                    >
+                      Link Face
+                    </Button>
+                  </HStack>
+                </Box>
 
                 {loadingFaces ? (
                   <Flex justify="center" p={3} bg="white" borderRadius="lg" border="1px solid" borderColor="border.subtle">
