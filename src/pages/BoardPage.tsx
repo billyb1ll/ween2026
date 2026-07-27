@@ -34,6 +34,7 @@ import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
+import { FACULTIES } from "../lib/constants";
 
 import { RoughNotation } from "react-rough-notation";
 
@@ -111,6 +112,24 @@ const getInitials = (name: string) => {
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+/** Maps a full faculty name (EN or TH) to its 2-4 char short code. Falls back to a trimmed abbreviation. */
+const getShortFaculty = (faculty: string | null | undefined): string | null => {
+  if (!faculty) return null;
+  const match = FACULTIES.find(
+    (f) => f.en === faculty || f.th === faculty || f.short === faculty,
+  );
+  if (match) return match.short;
+  // Fallback: first letters of each word, max 4 chars
+  const words = faculty.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].substring(0, 4).toUpperCase();
+  return words
+    .filter((w) => w.length > 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 4);
 };
 
 interface ParsedElement {
@@ -2613,67 +2632,131 @@ export function BoardPage() {
         placement={{ base: "bottom", md: "center" }}
       >
         <Portal>
-          <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(4px)" />
+          <Dialog.Backdrop bg="blackAlpha.600" backdropFilter="blur(6px)" />
           <Dialog.Positioner zIndex={2200} px={4}>
             <Dialog.Content
-            width={{ base: "100%", md: "520px" }}
-            bg="white"
-            borderRadius="24px"
-            boxShadow="xl"
-            p={6}
-          >
-            {isInspectorLoading ? (
-              <VStack gap={4} align="center" py={6}>
-                <Skeleton boxSize="100px" borderRadius="full" />
-                <Skeleton height="24px" width="150px" />
-                <Skeleton height="16px" width="100px" />
-              </VStack>
-            ) : inspectedUser ? (
-              <VStack gap={4} align="stretch" pt={2} pb={2} w="100%">
-                {/* Header Banner & Avatar */}
-                <VStack align="center" gap={2} w="100%" position="relative">
-                  <Box position="relative">
-                    <UserAvatar
-                      src={inspectedUser.profile_pic_url}
-                      name={inspectedUser.nickname || inspectedUser.student_id}
-                      avatarColor={inspectedUser.avatar_color || "accent.muted"}
-                      size="96px"
-                      fontSize="2xl"
-                      boxShadow="0 8px 24px -4px rgba(13, 26, 54, 0.18)"
-                      border="3px solid white"
-                    />
-                    <Badge
+              width={{ base: "100%", md: "480px" }}
+              bg="white"
+              borderRadius="24px"
+              boxShadow="0 24px 64px -12px rgba(73,98,104,0.32)"
+              overflow="hidden"
+              p={0}
+            >
+              {/* Close button — floating over banner */}
+              <Dialog.CloseTrigger position="absolute" top={3} right={3} asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  bg="rgba(255,255,255,0.22)"
+                  backdropFilter="blur(8px)"
+                  borderRadius="full"
+                  w="32px"
+                  h="32px"
+                  minW="32px"
+                  p={0}
+                  cursor="pointer"
+                  _hover={{ bg: "rgba(255,255,255,0.38)" }}
+                  zIndex={10}
+                >
+                  <Box className="material-symbols-outlined" fontSize="sm" color="white">
+                    close
+                  </Box>
+                </Button>
+              </Dialog.CloseTrigger>
+
+              {isInspectorLoading ? (
+                <VStack gap={0}>
+                  {/* Banner skeleton */}
+                  <Box w="100%" h="96px" bg="gray.100" />
+                  <VStack gap={3} align="center" py={6} px={6} w="100%">
+                    <Skeleton boxSize="88px" borderRadius="full" mt="-44px" />
+                    <Skeleton height="22px" width="140px" />
+                    <Skeleton height="16px" width="80px" />
+                    <Skeleton height="14px" width="200px" mt={2} />
+                    <Skeleton height="14px" width="160px" />
+                  </VStack>
+                </VStack>
+              ) : inspectedUser ? (
+                <VStack gap={0} align="stretch" w="100%">
+
+                  {/* ── Banner + Avatar ─────────────────────────────── */}
+                  <Box
+                    position="relative"
+                    h="96px"
+                    bg="linear-gradient(135deg, #496268 0%, #3a4f54 50%, #7c563f 100%)"
+                    flexShrink={0}
+                  >
+                    {/* Subtle texture dot pattern */}
+                    <Box
                       position="absolute"
-                      bottom={0}
-                      right={-1}
-                      colorPalette={
-                        inspectedUser.role === "moderator"
-                          ? "red"
-                          : inspectedUser.role === "staff"
-                          ? "orange"
-                          : "blue"
-                      }
-                      size="xs"
-                      borderRadius="full"
-                      px={2.5}
-                      py={0.5}
-                      boxShadow="sm"
+                      inset={0}
+                      opacity={0.08}
+                      backgroundImage="radial-gradient(circle, white 1px, transparent 1px)"
+                      backgroundSize="16px 16px"
+                    />
+                    {/* Avatar — half-hanging below banner */}
+                    <Box
+                      position="absolute"
+                      bottom="-44px"
+                      left="50%"
+                      transform="translateX(-50%)"
+                      zIndex={2}
                     >
-                      {inspectedUser.role === "student"
-                        ? "Freshman"
-                        : inspectedUser.role === "moderator"
-                        ? "Moderator"
-                        : "Staff"}
-                    </Badge>
+                      <UserAvatar
+                        src={inspectedUser.profile_pic_url}
+                        name={inspectedUser.nickname || inspectedUser.student_id}
+                        avatarColor={inspectedUser.avatar_color || "#496268"}
+                        size="88px"
+                        fontSize="2xl"
+                        boxShadow="0 0 0 4px white, 0 8px 24px -4px rgba(73,98,104,0.25)"
+                      />
+                      {/* Role badge dot */}
+                      <Box
+                        position="absolute"
+                        bottom="2px"
+                        right="2px"
+                        w="18px"
+                        h="18px"
+                        borderRadius="full"
+                        bg={
+                          inspectedUser.role === "moderator"
+                            ? "#dc2626"
+                            : inspectedUser.role === "staff"
+                            ? "#7c563f"
+                            : "#496268"
+                        }
+                        border="2.5px solid white"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <Box
+                          className="material-symbols-outlined"
+                          fontSize="9px"
+                          color="white"
+                          lineHeight={1}
+                        >
+                          {inspectedUser.role === "moderator"
+                            ? "shield"
+                            : inspectedUser.role === "staff"
+                            ? "star"
+                            : "school"}
+                        </Box>
+                      </Box>
+                    </Box>
                   </Box>
 
-                  {/* Name & House Position */}
-                  <VStack gap={1} align="center">
+                  {/* ── Body ────────────────────────────────────────── */}
+                  <VStack gap={0} align="center" px={6} pt="52px" pb={5} w="100%">
+
+                    {/* Name */}
                     <Text
                       fontSize="xl"
                       fontWeight="800"
-                      color="brand.900"
+                      color="#1b1c1c"
                       fontFamily="heading"
+                      lineHeight={1.2}
+                      textAlign="center"
                     >
                       {inspectedUser.role !== "student" ? "P' " : "N' "}
                       {inspectedUser.nickname
@@ -2684,129 +2767,267 @@ export function BoardPage() {
                         : "Guest"}
                     </Text>
 
-                    {inspectedUser.house_position && (
+                    {/* Badges row */}
+                    <HStack gap={1.5} mt={1.5} flexWrap="wrap" justify="center">
                       <Badge
-                        colorPalette="orange"
-                        variant="subtle"
-                        size="sm"
+                        colorPalette={
+                          inspectedUser.role === "moderator"
+                            ? "red"
+                            : inspectedUser.role === "staff"
+                            ? "orange"
+                            : "blue"
+                        }
+                        size="xs"
                         borderRadius="full"
-                        px={3}
+                        px={2.5}
+                        fontWeight="700"
                       >
-                        {inspectedUser.house_position.replace(
-                          /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
-                          "",
-                        )}
+                        {inspectedUser.role === "student"
+                          ? "Freshman"
+                          : inspectedUser.role === "moderator"
+                          ? "Moderator"
+                          : "Staff"}
                       </Badge>
+                      {inspectedUser.house_position && (
+                        <Badge
+                          bg="rgba(73,98,104,0.1)"
+                          color="#496268"
+                          size="xs"
+                          borderRadius="full"
+                          px={2.5}
+                          fontWeight="700"
+                          border="1px solid rgba(73,98,104,0.2)"
+                        >
+                          {inspectedUser.house_position.replace(
+                            /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
+                            "",
+                          )}
+                        </Badge>
+                      )}
+                      {inspectedUser.faculty && (
+                        <Badge
+                          bg="rgba(124,86,63,0.1)"
+                          color="#7c563f"
+                          size="xs"
+                          borderRadius="full"
+                          px={2.5}
+                          fontWeight="700"
+                          border="1px solid rgba(124,86,63,0.2)"
+                        >
+                          {getShortFaculty(inspectedUser.faculty)}
+                        </Badge>
+                      )}
+                    </HStack>
+
+                    {/* Bio */}
+                    {inspectedUser.bio && (
+                      <Box
+                        mt={3}
+                        px={4}
+                        py={3}
+                        bg="#FFFDF6"
+                        border="1px dashed rgba(124,86,63,0.3)"
+                        borderRadius="14px"
+                        w="100%"
+                        position="relative"
+                      >
+                        <Box
+                          position="absolute"
+                          top="-6px"
+                          left="16px"
+                          fontSize="28px"
+                          color="rgba(124,86,63,0.2)"
+                          fontFamily="Georgia, serif"
+                          lineHeight={1}
+                        >
+                          "
+                        </Box>
+                        <Text
+                          fontFamily="'Mali', sans-serif"
+                          fontSize="xs"
+                          color="#1b1c1c"
+                          textAlign="center"
+                          lineHeight={1.6}
+                          mt={1}
+                        >
+                          {inspectedUser.bio}
+                        </Text>
+                      </Box>
                     )}
+
+                    {/* ── Info rows ──────────────────────────────────── */}
+                    <VStack
+                      gap={0}
+                      w="100%"
+                      mt={3}
+                      bg="#f9f6f3"
+                      borderRadius="16px"
+                      border="1px solid rgba(124,86,63,0.1)"
+                      overflow="hidden"
+                      divideY="1px"
+                      divideColor="rgba(124,86,63,0.1)"
+                    >
+                      {inspectedUser.faculty && (
+                        <HStack px={4} py={3} w="100%" gap={3}>
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="16px"
+                            color="#496268"
+                            flexShrink={0}
+                          >
+                            school
+                          </Box>
+                          <Text fontSize="xs" color="#1b1c1c" fontWeight="500" flex={1} truncate>
+                            {inspectedUser.faculty}
+                          </Text>
+                        </HStack>
+                      )}
+                      {inspectedUser.major && (
+                        <HStack px={4} py={3} w="100%" gap={3}>
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="16px"
+                            color="#496268"
+                            flexShrink={0}
+                          >
+                            menu_book
+                          </Box>
+                          <Text fontSize="xs" color="#1b1c1c" fontWeight="500" flex={1} truncate>
+                            {inspectedUser.major}
+                          </Text>
+                        </HStack>
+                      )}
+                      {inspectedUser.ig && (
+                        <HStack px={4} py={2.5} w="100%" justify="space-between" gap={3}>
+                          <HStack gap={3} minW={0}>
+                            <Box
+                              className="material-symbols-outlined"
+                              fontSize="16px"
+                              color="#496268"
+                              flexShrink={0}
+                            >
+                              photo_camera
+                            </Box>
+                            <Text fontSize="xs" color="fg.subtle" fontWeight="500">
+                              Instagram
+                            </Text>
+                          </HStack>
+                          <Button
+                            as="a"
+                            href={`https://instagram.com/${inspectedUser.ig.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="xs"
+                            h="26px"
+                            px={3}
+                            borderRadius="full"
+                            bg="linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)"
+                            color="white"
+                            fontWeight="700"
+                            fontSize="xs"
+                            cursor="pointer"
+                            flexShrink={0}
+                            _hover={{ opacity: 0.88, transform: "scale(1.03)" }}
+                            transition="all 0.18s ease"
+                          >
+                            @{inspectedUser.ig.replace(/^@/, "")}
+                          </Button>
+                        </HStack>
+                      )}
+                      {inspectedUser.created_at && (
+                        <HStack px={4} py={3} w="100%" gap={3}>
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="16px"
+                            color="#496268"
+                            flexShrink={0}
+                          >
+                            calendar_today
+                          </Box>
+                          <Text fontSize="xs" color="fg.subtle" fontWeight="500">
+                            Member since{" "}
+                            {new Date(inspectedUser.created_at).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </Text>
+                        </HStack>
+                      )}
+                    </VStack>
+
+                    {/* ── Photo pool strip ──────────────────────────── */}
+                    {inspectedUser.photo_pool && inspectedUser.photo_pool.length > 0 && (
+                      <VStack gap={2} w="100%" mt={3} align="start">
+                        <HStack gap={1.5} align="center">
+                          <Box
+                            className="material-symbols-outlined"
+                            fontSize="13px"
+                            color="fg.subtle"
+                          >
+                            photo_library
+                          </Box>
+                          <Text fontSize="3xs" fontWeight="700" color="fg.subtle" letterSpacing="0.06em" textTransform="uppercase">
+                            Photos · {inspectedUser.photo_pool.length}
+                          </Text>
+                        </HStack>
+                        <HStack gap={2} overflowX="auto" w="100%" pb={1}>
+                          {inspectedUser.photo_pool.slice(0, 8).map((assetId, i) => (
+                            <Box
+                              key={assetId + i}
+                              flexShrink={0}
+                              w="60px"
+                              h="60px"
+                              borderRadius="10px"
+                              overflow="hidden"
+                              border="1px solid rgba(124,86,63,0.12)"
+                              bg="gray.100"
+                            >
+                              <ImmichImage
+                                assetId={assetId}
+                                size="thumbnail"
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            </Box>
+                          ))}
+                        </HStack>
+                      </VStack>
+                    )}
+
+                    {/* ── Tags ─────────────────────────────────────── */}
+                    {inspectedUser.tags && inspectedUser.tags.length > 0 && (
+                      <HStack gap={1.5} mt={3} flexWrap="wrap" justify="center">
+                        {inspectedUser.tags.map((tag) => (
+                          <Box
+                            key={tag}
+                            px={2.5}
+                            py={0.5}
+                            borderRadius="full"
+                            fontSize="3xs"
+                            fontWeight="700"
+                            bg="rgba(73,98,104,0.08)"
+                            color="#496268"
+                            border="1px solid rgba(73,98,104,0.15)"
+                          >
+                            {tag}
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+
                   </VStack>
                 </VStack>
-
-                {/* Bio Quote Card */}
-                {inspectedUser.bio && (
-                  <Box
-                    p={3.5}
-                    bg="#FFFDF6"
-                    border="1px dashed rgba(57, 66, 91, 0.25)"
-                    borderRadius="xl"
-                    fontFamily="'Mali', sans-serif"
-                    fontSize="xs"
-                    color="brand.900"
-                    boxShadow="inner"
-                    textAlign="center"
-                  >
-                    "{inspectedUser.bio}"
+              ) : (
+                <VStack py={10} px={6} align="center" gap={2}>
+                  <Box className="material-symbols-outlined" fontSize="32px" color="fg.subtle">
+                    person_off
                   </Box>
-                )}
-
-                {/* Academic & Social Details Grid */}
-                <VStack
-                  gap={2.5}
-                  w="100%"
-                  bg="bg.hero"
-                  p={4}
-                  borderRadius="xl"
-                  border="1px solid"
-                  borderColor="border.subtle"
-                >
-                  {inspectedUser.faculty && (
-                    <HStack justify="space-between" w="100%" fontSize="xs">
-                      <Text color="fg.subtle" fontWeight="600">
-                        Faculty
-                      </Text>
-                      <Text
-                        color="brand.900"
-                        fontWeight="700"
-                        textAlign="right"
-                        maxW="260px"
-                        truncate
-                      >
-                        {inspectedUser.faculty}
-                      </Text>
-                    </HStack>
-                  )}
-
-                  {inspectedUser.major && (
-                    <HStack justify="space-between" w="100%" fontSize="xs">
-                      <Text color="fg.subtle" fontWeight="600">
-                        Major
-                      </Text>
-                      <Text color="brand.900" fontWeight="700">
-                        {inspectedUser.major}
-                      </Text>
-                    </HStack>
-                  )}
-
-                  {inspectedUser.ig && (
-                    <HStack justify="space-between" w="100%" fontSize="xs" pt={1}>
-                      <Text color="fg.subtle" fontWeight="600">
-                        Instagram
-                      </Text>
-                      <Button
-                        as="a"
-                        href={`https://instagram.com/${inspectedUser.ig.replace(/^@/, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="xs"
-                        h="28px"
-                        px={3}
-                        borderRadius="full"
-                        bg="linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)"
-                        color="white"
-                        fontWeight="700"
-                        cursor="pointer"
-                        _hover={{ opacity: 0.9, transform: "scale(1.02)" }}
-                        transition="all 0.2s"
-                      >
-                        @{inspectedUser.ig.replace(/^@/, "")}
-                      </Button>
-                    </HStack>
-                  )}
+                  <Text textAlign="center" color="fg.subtle" fontSize="sm">
+                    User not found
+                  </Text>
                 </VStack>
-              </VStack>
-            ) : (
-              <Text textAlign="center" py={4} color="fg.subtle">
-                User not found
-              </Text>
-            )}
-
-            <Dialog.CloseTrigger position="absolute" top={4} right={4} asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                bg="transparent"
-                borderRadius="full"
-                w={{ base: "40px", md: "32px" }}
-                h={{ base: "40px", md: "32px" }}
-                minW={{ base: "40px", md: "32px" }}
-                p={0}
-                cursor="pointer"
-              >
-                <Box className="material-symbols-outlined" fontSize="md">
-                  close
-                </Box>
-              </Button>
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
+              )}
+            </Dialog.Content>
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
@@ -3489,15 +3710,15 @@ export const HypeCard = memo(function HypeCard({
               </Badge>
             )}
           </Text>
-          {!isAnon && post.author.faculty && (
+          {!isAnon && getShortFaculty(post.author.faculty) && (
             <Text
               fontSize="3xs"
-              fontWeight="600"
+              fontWeight="700"
+              letterSpacing="0.04em"
               color={cardSubtleColor}
-              truncate
-              maxW="180px"
+              opacity={0.7}
             >
-              {post.author.faculty}
+              {getShortFaculty(post.author.faculty)}
             </Text>
           )}
           <Text fontSize="2xs" color={cardSubtleColor}>
@@ -3875,15 +4096,15 @@ const MemoryCard = memo(function MemoryCard({
                       </Badge>
                     )}
                   </Text>
-                  {!isAnon && post.author.faculty && (
+                  {!isAnon && getShortFaculty(post.author.faculty) && (
                     <Text
                       fontSize="3xs"
-                      fontWeight="600"
+                      fontWeight="700"
+                      letterSpacing="0.04em"
                       color={cardSubtleColor}
-                      truncate
-                      maxW="180px"
+                      opacity={0.7}
                     >
-                      {post.author.faculty}
+                      {getShortFaculty(post.author.faculty)}
                     </Text>
                   )}
                   <Text fontSize="2xs" color={cardSubtleColor}>
@@ -4086,15 +4307,15 @@ const MemoryCard = memo(function MemoryCard({
                     </Badge>
                   )}
                 </Text>
-                {!isAnon && post.author.faculty && (
+                {!isAnon && getShortFaculty(post.author.faculty) && (
                   <Text
                     fontSize="3xs"
-                    fontWeight="600"
+                    fontWeight="700"
+                    letterSpacing="0.04em"
                     color={cardSubtleColor}
-                    truncate
-                    maxW="180px"
+                    opacity={0.7}
                   >
-                    {post.author.faculty}
+                    {getShortFaculty(post.author.faculty)}
                   </Text>
                 )}
                 <Text fontSize="2xs" color={cardSubtleColor}>
