@@ -13,6 +13,7 @@ import {
   Image,
   Textarea,
   Spinner,
+  Badge,
 } from "@chakra-ui/react";
 import { useUser, type User } from "../context/UserContext";
 import { useFaceClaim } from "../hooks/useFaceClaim";
@@ -500,594 +501,551 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
           </Tabs.Content>
 
           <Tabs.Content value="profile" p={0}>
-            <Box maxW="md" mx="auto" bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="2xl" p={{ base: 5, md: 8 }} boxShadow="var(--shadow-card)" animation="scale-in 0.4s var(--ease-out-quart)">
-              <VStack align="stretch" gap={6} as="form" onSubmit={handleSubmit}>
+            <Box
+              maxW="lg"
+              mx="auto"
+              bg="white"
+              borderRadius="24px"
+              p={{ base: 5, md: 8 }}
+              boxShadow="0 20px 50px -12px rgba(73,98,104,0.18)"
+              border="1px solid rgba(124,86,63,0.12)"
+              animation="scale-in 0.4s var(--ease-out-quart)"
+              position="relative"
+              overflow="hidden"
+            >
+              {/* Top Accent Strip */}
+              <Box
+                h="6px"
+                w="100%"
+                bg="linear-gradient(90deg, #496268 0%, #7c563f 100%)"
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+              />
+
+              <VStack align="stretch" gap={6} as="form" onSubmit={handleSubmit} pt={2}>
+                
+                {/* ── Page Header ────────────────────────────────────── */}
                 <VStack align="center" textAlign="center" gap={1}>
                   <Heading
                     as="h1"
                     fontFamily="'Playfair Display', serif"
                     fontSize="2xl"
-                    color="brand.900"
-                    fontWeight="700"
+                    color="#1b1c1c"
+                    fontWeight="800"
+                    letterSpacing="-0.02em"
                   >
-                    Manage Profile
-              </Heading>
-              <Text color="fg.muted" fontSize="sm">
-                Set up your orientation identity. Let's make connections!
-              </Text>
-            </VStack>
-
-            {/* AI Suggestion Banner Panel */}
-            {suggestedAsset && (
-              <Flex
-                direction={{ base: "column", md: "row" }}
-                align="center"
-                justify="space-between"
-                gap={4}
-                p={4}
-                bg="var(--c-ivory)"
-                border="2px dashed var(--chakra-colors-brand-900)"
-                borderRadius="md"
-                boxShadow="var(--shadow-card)"
-                w="100%"
-                animation="scale-in 0.3s var(--ease-out-quart)"
-              >
-                <HStack gap={3} align="center" w={{ base: "100%", md: "auto" }}>
-                  <Image
-                    src={`${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=thumbnail`}
-                    alt={`Suggested profile picture automatically detected for ${user?.nickname || 'you'}`}
-                    w="48px"
-                    h="48px"
-                    borderRadius="full"
-                    objectFit="cover"
-                    draggable={false}
-                    loading="lazy"
-                  />
-                  <VStack align="start" gap={0}>
-                    <Text fontSize="xs" fontWeight="700" color="brand.900">
-                      Is this you?
-                    </Text>
-                    <Text fontSize="xs" color="fg.muted">
-                      We found a matching photo containing your name tag.
-                    </Text>
-                  </VStack>
-                </HStack>
-                <Flex gap={2} w={{ base: "100%", md: "auto" }} justify="flex-end">
-                  <Button
-                    type="button"
-                    h="44px"
-                    px={4}
-                    bg="brand.900"
-                    color="brand.900"
-                    borderRadius="xl"
-                    fontSize="xs"
-                    fontWeight="700"
-                    cursor="pointer"
-                    _hover={{ opacity: 0.9 }}
-                    onClick={handleClaimSuggestion}
-                    flex={{ base: 1, md: "initial" }}
-                  >
-                    Yes, it's me
-                  </Button>
-                  <Button
-                    type="button"
-                    h="44px"
-                    px={4}
-                    variant="outline"
-                    borderColor="border.subtle"
-                    color="fg.muted"
-                    borderRadius="xl"
-                    fontSize="xs"
-                    fontWeight="600"
-                    cursor="pointer"
-                    _hover={{ bg: "bg.hero" }}
-                    onClick={handleDismissSuggestion}
-                    flex={{ base: 1, md: "initial" }}
-                  >
-                    Not me
-                  </Button>
-                </Flex>
-              </Flex>
-            )}
-
-            {/* Required setup warning for staff/moderator */}
-            {(user?.role === "staff" || user?.role === "moderator") &&
-              !user.house_position && (
-                <Box
-                  bg="rgba(197, 48, 48, 0.08)"
-                  border="1.5px solid"
-                  borderColor="red.500"
-                  borderRadius="xl"
-                  p={3.5}
-                  w="100%"
-                  role="alert"
-                  aria-live="assertive"
-                >
-                  <Text
-                    fontSize="xs"
-                    color="red.600"
-                    fontWeight="700"
-                    display="flex"
-                    alignItems="center"
-                    gap={1.5}
-                  >
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="16px"
-                    >
-                      campaign
-                    </Box>
-                    House Position Required: Please select your official role
-                    below to activate your orientation staff profile.
+                    Edit Profile
+                  </Heading>
+                  <Text color="fg.subtle" fontSize="xs" maxW="320px">
+                    Customize your Baan 7 orientation identity & student album details.
                   </Text>
-                </Box>
-              )}
-
-            {/* Live Profile Avatar Preview */}
-            <Flex justify="center" mt={1} mb={2}>
-              <Box
-                borderRadius="full"
-                overflow="hidden"
-                w="120px"
-                h="120px"
-                border="3px solid var(--chakra-colors-brand-900)"
-                boxShadow="var(--shadow-card)"
-                bg={avatarColor}
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                color="white"
-                fontWeight="700"
-                fontSize="2xl"
-                position="relative"
-              >
-                {profilePicUrl ? (
-                  <Image
-                    src={profilePicUrl}
-                    alt={`Profile picture preview for ${nickname || user?.nickname || 'user'}`}
-                    w="100%"
-                    h="100%"
-                    objectFit="cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  getInitials(nickname || user?.student_id || "?")
-                )}
-              </Box>
-            </Flex>
-
-            <VStack align="stretch" gap={4}>
-              {/* Nickname */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="edit-nickname">
-                    Nickname{" "}
-                    <Box as="span" color="var(--c-error)">
-                      *
-                    </Box>
-                  </label>
-                </Box>
-                <Input
-                  id="edit-nickname"
-                  placeholder="e.g. Bill"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="bg.hero"
-                  _focus={{ borderColor: "brand.900" }}
-                  h="48px"
-                  fontSize="sm"
-                  required
-                />
-              </VStack>
-
-              {/* Faculty Dropdown */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="edit-faculty">
-                    Faculty{" "}
-                    <Box as="span" color="var(--c-error)">
-                      *
-                    </Box>
-                  </label>
-                </Box>
-                <FacultySelect
-                  value={faculty}
-                  onChange={(val) => {
-                    setFaculty(val);
-                    if (val !== "OTHER") setCustomFaculty("");
-                  }}
-                />
-                {faculty === "OTHER" && (
-                  <Input
-                    placeholder="โปรดระบุคณะของคุณ / Type your faculty..."
-                    value={customFaculty}
-                    onChange={(e) => setCustomFaculty(e.target.value)}
-                    bg="var(--c-ivory)"
-                    h="44px"
-                    borderRadius="xl"
-                    border="1.5px solid var(--c-outline)"
-                    _focus={{ borderColor: "accent.solid", boxShadow: "0 0 0 1px var(--chakra-colors-accent-solid)" }}
-                    mt={1}
-                  />
-                )}
-              </VStack>
-
-              {/* Major (Academic Major) */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="edit-major">
-                    Major{" "}
-                    <Text
-                      as="span"
-                      color="fg.subtle"
-                      fontSize="xs"
-                      fontWeight="normal"
-                    >
-                      (Optional)
-                    </Text>
-                  </label>
-                </Box>
-                <Input
-                  id="edit-major"
-                  placeholder="e.g. Computer Science"
-                  value={major}
-                  onChange={(e) => setMajor(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="bg.hero"
-                  _focus={{ borderColor: "brand.900" }}
-                  h="48px"
-                  fontSize="sm"
-                />
-                <Text fontSize="xs" color="fg.subtle" mt={1}>
-                  Only visible to verified Baan 7 freshmen
-                </Text>
-              </VStack>
-
-              {/* House Position (Staff/Moderator Only - Required) */}
-              {(user?.role === "staff" || user?.role === "moderator") && (
-                <VStack align="stretch" gap={1.5}>
-                  <Box
-                    fontSize="xs"
-                    fontWeight="700"
-                    color="brand.900"
-                    textTransform="none"
-                    letterSpacing="0.05em"
-                  >
-                    <label htmlFor="edit-house-position">
-                      House Position (Staff Position){" "}
-                      <Text as="span" color="red.500" fontSize="xs">
-                        * Required
-                      </Text>
-                    </label>
-                  </Box>
-                  <SearchableSelect
-                    value={selectedSelectRole}
-                    onChange={(val) => {
-                      setSelectedSelectRole(val);
-                      if (val === "Other") {
-                        setHousePosition(customPositionText);
-                      } else {
-                        setHousePosition(val);
+                  <HStack gap={2} mt={1}>
+                    <Badge colorPalette="blue" size="xs" borderRadius="full" px={2.5}>
+                      {user?.student_id}
+                    </Badge>
+                    <Badge
+                      colorPalette={
+                        user?.role === "moderator"
+                          ? "red"
+                          : user?.role === "staff"
+                          ? "orange"
+                          : "teal"
                       }
-                    }}
-                    options={[
-                      ...dynamicPositions.map((role) => ({ value: role, primaryText: role })),
-                      { value: "Other", primaryText: "Other..." },
-                    ]}
-                    placeholder="Select Position..."
-                    searchPlaceholder="พิมพ์ค้นหาตำแหน่ง / Type to search..."
-                  />
+                      size="xs"
+                      borderRadius="full"
+                      px={2.5}
+                    >
+                      {user?.role === "student"
+                        ? "Freshman"
+                        : user?.role === "moderator"
+                        ? "Moderator"
+                        : "Staff"}
+                    </Badge>
+                  </HStack>
+                </VStack>
 
-                  {selectedSelectRole === "Other" && (
+                {/* ── AI Suggestion Banner Panel ───────────────────────── */}
+                {suggestedAsset && (
+                  <Flex
+                    direction={{ base: "column", sm: "row" }}
+                    align="center"
+                    justify="space-between"
+                    gap={3}
+                    p={4}
+                    bg="#FFFDF6"
+                    border="1.5px dashed #7c563f"
+                    borderRadius="16px"
+                    boxShadow="sm"
+                    w="100%"
+                  >
+                    <HStack gap={3} align="center" w={{ base: "100%", sm: "auto" }}>
+                      <Image
+                        src={`${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=thumbnail`}
+                        alt={`Suggested profile picture for ${user?.nickname || 'you'}`}
+                        w="44px"
+                        h="44px"
+                        borderRadius="full"
+                        objectFit="cover"
+                        draggable={false}
+                        loading="lazy"
+                        border="2px solid #7c563f"
+                      />
+                      <VStack align="start" gap={0}>
+                        <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                          Is this you?
+                        </Text>
+                        <Text fontSize="3xs" color="fg.subtle">
+                          Photo matched via your name tag in the gallery.
+                        </Text>
+                      </VStack>
+                    </HStack>
+                    <Flex gap={2} w={{ base: "100%", sm: "auto" }} justify="flex-end">
+                      <Button
+                        type="button"
+                        h="36px"
+                        px={4}
+                        bg="#7c563f"
+                        color="white"
+                        borderRadius="full"
+                        fontSize="xs"
+                        fontWeight="700"
+                        cursor="pointer"
+                        _hover={{ opacity: 0.9 }}
+                        onClick={handleClaimSuggestion}
+                        flex={{ base: 1, sm: "initial" }}
+                      >
+                        Use Photo
+                      </Button>
+                      <Button
+                        type="button"
+                        h="36px"
+                        px={3}
+                        variant="ghost"
+                        color="fg.subtle"
+                        borderRadius="full"
+                        fontSize="xs"
+                        fontWeight="600"
+                        cursor="pointer"
+                        onClick={handleDismissSuggestion}
+                        flex={{ base: 1, sm: "initial" }}
+                      >
+                        Dismiss
+                      </Button>
+                    </Flex>
+                  </Flex>
+                )}
+
+                {/* Required setup warning for staff/moderator */}
+                {(user?.role === "staff" || user?.role === "moderator") &&
+                  !user.house_position && (
+                    <Box
+                      bg="rgba(197, 48, 48, 0.08)"
+                      border="1.5px solid"
+                      borderColor="red.500"
+                      borderRadius="16px"
+                      p={3.5}
+                      w="100%"
+                      role="alert"
+                    >
+                      <Text
+                        fontSize="xs"
+                        color="red.600"
+                        fontWeight="700"
+                        display="flex"
+                        alignItems="center"
+                        gap={1.5}
+                      >
+                        <Box
+                          as="span"
+                          className="material-symbols-outlined"
+                          fontSize="16px"
+                        >
+                          campaign
+                        </Box>
+                        House Position Required: Please select your official role below.
+                      </Text>
+                    </Box>
+                  )}
+
+                {/* ── Avatar Customization Header ───────────────────────── */}
+                <VStack align="center" gap={3} py={1}>
+                  <Box position="relative">
+                    <Box
+                      borderRadius="full"
+                      overflow="hidden"
+                      w="104px"
+                      h="104px"
+                      border="4px solid white"
+                      boxShadow="0 8px 24px -4px rgba(73,98,104,0.25)"
+                      bg={avatarColor}
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                      color="white"
+                      fontWeight="800"
+                      fontSize="2xl"
+                    >
+                      {profilePicUrl ? (
+                        <Image
+                          src={profilePicUrl}
+                          alt={`Profile picture preview for ${nickname || user?.nickname || 'user'}`}
+                          w="100%"
+                          h="100%"
+                          objectFit="cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        getInitials(nickname || user?.student_id || "?")
+                      )}
+                    </Box>
+
+                    {profilePicUrl && (
+                      <Button
+                        type="button"
+                        position="absolute"
+                        bottom="-2px"
+                        right="-2px"
+                        w="28px"
+                        h="28px"
+                        minW="28px"
+                        p={0}
+                        borderRadius="full"
+                        bg="red.500"
+                        color="white"
+                        cursor="pointer"
+                        boxShadow="sm"
+                        _hover={{ bg: "red.600" }}
+                        onClick={() => {
+                          setProfilePicUrl("");
+                          setImmichAssetId(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        title="Remove photo"
+                      >
+                        <Box className="material-symbols-outlined" fontSize="14px">
+                          delete
+                        </Box>
+                      </Button>
+                    )}
+                  </Box>
+
+                  {/* Avatar Upload / Choice Actions */}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    ref={fileInputRef}
+                    display="none"
+                  />
+                  <HStack gap={2} flexWrap="wrap" justify="center">
+                    <Button
+                      type="button"
+                      size="xs"
+                      h="32px"
+                      px={3.5}
+                      borderRadius="full"
+                      bg="#496268"
+                      color="white"
+                      fontWeight="700"
+                      cursor="pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      _hover={{ bg: "#3a4f54" }}
+                    >
+                      {uploading ? <Spinner size="xs" mr={1} /> : null}
+                      <Box className="material-symbols-outlined" fontSize="14px" mr={1}>
+                        upload
+                      </Box>
+                      Upload Photo
+                    </Button>
+                    {myPhotos.length > 0 && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        h="32px"
+                        px={3.5}
+                        borderRadius="full"
+                        bg="#7c563f"
+                        color="white"
+                        fontWeight="700"
+                        cursor="pointer"
+                        onClick={() => setIsImmichPickerOpen(!isImmichPickerOpen)}
+                        _hover={{ opacity: 0.9 }}
+                      >
+                        <Box className="material-symbols-outlined" fontSize="14px" mr={1}>
+                          photo_library
+                        </Box>
+                        Pick Immich Photo
+                      </Button>
+                    )}
+                  </HStack>
+
+                  {/* Immich Photo Picker Grid */}
+                  {isImmichPickerOpen && myPhotos.length > 0 && (
+                    <Box
+                      p={3}
+                      bg="#f9f6f3"
+                      border="1px solid rgba(124,86,63,0.15)"
+                      borderRadius="16px"
+                      w="100%"
+                      animation="scale-in 0.2s ease"
+                    >
+                      <Text fontSize="xs" fontWeight="700" color="#1b1c1c" mb={2} textAlign="center">
+                        Select a photo from your album:
+                      </Text>
+                      <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={2} maxH="180px" overflowY="auto" p={1}>
+                        {myPhotos.map((asset) => (
+                          <Box
+                            key={asset.id}
+                            cursor="pointer"
+                            borderRadius="10px"
+                            overflow="hidden"
+                            onClick={() => {
+                              setProfilePicUrl(immich.assets.thumbnailUrl(asset.id, "preview"));
+                              setImmichAssetId(asset.id);
+                              setIsImmichPickerOpen(false);
+                            }}
+                            border="2px solid transparent"
+                            _hover={{ borderColor: "#496268", transform: "scale(1.04)" }}
+                            transition="all 0.15s ease"
+                          >
+                            <Image
+                              src={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
+                              h="60px"
+                              w="100%"
+                              objectFit="cover"
+                              loading="lazy"
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Preset Color Swatches */}
+                  {!profilePicUrl && (
+                    <HStack gap={2} mt={1}>
+                      {PRESET_COLORS.map((c) => (
+                        <Box
+                          key={c}
+                          w="28px"
+                          h="28px"
+                          borderRadius="full"
+                          bg={c}
+                          cursor="pointer"
+                          border={
+                            avatarColor === c
+                              ? "2.5px solid #1b1c1c"
+                              : "2px solid white"
+                          }
+                          boxShadow={avatarColor === c ? "0 0 0 2px rgba(73,98,104,0.4)" : "sm"}
+                          transform={avatarColor === c ? "scale(1.15)" : "none"}
+                          transition="all 0.18s ease"
+                          onClick={() => setAvatarColor(c)}
+                        />
+                      ))}
+                    </HStack>
+                  )}
+                </VStack>
+
+                {/* ── Form Inputs Stack ───────────────────────────────── */}
+                <VStack align="stretch" gap={4} bg="#f9f6f3" p={5} borderRadius="18px" border="1px solid rgba(124,86,63,0.1)">
+
+                  {/* Nickname */}
+                  <VStack align="stretch" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                      Nickname <Box as="span" color="red.500">*</Box>
+                    </Text>
                     <Input
-                      id="custom-house-position"
-                      aria-label="Custom house position"
-                      placeholder="Enter custom position (e.g. Photographer)"
-                      value={customPositionText}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setCustomPositionText(val);
-                        setHousePosition(val);
-                      }}
-                      borderRadius="xl"
-                      border="1.5px solid var(--c-outline)"
-                      bg="bg.hero"
-                      _focus={{ borderColor: "brand.900" }}
-                      h="48px"
+                      id="edit-nickname"
+                      placeholder="e.g. Bill"
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      borderRadius="12px"
+                      border="1px solid rgba(124,86,63,0.2)"
+                      bg="white"
+                      _focus={{ borderColor: "#496268", boxShadow: "0 0 0 2px rgba(73,98,104,0.15)" }}
+                      h="42px"
                       fontSize="sm"
-                      mt={1.5}
                       required
                     />
-                  )}
-                  <Text fontSize="xs" color="fg.subtle" mt={1}>
-                    This position is displayed on your sticker card album
-                  </Text>
-                </VStack>
-              )}
+                  </VStack>
 
-              {/* Instagram */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="edit-ig">
-                    Instagram Account (IG){" "}
-                    <Text
-                      as="span"
-                      color="fg.subtle"
-                      fontSize="xs"
-                      fontWeight="normal"
-                    >
-                      (Optional)
+                  {/* Faculty */}
+                  <VStack align="stretch" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                      Faculty <Box as="span" color="red.500">*</Box>
                     </Text>
-                  </label>
-                </Box>
-                <Input
-                  id="edit-ig"
-                  placeholder="e.g. chula.freshman"
-                  value={ig}
-                  onChange={(e) => setIg(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="bg.hero"
-                  _focus={{ borderColor: "brand.900" }}
-                  h="48px"
-                  fontSize="sm"
-                />
-                <Text fontSize="xs" color="fg.subtle" mt={1}>
-                  Only visible to verified Baan 7 freshmen
-                </Text>
-              </VStack>
-
-              {/* Bio */}
-              <VStack align="stretch" gap={1.5}>
-                <Box
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  <label htmlFor="edit-bio">
-                    Bio{" "}
-                    <Text
-                      as="span"
-                      color="fg.subtle"
-                      fontSize="xs"
-                      fontWeight="normal"
-                    >
-                      (Optional)
-                    </Text>
-                  </label>
-                </Box>
-                <Textarea
-                  id="edit-bio"
-                  placeholder="e.g. Passionate about coding, music lover"
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  borderRadius="xl"
-                  border="1.5px solid var(--c-outline)"
-                  bg="bg.hero"
-                  _focus={{ borderColor: "brand.900" }}
-                  minH="80px"
-                  fontSize="sm"
-                  py={3}
-                />
-              </VStack>
-
-              {/* Avatar Color Picker */}
-              <VStack align="stretch" gap={2}>
-                <Text
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  Avatar Background Color
-                </Text>
-                <HStack gap={3}>
-                  {PRESET_COLORS.map((c) => (
-                    <Button
-                      key={c}
-                      type="button"
-                      aria-label={`Select color ${c}`}
-                      w="44px"
-                      h="44px"
-                      minW="44px"
-                      borderRadius="full"
-                      bg={c}
-                      cursor="pointer"
-                      border={
-                        avatarColor === c
-                          ? "2.5px solid var(--chakra-colors-brand-900)"
-                          : "1px solid rgba(0,0,0,0.1)"
-                      }
-                      transform={avatarColor === c ? "scale(1.15)" : "none"}
-                      transition="all 0.2s ease"
-                      _hover={{ transform: "scale(1.15)", bg: c }}
-                      onClick={() => setAvatarColor(c)}
-                      p={0}
+                    <FacultySelect
+                      value={faculty}
+                      onChange={(val) => {
+                        setFaculty(val);
+                        if (val !== "OTHER") setCustomFaculty("");
+                      }}
                     />
-                  ))}
-                </HStack>
-              </VStack>
+                    {faculty === "OTHER" && (
+                      <Input
+                        placeholder="โปรดระบุคณะของคุณ / Type your faculty..."
+                        value={customFaculty}
+                        onChange={(e) => setCustomFaculty(e.target.value)}
+                        bg="white"
+                        h="42px"
+                        borderRadius="12px"
+                        border="1px solid rgba(124,86,63,0.2)"
+                        _focus={{ borderColor: "#496268" }}
+                        mt={1}
+                        fontSize="sm"
+                      />
+                    )}
+                  </VStack>
 
-              {/* Profile Image Uploader */}
-              <VStack align="stretch" gap={2}>
-                <Text
-                  fontSize="xs"
-                  fontWeight="700"
-                  color="brand.900"
-                  textTransform="none"
-                  letterSpacing="0.05em"
-                >
-                  Profile Picture
-                </Text>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  ref={fileInputRef}
-                  display="none"
-                />
-                <Flex gap={2} wrap="wrap">
-                  <Button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    bg="bg.hero"
-                    color="brand.900"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                    h="44px"
-                    borderRadius="xl"
-                    cursor="pointer"
-                    _hover={{ bg: "bg.surface" }}
-                    flex={1}
-                  >
-                    {uploading ? <Spinner size="sm" color="brand.900" mr={2} /> : null} Upload Photo
-                  </Button>
-                  {myPhotos.length > 0 && (
-                    <Button
-                      type="button"
-                      onClick={() => setIsImmichPickerOpen(!isImmichPickerOpen)}
-                      bg="var(--c-lagoon)"
-                      color="white"
-                      h="44px"
-                      borderRadius="xl"
-                      cursor="pointer"
-                      _hover={{ bg: "teal.600" }}
-                      flex={1}
-                    >
-                      Pick from Immich
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      const url = prompt("Enter image URL:");
-                      if (url) setProfilePicUrl(url);
-                    }}
-                    h="44px"
-                    borderRadius="xl"
-                    cursor="pointer"
-                    _hover={{ bg: "bg.hero" }}
-                  >
-                    URL
-                  </Button>
-                </Flex>
+                  {/* Major */}
+                  <VStack align="stretch" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                      Major <Text as="span" color="fg.subtle" fontWeight="400">(Optional)</Text>
+                    </Text>
+                    <Input
+                      id="edit-major"
+                      placeholder="e.g. Computer Science"
+                      value={major}
+                      onChange={(e) => setMajor(e.target.value)}
+                      borderRadius="12px"
+                      border="1px solid rgba(124,86,63,0.2)"
+                      bg="white"
+                      _focus={{ borderColor: "#496268" }}
+                      h="42px"
+                      fontSize="sm"
+                    />
+                  </VStack>
 
-                {isImmichPickerOpen && myPhotos.length > 0 && (
-                  <Box p={4} mt={2} bg="bg.surface" border="1px solid" borderColor="border.subtle" borderRadius="xl" animation="scale-in 0.3s var(--ease-out-quart)">
-                    <Text fontSize="sm" fontWeight="700" color="brand.900" mb={3}>Select a photo</Text>
-                    <Box display="grid" gridTemplateColumns={{ base: "repeat(3, 1fr)", sm: "repeat(4, 1fr)" }} gap={3} maxH="240px" overflowY="auto" p={1}>
-                      {myPhotos.map(asset => (
-                        <Box 
-                          key={asset.id} 
-                          cursor="pointer" 
-                          borderRadius="md" 
-                          overflow="hidden"
-                          onClick={() => {
-                            setProfilePicUrl(immich.assets.thumbnailUrl(asset.id, "preview"));
-                            setImmichAssetId(asset.id);
-                            setIsImmichPickerOpen(false);
+                  {/* House Position (Staff/Moderator Only) */}
+                  {(user?.role === "staff" || user?.role === "moderator") && (
+                    <VStack align="stretch" gap={1}>
+                      <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                        House Position <Text as="span" color="red.500">* Required</Text>
+                      </Text>
+                      <SearchableSelect
+                        value={selectedSelectRole}
+                        onChange={(val) => {
+                          setSelectedSelectRole(val);
+                          if (val === "Other") {
+                            setHousePosition(customPositionText);
+                          } else {
+                            setHousePosition(val);
+                          }
+                        }}
+                        options={[
+                          ...dynamicPositions.map((role) => ({ value: role, primaryText: role })),
+                          { value: "Other", primaryText: "Other..." },
+                        ]}
+                        placeholder="Select Position..."
+                        searchPlaceholder="พิมพ์ค้นหาตำแหน่ง / Type to search..."
+                      />
+                      {selectedSelectRole === "Other" && (
+                        <Input
+                          id="custom-house-position"
+                          aria-label="Custom house position"
+                          placeholder="Enter position (e.g. Photographer)"
+                          value={customPositionText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCustomPositionText(val);
+                            setHousePosition(val);
                           }}
-                          border="2px solid transparent"
-                          _hover={{ borderColor: "var(--c-lagoon)" }}
-                        >
-                          <Image src={immich.assets.thumbnailUrl(asset.id, "thumbnail")} h="80px" w="100%" objectFit="cover" loading="lazy" />
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-                {profilePicUrl && (
+                          borderRadius="12px"
+                          border="1px solid rgba(124,86,63,0.2)"
+                          bg="white"
+                          _focus={{ borderColor: "#496268" }}
+                          h="42px"
+                          fontSize="sm"
+                          mt={1}
+                          required
+                        />
+                      )}
+                    </VStack>
+                  )}
+
+                  {/* Instagram */}
+                  <VStack align="stretch" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                      Instagram (IG) <Text as="span" color="fg.subtle" fontWeight="400">(Optional)</Text>
+                    </Text>
+                    <Input
+                      id="edit-ig"
+                      placeholder="e.g. username"
+                      value={ig}
+                      onChange={(e) => setIg(e.target.value)}
+                      borderRadius="12px"
+                      border="1px solid rgba(124,86,63,0.2)"
+                      bg="white"
+                      _focus={{ borderColor: "#496268" }}
+                      h="42px"
+                      fontSize="sm"
+                    />
+                  </VStack>
+
+                  {/* Bio */}
+                  <VStack align="stretch" gap={1}>
+                    <Text fontSize="xs" fontWeight="700" color="#1b1c1c">
+                      Bio Quote <Text as="span" color="fg.subtle" fontWeight="400">(Optional)</Text>
+                    </Text>
+                    <Textarea
+                      id="edit-bio"
+                      placeholder="Share a favorite quote or intro line..."
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      borderRadius="12px"
+                      border="1px solid rgba(124,86,63,0.2)"
+                      bg="white"
+                      _focus={{ borderColor: "#496268" }}
+                      minH="72px"
+                      fontSize="sm"
+                      py={2.5}
+                    />
+                  </VStack>
+
+                </VStack>
+
+                {/* ── Form Footer Actions ─────────────────────────────── */}
+                <HStack w="100%" gap={3} pt={2}>
                   <Button
                     type="button"
                     variant="outline"
-                    colorPalette="red"
-                    onClick={() => {
-                      setProfilePicUrl("");
-                      setImmichAssetId(null);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
-                    }}
+                    borderColor="rgba(124,86,63,0.2)"
+                    color="#1b1c1c"
+                    borderRadius="full"
                     h="44px"
-                    borderRadius="xl"
+                    flex={1}
+                    fontSize="sm"
+                    fontWeight="600"
                     cursor="pointer"
-                    _hover={{ bg: "rgba(186, 26, 26, 0.05)" }}
-                    w="100%"
+                    onClick={() => navigate("/")}
+                    _hover={{ bg: "bg.hero" }}
                   >
-                    Remove Photo
+                    Cancel
                   </Button>
-                )}
-              </VStack>
-            </VStack>
+                  <Button
+                    type="submit"
+                    bg="#7c563f"
+                    color="white"
+                    borderRadius="full"
+                    h="44px"
+                    flex={2}
+                    fontSize="sm"
+                    fontWeight="700"
+                    _hover={{ opacity: 0.9, transform: "scale(1.01)" }}
+                    transition="all 0.18s ease"
+                    disabled={submitting}
+                  >
+                    {submitting ? <Spinner size="xs" color="white" /> : "Save Profile"}
+                  </Button>
+                </HStack>
 
-            <HStack w="100%" gap={3}>
-              <Button
-                type="button"
-                variant="outline"
-                borderColor="border.subtle"
-                color="brand.900"
-                borderRadius="xl"
-                h="50px"
-                flex={1}
-                fontSize="md"
-                fontWeight="600"
-                cursor="pointer"
-                onClick={() => navigate("/")}
-                _hover={{ bg: "bg.hero" }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                bg="brand.900"
-                color="white"
-                borderRadius="xl"
-                h="50px"
-                flex={2}
-                fontSize="md"
-                fontWeight="700"
-                _hover={{ opacity: 0.9 }}
-                disabled={submitting}
-              >
-                {submitting ? <Spinner size="sm" color="white" /> : "Save Settings"}
-              </Button>
-            </HStack>
-          </VStack>
-        </Box>
-        </Tabs.Content>
+              </VStack>
+            </Box>
+          </Tabs.Content>
         </Tabs.Root>
       </Container>
 

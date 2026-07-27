@@ -2913,28 +2913,29 @@ export function BoardPage() {
                               Instagram
                             </Text>
                           </HStack>
-                          <Box
-                            as="a"
+                          <a
                             href={`https://instagram.com/${inspectedUser.ig.replace(/^@/, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            display="inline-flex"
-                            alignItems="center"
-                            h="26px"
-                            px="12px"
-                            borderRadius="full"
-                            bg="linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)"
-                            color="white"
-                            fontWeight="700"
-                            fontSize="xs"
-                            cursor="pointer"
-                            flexShrink={0}
-                            textDecoration="none"
-                            style={{ transition: "opacity 0.18s ease" }}
-                            _hover={{ opacity: 0.88 }}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              height: "26px",
+                              paddingLeft: "12px",
+                              paddingRight: "12px",
+                              borderRadius: "9999px",
+                              background: "linear-gradient(45deg,#f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%)",
+                              color: "white",
+                              fontWeight: 700,
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              flexShrink: 0,
+                              textDecoration: "none",
+                              transition: "opacity 0.18s ease",
+                            }}
                           >
                             @{inspectedUser.ig.replace(/^@/, "")}
-                          </Box>
+                          </a>
                         </HStack>
                       )}
                       {inspectedUser.created_at && (
