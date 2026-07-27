@@ -146,20 +146,16 @@ export function UserInspectModal({
         throw sbError;
       }
 
-      // Fetch full user details (nickname & full_name) to ensure exact naming format
+      // Fetch user nickname to ensure exact naming format
       const { data: dbUserData } = await supabase
         .from("users")
-        .select("nickname, full_name")
+        .select("nickname")
         .eq("student_id", inspectUser.student_id)
         .maybeSingle();
 
       const nickname = (dbUserData?.nickname || inspectUser.nickname || "Student").trim();
       const studentId = inspectUser.student_id;
-      const fullName = dbUserData?.full_name?.trim() || inspectUser.full_name?.trim();
-
-      const formattedName = fullName
-        ? `${nickname} (${fullName} · ${studentId})`
-        : `${nickname} (${studentId})`;
+      const formattedName = `${nickname} (${studentId})`;
 
       // Sync ALL claimed faces for this student to the formatted name
       const { data: userClaimedFaces } = await supabase

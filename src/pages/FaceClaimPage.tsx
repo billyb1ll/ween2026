@@ -52,7 +52,7 @@ const FaceGridItem = ({ children, ...props }: React.HTMLAttributes<HTMLDivElemen
 interface MinimalUser {
   student_id: string;
   nickname: string | null;
-  full_name: string | null;
+  full_name?: string | null;
   profile_pic_url: string | null;
   role: string;
 }
@@ -95,7 +95,7 @@ export function FaceClaimPage() {
       try {
         const { data } = await supabase
           .from("users")
-          .select("student_id, nickname, full_name, profile_pic_url, role")
+          .select("student_id, nickname, profile_pic_url, role")
           .order("student_id", { ascending: true });
         if (data) setAllUsers(data);
       } catch (err) {

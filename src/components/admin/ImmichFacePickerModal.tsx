@@ -203,20 +203,16 @@ export function ImmichFacePickerModal({
         console.error("Supabase user_faces insert error:", sbError);
       }
 
-      // 2. Fetch full user details (nickname & full_name) to ensure exact naming format
+      // 2. Fetch user nickname to ensure exact naming format
       const { data: dbUserData } = await supabase
         .from("users")
-        .select("nickname, full_name")
+        .select("nickname")
         .eq("student_id", targetUser.student_id)
         .maybeSingle();
 
       const nickname = (dbUserData?.nickname || targetUser.nickname || "Student").trim();
       const studentId = targetUser.student_id;
-      const fullName = dbUserData?.full_name?.trim() || targetUser.full_name?.trim();
-
-      const formattedName = fullName
-        ? `${nickname} (${fullName} · ${studentId})`
-        : `${nickname} (${studentId})`;
+      const formattedName = `${nickname} (${studentId})`;
 
       // 3. Sync ALL claimed faces for this student to the formatted name
       const { data: userClaimedFaces } = await supabase
