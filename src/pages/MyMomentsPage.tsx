@@ -84,55 +84,96 @@ export function MyMomentsPage() {
   const [albumAssetsCache, setAlbumAssetsCache] = useState<Record<string, Set<string>>>({});
   
   useEffect(() => {
-    if (selectedAlbumKey === "all") {
-      // eslint-disable-next-line
-      setFilteredPhotos(photos);
+    if (photos.length === 0) {
+      Promise.resolve().then(() => {
+        setFilteredPhotos([]);
+      });
       return;
     }
-    
+
     const filterByAlbum = async () => {
-      const mapping = mappings.find(m => m.key === selectedAlbumKey);
-      if (!mapping) {
-        setFilteredPhotos(photos);
-        return;
-      }
-      
-      // Check cache
-      if (albumAssetsCache[selectedAlbumKey]) {
-        setFilteredPhotos(photos.filter(p => albumAssetsCache[selectedAlbumKey].has(p.id)));
-        return;
-      }
-      
-      // Fetch album to get its assets
-      try {
-        let album = null;
-        if (mapping.immichAlbumId) {
-          album = await immich.albums.getById(mapping.immichAlbumId);
-        } else if (mapping.immichAlbumName) {
-          album = await immich.albums.findByName(mapping.immichAlbumName);
+      // 1. If a specific album is selected
+      if (selectedAlbumKey !== "all") {
+        const mapping = mappings.find((m) => m.key === selectedAlbumKey);
+        if (!mapping) {
+          setFilteredPhotos(photos);
+          return;
         }
-        
-        let assetSet = new Set<string>();
-        if (album) {
-          try {
-            const assets = await immich.albums.getAssets(album.id);
-            assetSet = new Set(assets.map(a => a.id));
-          } catch (err) {
-            console.error("Error fetching album assets for filter:", err);
-            // fallback if getAssets fails
-            const fullAlbum = await immich.albums.getById(album.id);
-            assetSet = new Set((fullAlbum.assets || []).map(a => a.id));
+
+        if (albumAssetsCache[selectedAlbumKey]) {
+          setFilteredPhotos(photos.filter((p) => albumAssetsCache[selectedAlbumKey].has(p.id)));
+          return;
+        }
+
+        try {
+          let album = null;
+          if (mapping.immichAlbumId) {
+            album = await immich.albums.getById(mapping.immichAlbumId);
+          } else if (mapping.immichAlbumName) {
+            album = await immich.albums.findByName(mapping.immichAlbumName);
           }
+
+          let assetSet = new Set<string>();
+          if (album) {
+            try {
+              const assets = await immich.albums.getAssets(album.id);
+              assetSet = new Set(assets.map((a) => a.id));
+            } catch {
+              const fullAlbum = await immich.albums.getById(album.id);
+              assetSet = new Set((fullAlbum.assets || []).map((a) => a.id));
+            }
+          }
+
+          setAlbumAssetsCache((prev) => ({ ...prev, [selectedAlbumKey]: assetSet }));
+          setFilteredPhotos(photos.filter((p) => assetSet.has(p.id)));
+        } catch (err) {
+          console.error("Error fetching album for filter:", err);
+          setFilteredPhotos(photos);
         }
-        
-        setAlbumAssetsCache(prev => ({ ...prev, [selectedAlbumKey]: assetSet }));
-        setFilteredPhotos(photos.filter(p => assetSet.has(p.id)));
-      } catch (err) {
-        console.error("Error fetching album for filter:", err);
-        setFilteredPhotos(photos);
+        return;
       }
+
+      // 2. When 'all' is selected: filter to only photos present in ANY of the configured activity albums
+      if (mappings.length > 0) {
+        try {
+          const allActivityAssetIds = new Set<string>();
+          for (const m of mappings) {
+            let assetSet = albumAssetsCache[m.key];
+            if (!assetSet) {
+              let album = null;
+              if (m.immichAlbumId) {
+                album = await immich.albums.getById(m.immichAlbumId);
+              } else if (m.immichAlbumName) {
+                album = await immich.albums.findByName(m.immichAlbumName);
+              }
+              if (album) {
+                try {
+                  const assets = await immich.albums.getAssets(album.id);
+                  assetSet = new Set(assets.map((a) => a.id));
+                } catch {
+                  const fullAlbum = await immich.albums.getById(album.id);
+                  assetSet = new Set((fullAlbum.assets || []).map((a) => a.id));
+                }
+              } else {
+                assetSet = new Set();
+              }
+              setAlbumAssetsCache((prev) => ({ ...prev, [m.key]: assetSet }));
+            }
+            assetSet.forEach((id) => allActivityAssetIds.add(id));
+          }
+
+          if (allActivityAssetIds.size > 0) {
+            setFilteredPhotos(photos.filter((p) => allActivityAssetIds.has(p.id)));
+            return;
+          }
+        } catch (err) {
+          console.error("Error building overall activity album filter:", err);
+        }
+      }
+
+      setFilteredPhotos(photos);
     };
-    
+
     filterByAlbum();
   }, [selectedAlbumKey, photos, mappings, albumAssetsCache]);
 

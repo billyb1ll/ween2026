@@ -442,7 +442,7 @@ export function HomePage() {
           </Link>
         </Box>
 
-        {/* Memory & Hype Board Showcase Section */}
+        {/* Memory Board Showcase Section */}
         <Box mb={10} animation="fade-in-up 0.8s var(--ease-out-expo) both">
           <Box
             position="relative"
@@ -494,21 +494,18 @@ export function HomePage() {
                       fontSize="16px"
                       color="accent.solid"
                     >
-                      forum
+                      push_pin
                     </Box>
                     <Text fontSize="xs" fontWeight="700" letterSpacing="0.05em" textTransform="uppercase">
-                      Live Community Board
+                      MEMORIES & MOMENTS
                     </Text>
                   </Box>
-                  {hypeBoardEnabled ? (
-                    <Badge colorPalette="green" variant="solid" px={2.5} py={0.5} borderRadius="full" fontSize="xs">
-                      ⚡ LIVE NOW
-                    </Badge>
-                  ) : (
-                    <Badge colorPalette="amber" variant="subtle" px={2.5} py={0.5} borderRadius="full" fontSize="xs">
-                      📌 MEMORY ARCHIVE
-                    </Badge>
-                  )}
+                  <Badge colorPalette="amber" variant="subtle" px={2.5} py={0.5} borderRadius="full" fontSize="xs" display="inline-flex" alignItems="center" gap={1}>
+                    <Box as="span" className="material-symbols-outlined" fontSize="13px">
+                      push_pin
+                    </Box>
+                    <Text as="span">MEMORY BOARD</Text>
+                  </Badge>
                 </HStack>
 
                 <Heading
@@ -519,7 +516,7 @@ export function HomePage() {
                   color="white"
                   textAlign={{ base: "center", md: "left" }}
                 >
-                  Memory & Hype Board บ้าน 7
+                  Memory Board บ้าน 7
                 </Heading>
 
                 <Text
@@ -528,7 +525,7 @@ export function HomePage() {
                   textAlign={{ base: "center", md: "left" }}
                   lineHeight={1.6}
                 >
-                  ส่งข้อความสด ทักทายเพื่อนๆ โพสต์รูปความทรงจำกิจกรรมรับน้อง และส่งสติ๊กเกอร์ให้กำลังใจกันแบบเรียลไทม์ได้ที่นี่!
+                  แชร์ภาพความประทับใจ ติดโน้ตข้อความทรงจำกิจกรรมรับน้อง และส่งความรู้สึกดีๆ ถึงเพื่อนๆ และพี่ๆ บ้าน 7 ได้ที่นี่!
                 </Text>
               </VStack>
 
