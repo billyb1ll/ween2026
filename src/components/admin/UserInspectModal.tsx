@@ -167,12 +167,14 @@ export function UserInspectModal({
         new Set([personId, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
       );
 
+      let immichNameSuccess = true;
       await Promise.all(
         allPersonIdsToUpdate.map(async (id) => {
           try {
             await immich.people.update(id, { name: formattedName });
           } catch (immichErr) {
-            console.warn(`Immich person name update error for face ${id}:`, immichErr);
+            immichNameSuccess = false;
+            console.warn(`Immich person name update warning for face ${id}:`, immichErr);
           }
         })
       );
@@ -186,7 +188,9 @@ export function UserInspectModal({
 
       toaster.create({
         title: "Face Claimed Successfully!",
-        description: `Linked face ID ${personId.slice(0, 8)}... to ${inspectUser.nickname || inspectUser.student_id}.`,
+        description: immichNameSuccess
+          ? `Linked face ID ${personId.slice(0, 8)}... to ${inspectUser.nickname || inspectUser.student_id}.`
+          : `Linked face ID ${personId.slice(0, 8)}... to ${inspectUser.nickname || inspectUser.student_id} in DB (Immich name update restricted).`,
         type: "success",
       });
 

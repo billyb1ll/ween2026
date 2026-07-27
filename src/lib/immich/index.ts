@@ -66,5 +66,6 @@ export function createImmichService(config: ImmichClientConfig): ImmichService {
  * to the Immich server because Immich does not support CORS preflight (OPTIONS) requests.
  */
 const baseUrl = import.meta.env.VITE_API_BASE_URL || "/api/immich";
+const apiKey = import.meta.env.VITE_IMMICH_API_KEY || import.meta.env.VITE_IMMICH_KEY || "";
 
-export const immich = createImmichService({ baseUrl });
+export const immich = createImmichService({ baseUrl, apiKey });

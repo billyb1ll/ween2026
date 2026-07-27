@@ -224,11 +224,13 @@ export function ImmichFacePickerModal({
         new Set([...ids, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
       );
 
+      let immichNameSuccess = true;
       await Promise.all(
         allPersonIdsToUpdate.map(async (id) => {
           try {
             await immich.people.update(id, { name: formattedName });
           } catch (immichErr) {
+            immichNameSuccess = false;
             console.warn(`Immich person name update error for face ${id}:`, immichErr);
           }
         })
@@ -265,7 +267,9 @@ export function ImmichFacePickerModal({
 
       toaster.create({
         title: "Face Claimed Successfully!",
-        description: `Linked ${ids.length} face(s) to ${targetUser.nickname || targetUser.student_id}.`,
+        description: immichNameSuccess
+          ? `Linked ${ids.length} face(s) to ${targetUser.nickname || targetUser.student_id}.`
+          : `Linked ${ids.length} face(s) to ${targetUser.nickname || targetUser.student_id} in DB (Immich name update restricted).`,
         type: "success",
       });
 
