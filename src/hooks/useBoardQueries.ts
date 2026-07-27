@@ -220,12 +220,26 @@ export function useLikePostMutation(activeTab: BoardTab) {
 
   return useMutation({
     mutationFn: async ({ postId, nextLikes, nextLikedBy, userId }: { postId: number; nextLikes: number; nextLikedBy: string[]; userId: string }) => {
-      const { error } = await supabase.rpc("toggle_post_like", {
+      // 1. Primary: Call toggle_post_like RPC with BIGINT p_post_id
+      const { error: rpcError } = await supabase.rpc("toggle_post_like", {
         p_post_id: postId,
         p_student_id: userId,
       });
 
-      if (error) throw error;
+      // 2. Resilient Fallback: Direct table update on posts table
+      if (rpcError) {
+        console.warn("toggle_post_like RPC error, using direct table update fallback:", rpcError);
+        const { error: updateError } = await supabase
+          .from("posts")
+          .update({
+            likes: nextLikes,
+            liked_by: nextLikedBy,
+          })
+          .eq("id", postId);
+
+        if (updateError) throw updateError;
+      }
+
       return { postId, nextLikes, nextLikedBy };
     },
     onMutate: async ({ postId, nextLikes, nextLikedBy }) => {
