@@ -3642,11 +3642,11 @@ const MemoryCard = memo(function MemoryCard({
       }}
       transition="all 0.4s cubic-bezier(0.16, 1, 0.3, 1)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.5)}s both`}
-      boxShadow="0 4px 20px -2px rgba(57, 66, 91, 0.12)"
+      boxShadow="0 4px 24px -4px rgba(59, 106, 191, 0.14)"
       _hover={{
         transform: "rotate(0deg) translateY(-6px)",
         boxShadow:
-          "0 8px 24px -4px rgba(57, 66, 91, 0.15)",
+          "0 12px 32px -6px rgba(59, 106, 191, 0.20)",
         zIndex: 10,
       }}
     >
@@ -3961,9 +3961,9 @@ const MemoryCard = memo(function MemoryCard({
                   fontSize="2xs"
                   fontWeight="700"
                   fontFamily="'Mali', sans-serif"
-                  bg="rgba(57, 66, 91, 0.08)"
-                  color="brand.900"
-                  border="1px dashed rgba(57, 66, 91, 0.25)"
+                  bg="rgba(59, 106, 191, 0.10)"
+                  color={cardColor}
+                  border="1px dashed rgba(59, 106, 191, 0.30)"
                   transform="rotate(-2deg)"
                   alignSelf="center"
                 >
@@ -4039,9 +4039,9 @@ const MemoryCard = memo(function MemoryCard({
               }}
               disabled={!user}
               _hover={{
-                bg: "bg.hero",
-                color: "brand.900",
-                borderColor: "brand.900",
+                bg: isStaff ? "rgba(59,106,191,0.08)" : "rgba(255,255,255,0.10)",
+                color: isStaff ? "brand.900" : "white",
+                borderColor: isStaff ? "brand.solid" : "rgba(255,255,255,0.35)",
               }}
             >
               <Box
