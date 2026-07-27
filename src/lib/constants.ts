@@ -148,6 +148,7 @@ export const FACULTIES = [
 
 export const STAFF_ROLES = [
   "ประธาน",
+  "รองประธาน",
   "เลขา",
   "เหรัญญิก",
   "ประสานงาน",

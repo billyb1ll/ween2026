@@ -488,6 +488,7 @@ export function AdminDashboardPage() {
       สันทนาการ: "Recreation สันทนาการ",
       พี่กลุ่ม: "Group Leader พี่กลุ่ม",
       ประธาน: "President ประธาน",
+      รองประธาน: "Vice President รองประธาน",
       เลขา: "Secretary เลขา",
       เหรัญญิก: "Treasurer เหรัญญิก",
       ประสานงาน: "Coordinator ประสานงาน",

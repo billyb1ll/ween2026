@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../utils/crypto";
 import type { User } from "../context/UserContext";
+import { STAFF_ROLES } from "../lib/constants";
 
 // Query keys
 export const userQueryKeys = {
@@ -60,11 +61,6 @@ export function useActiveSession(token: string | null) {
       }
 
       const u = data.users as unknown as User;
-      const STAFF_ROLES = [
-        "ประธาน", "เลขา", "เหรัญญิก", "ประสานงาน", "Timer",
-        "Creative & Art", "โสต", "สวัสดิการและพัสดุ", "พยาบาล",
-        "สถานที่", "สันทนาการ", "พี่กลุ่ม", "ทะเบียน"
-      ];
       if (u && u.major && STAFF_ROLES.includes(u.major) && !u.house_position) {
         u.house_position = u.major;
         u.major = null;

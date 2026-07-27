@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { STAFF_ROLES } from "../lib/constants";
 
 export interface VibeMission {
   id: number;
@@ -189,12 +190,6 @@ export function useWhitelistedStaff() {
         console.error("Fetch staff error:", error);
         throw error;
       }
-
-      const STAFF_ROLES = [
-        "ประธาน", "เลขา", "เหรัญญิก", "ประสานงาน", "Timer",
-        "Creative & Art", "โสต", "สวัสดิการและพัสดุ", "พยาบาล",
-        "สถานที่", "สันทนาการ", "พี่กลุ่ม", "ทะเบียน"
-      ];
 
       const list = (data as DBStaff[]).map((s) => {
         if (s.major && STAFF_ROLES.includes(s.major) && !s.house_position) {
