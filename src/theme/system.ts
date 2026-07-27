@@ -5,17 +5,17 @@ const config = defineConfig({
     tokens: {
       colors: {
         brand: {
-          50: { value: "#f0f2f6" },
-          100: { value: "#d9dee8" },
-          200: { value: "#b3bdd1" },
-          300: { value: "#8c9bba" },
-          400: { value: "#667aa3" },
-          500: { value: "#39425b" }, // Navy Blue (Base)
-          600: { value: "#2d3448" },
-          700: { value: "#222736" },
-          800: { value: "#171a24" },
-          900: { value: "#0b0d12" },
-          950: { value: "#060709" },
+          50:  { value: "#eef2fb" },
+          100: { value: "#cfd9f2" },
+          200: { value: "#aabfe9" },
+          300: { value: "#7da1d9" },
+          400: { value: "#5684cc" },
+          500: { value: "#3B6ABF" }, // Light Navy Blue (Base)
+          600: { value: "#2f559c" },
+          700: { value: "#234079" },
+          800: { value: "#162b56" },
+          900: { value: "#0d1a36" },
+          950: { value: "#070d1b" },
         },
         pink: {
           50: { value: "#fef6f7" },

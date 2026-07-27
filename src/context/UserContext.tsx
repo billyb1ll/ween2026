@@ -12,7 +12,7 @@ export interface User {
   faculty: string | null;
   major: string | null;
   ig: string | null;
-  role: "moderator" | "staff" | "student";
+  role: "moderator" | "staff" | "student" | "admin" | "superadmin";
   avatar_color: string;
   images: string[];
   tags: string[];

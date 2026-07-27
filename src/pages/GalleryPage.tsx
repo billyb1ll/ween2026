@@ -68,10 +68,10 @@ export function GalleryPage() {
             .select("*", { count: "exact", head: true })
             .or(`student_id.eq.${user.student_id},author_id.eq.${user.student_id}`);
 
-          if (!error && active) {
-            setUserMemoryPostCount(count || 0);
+          if (active) {
+            if (!error) setUserMemoryPostCount(count || 0);
+            setCheckingMemoryPosts(false);
           }
-          setCheckingMemoryPosts(false);
         }
       } catch (err) {
         console.error("Error checking memory board status:", err);
@@ -144,7 +144,9 @@ export function GalleryPage() {
 
   const isStaffOrMod =
     user?.role === "staff" ||
-    user?.role === "moderator";
+    user?.role === "moderator" ||
+    user?.role === "admin" ||
+    user?.role === "superadmin";
   const isUnlocked =
     !isMemoryBoardActive ||
     isStaffOrMod ||
