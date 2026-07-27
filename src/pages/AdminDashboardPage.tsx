@@ -50,6 +50,7 @@ import { ImmichPhotoPickerModal } from "../components/admin/ImmichPhotoPickerMod
 export interface DBUser {
   student_id: string;
   nickname: string | null;
+  full_name?: string | null;
   faculty: string | null;
   role: string;
   created_at: string;

@@ -146,15 +146,40 @@ export function UserInspectModal({
         throw sbError;
       }
 
-      const nickname = (inspectUser.nickname || "Student").trim();
-      const studentId = inspectUser.student_id;
-      const formattedName = `${nickname} (${studentId})`;
+      // Fetch full user details (nickname & full_name) to ensure exact naming format
+      const { data: dbUserData } = await supabase
+        .from("users")
+        .select("nickname, full_name")
+        .eq("student_id", inspectUser.student_id)
+        .maybeSingle();
 
-      try {
-        await immich.people.update(personId, { name: formattedName });
-      } catch (immichErr) {
-        console.warn(`Immich person name update error for ${personId}:`, immichErr);
-      }
+      const nickname = (dbUserData?.nickname || inspectUser.nickname || "Student").trim();
+      const studentId = inspectUser.student_id;
+      const fullName = dbUserData?.full_name?.trim() || inspectUser.full_name?.trim();
+
+      const formattedName = fullName
+        ? `${nickname} (${fullName} · ${studentId})`
+        : `${nickname} (${studentId})`;
+
+      // Sync ALL claimed faces for this student to the formatted name
+      const { data: userClaimedFaces } = await supabase
+        .from("user_faces")
+        .select("immich_person_id")
+        .eq("student_id", inspectUser.student_id);
+
+      const allPersonIdsToUpdate = Array.from(
+        new Set([personId, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
+      );
+
+      await Promise.all(
+        allPersonIdsToUpdate.map(async (id) => {
+          try {
+            await immich.people.update(id, { name: formattedName });
+          } catch (immichErr) {
+            console.warn(`Immich person name update error for face ${id}:`, immichErr);
+          }
+        })
+      );
 
       await supabase.from("audit_logs").insert({
         moderator_id: user?.student_id,

@@ -203,20 +203,37 @@ export function ImmichFacePickerModal({
         console.error("Supabase user_faces insert error:", sbError);
       }
 
-      const nickname = (targetUser.nickname || "Student").trim();
+      // 2. Fetch full user details (nickname & full_name) to ensure exact naming format
+      const { data: dbUserData } = await supabase
+        .from("users")
+        .select("nickname, full_name")
+        .eq("student_id", targetUser.student_id)
+        .maybeSingle();
+
+      const nickname = (dbUserData?.nickname || targetUser.nickname || "Student").trim();
       const studentId = targetUser.student_id;
-      const fullName = targetUser.full_name?.trim();
+      const fullName = dbUserData?.full_name?.trim() || targetUser.full_name?.trim();
 
       const formattedName = fullName
         ? `${nickname} (${fullName} · ${studentId})`
         : `${nickname} (${studentId})`;
 
+      // 3. Sync ALL claimed faces for this student to the formatted name
+      const { data: userClaimedFaces } = await supabase
+        .from("user_faces")
+        .select("immich_person_id")
+        .eq("student_id", targetUser.student_id);
+
+      const allPersonIdsToUpdate = Array.from(
+        new Set([...ids, ...(userClaimedFaces?.map((f) => f.immich_person_id) || [])])
+      );
+
       await Promise.all(
-        ids.map(async (id) => {
+        allPersonIdsToUpdate.map(async (id) => {
           try {
             await immich.people.update(id, { name: formattedName });
           } catch (immichErr) {
-            console.warn(`Immich person name update 403/error for ${id}:`, immichErr);
+            console.warn(`Immich person name update error for face ${id}:`, immichErr);
           }
         })
       );

@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 export interface DBUser {
   student_id: string;
   nickname: string | null;
+  full_name?: string | null;
   faculty: string | null;
   role: "moderator" | "staff" | "student";
   created_at: string;
@@ -59,7 +60,7 @@ export function useAdminUsers(enabled: boolean) {
       const { data, error } = await supabase
         .from("users")
         .select(
-          "student_id, nickname, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color"
+          "student_id, nickname, full_name, faculty, role, created_at, major, house_position, profile_pic_url, bio, ig, avatar_color"
         )
         .order("created_at", { ascending: false });
 

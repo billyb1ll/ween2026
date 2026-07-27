@@ -44,11 +44,23 @@ export class PeopleService {
 
   /**
    * Update a person's metadata (name, birth date, visibility, etc.).
+   * Tries `/api/people/${id}` first, then `/api/person/${id}` as fallback for older/newer Immich API endpoints.
    */
   async update(id: string, data: PersonUpdateDto): Promise<ImmichPerson> {
-    return this.client.request<ImmichPerson>(`/api/people/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      body: data,
-    });
+    try {
+      return await this.client.request<ImmichPerson>(`/api/people/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: data,
+      });
+    } catch (err) {
+      const errorObj = err as { statusCode?: number };
+      if (errorObj?.statusCode === 404 || errorObj?.statusCode === 405) {
+        return await this.client.request<ImmichPerson>(`/api/person/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: data,
+        });
+      }
+      throw err;
+    }
   }
 }
