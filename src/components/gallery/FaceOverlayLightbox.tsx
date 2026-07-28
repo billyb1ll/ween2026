@@ -46,13 +46,28 @@ export const FaceOverlayLightbox: React.FC<FaceOverlayLightboxProps> = ({
   immichService,
   onView,
 }) => {
-  // Build slides with correct download metadata (using the non-deprecated `download` field)
+  // Build slides with correct download metadata
   const slides: Slide[] = assets.map((asset) => {
     const filename = asset.originalFileName || `immich-asset-${asset.id}.jpg`;
+    const isDirectUrl =
+      asset.originalPath?.startsWith("http://") ||
+      asset.originalPath?.startsWith("https://") ||
+      asset.id.startsWith("http://") ||
+      asset.id.startsWith("https://") ||
+      asset.id.startsWith("featured-");
+
+    const src = isDirectUrl
+      ? (asset.originalPath || asset.id)
+      : immichService.assets.previewUrl(asset.id);
+
+    const downloadUrl = isDirectUrl
+      ? (asset.originalPath || asset.id)
+      : immichService.assets.downloadUrl(asset.id);
+
     return {
-      src: immichService.assets.previewUrl(asset.id),
+      src,
       download: {
-        url: immichService.assets.downloadUrl(asset.id),
+        url: downloadUrl,
         filename,
       },
     };

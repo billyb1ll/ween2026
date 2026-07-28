@@ -41,7 +41,6 @@ export function HomePage() {
 
   const [vibecheckEnabled, setVibecheckEnabled] = useState(true);
   const [hypeBoardEnabled, setHypeBoardEnabled] = useState(true);
-  const [featuredPhotos, setFeaturedPhotos] = useState<{ url: string; alt?: string }[]>([]);
 
   // Sync system config flags from system_config
   useEffect(() => {
@@ -50,24 +49,13 @@ export function HomePage() {
       try {
         const { data, error } = await supabase
           .from("system_config")
-          .select("key, value, text_value")
-          .in("key", ["vibecheck_enabled", "enable_hype_board", "featured_photo_urls"]);
+          .select("key, value")
+          .in("key", ["vibecheck_enabled", "enable_hype_board"]);
         if (!error && data && active) {
           const vc = data.find((r) => r.key === "vibecheck_enabled");
           const hb = data.find((r) => r.key === "enable_hype_board");
-          const fp = data.find((r) => r.key === "featured_photo_urls");
           if (vc !== undefined) setVibecheckEnabled(Boolean(vc.value));
           if (hb !== undefined) setHypeBoardEnabled(Boolean(hb.value));
-          if (fp?.text_value) {
-            try {
-              const parsed = JSON.parse(fp.text_value);
-              if (Array.isArray(parsed)) {
-                setFeaturedPhotos(parsed.map((item) => typeof item === "string" ? { url: item, alt: "Featured photo" } : item));
-              }
-            } catch {
-              // ignore parse errors
-            }
-          }
         }
       } catch (err) {
         console.error("Error fetching system config:", err);
@@ -84,16 +72,6 @@ export function HomePage() {
           }
           if (payload.payload.key === "enable_hype_board") {
             setHypeBoardEnabled(Boolean(payload.payload.value));
-          }
-          if (payload.payload.key === "featured_photo_urls" && payload.payload.text_value) {
-            try {
-              const parsed = JSON.parse(payload.payload.text_value);
-              if (Array.isArray(parsed)) {
-                setFeaturedPhotos(parsed.map((item) => typeof item === "string" ? { url: item, alt: "Featured photo" } : item));
-              }
-            } catch {
-              // ignore parse errors
-            }
           }
         }
       })
@@ -743,84 +721,34 @@ export function HomePage() {
               gap={{ base: 3, md: 6 }}
               minH={{ md: "600px" }}
             >
-              {/* Vibe Check + Hype Board slots: consolidated when both are off */}
-              {!vibecheckEnabled && !hypeBoardEnabled ? (
-                // Both off — one full-width Featured Moments card
-                <Box
-                  className="feature-grid-card"
-                  gridColumn={{ md: "span 4" }}
-                  gridRow={{ md: "span 2" }}
-                  height="100%"
-                >
-                  <FeatureCardAutoScroll
-                    feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
-                    images={featuredPhotos}
-                    isWide
-                  />
-                </Box>
-              ) : (
-                <>
-                  {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
-                  <Box
-                    className="feature-grid-card"
-                    gridColumn={{ md: "span 2" }}
-                    gridRow={{ md: "span 2" }}
-                    height="100%"
-                  >
-                    {vibecheckEnabled ? (
-                      <FeatureCardLarge feature={features[0]} />
-                    ) : (
-                      <FeatureCardAutoScroll
-                        feature={{ ...features[0], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "gray.100", textColor: "brand.900" }}
-                        images={featuredPhotos}
-                      />
-                    )}
-                  </Box>
+              {/* Vibe Check — hero card on mobile, spans 2x2 on desktop */}
+              <Box
+                className="feature-grid-card"
+                gridColumn={{ md: "span 2" }}
+                gridRow={{ md: "span 2" }}
+                height="100%"
+              >
+                <FeatureCardLarge feature={features[0]} />
+              </Box>
 
-                  {/* Hype Board — spans 2 cols wide on desktop */}
-                  <Box className="feature-grid-card" gridColumn={{ md: "span 2" }} height="100%">
-                    {hypeBoardEnabled ? (
-                      <FeatureCardWide feature={features[1]} />
-                    ) : (
-                      <FeatureCardAutoScroll
-                        feature={{ ...features[1], link: "#", title: "Featured Moments", description: "Baan 7 Highlights", icon: "photo_library", color: "bg.hero", textColor: "brand.900" }}
-                        images={featuredPhotos}
-                        isWide
-                      />
-                    )}
-                  </Box>
+              {/* Hype Board — spans 2 cols wide on desktop */}
+              <Box className="feature-grid-card" gridColumn={{ md: "span 2" }} height="100%">
+                <FeatureCardWide feature={features[1]} />
+              </Box>
 
-                  {/* Gallery — spans 1 col on desktop */}
-                  <Box className="feature-grid-card" height="100%">
-                    <FeatureCardSmall feature={features[2]} />
-                  </Box>
+              {/* Gallery — spans 1 col on desktop */}
+              <Box className="feature-grid-card" height="100%">
+                <FeatureCardSmall feature={features[2]} />
+              </Box>
 
-                  {/* Next Event — spans 1 col on desktop */}
-                  <Box className="feature-grid-card" height="100%">
-                    <FeatureCardEvent
-                      feature={features[3]}
-                      eventTitle={nextEvent.title}
-                      countdownText={countdownText}
-                    />
-                  </Box>
-                </>
-              )}
-
-              {/* Gallery + Event still appear when both modules are off */}
-              {!vibecheckEnabled && !hypeBoardEnabled && (
-                <>
-                  <Box className="feature-grid-card" height="100%">
-                    <FeatureCardSmall feature={features[2]} />
-                  </Box>
-                  <Box className="feature-grid-card" height="100%">
-                    <FeatureCardEvent
-                      feature={features[3]}
-                      eventTitle={nextEvent.title}
-                      countdownText={countdownText}
-                    />
-                  </Box>
-                </>
-              )}
+              {/* Next Event — spans 1 col on desktop */}
+              <Box className="feature-grid-card" height="100%">
+                <FeatureCardEvent
+                  feature={features[3]}
+                  eventTitle={nextEvent.title}
+                  countdownText={countdownText}
+                />
+              </Box>
             </Box>
           </div>
         </Box>
@@ -1399,94 +1327,5 @@ function FeatureCardEvent({
         </Box>
       </motion.div>
     </Link>
-  );
-}
-
-function FeatureCardAutoScroll({
-  feature,
-  images,
-  variants,
-  isWide = false
-}: {
-  feature: FeatureItem;
-  images: {url: string; alt?: string}[];
-  variants?: Variants;
-  isWide?: boolean;
-}) {
-  const shouldReduceMotion = useReducedMotion() ?? false;
-  const displayImages = images.length > 0 ? [...images, ...images, ...images] : [];
-
-  return (
-    <motion.div variants={variants} style={{ height: "100%" }}>
-      <Box
-        bg={feature.color}
-        p={{ base: 6, md: isWide ? 8 : 12 }}
-        borderRadius="2xl"
-        position="relative"
-        overflow="hidden"
-        h="100%"
-        minH={{ base: "200px", md: "auto" }}
-        display="flex"
-        flexDirection="column"
-        border="1px solid"
-        borderColor="border.subtle"
-      >
-        <VStack align="start" gap={2} position="relative" zIndex={1} mb={6}>
-          <Heading as="h3" fontFamily="'Playfair Display', serif" fontSize={isWide ? "1.5rem" : { base: "1.5rem", md: "2.5rem" }} fontWeight={700} color={feature.textColor}>
-            {feature.title}
-          </Heading>
-          <Text fontSize="sm" color={feature.textColor} opacity={0.8}>
-            {feature.description}
-          </Text>
-        </VStack>
-
-        <Flex position="relative" flex={1} w="100%" align="center" justify="center">
-          {images.length > 0 ? (
-            shouldReduceMotion ? (
-              <Flex gap={3} overflowX="auto" w="100%" pb={2}>
-                {images.slice(0, 4).map((img, i) => (
-                  <Box key={i} flexShrink={0} w="120px" h="100px" borderRadius="xl" overflow="hidden" border="1px solid" borderColor="border.subtle">
-                    <img src={img.url} alt="Gallery item" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
-                  </Box>
-                ))}
-              </Flex>
-            ) : (
-              <Box
-                position="absolute"
-                inset={0}
-                style={{
-                  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
-                  maskImage: "linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)",
-                }}
-              >
-                <div className="carousel-track" style={{ height: "100%", alignItems: "center" }}>
-                  {displayImages.map((img, i) => (
-                    <Box
-                      key={i}
-                      flexShrink={0}
-                      w={isWide ? "150px" : "190px"}
-                      h={isWide ? "105px" : "135px"}
-                      borderRadius="xl"
-                      overflow="hidden"
-                      boxShadow="0 8px 20px color-mix(in srgb, var(--chakra-colors-brand-900) 8%, transparent)"
-                      border="1px solid"
-                      borderColor="border.subtle"
-                      transition="all 0.3s var(--ease-out-quart)"
-                      _hover={{ transform: "scale(1.05)", borderColor: "brand.solid" }}
-                    >
-                      <img src={img.url} alt="Gallery item" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
-                    </Box>
-                  ))}
-                </div>
-              </Box>
-            )
-          ) : (
-            <Text color="fg.subtle" fontStyle="italic" fontSize="sm">
-              No photos currently featured.
-            </Text>
-          )}
-        </Flex>
-      </Box>
-    </motion.div>
   );
 }
