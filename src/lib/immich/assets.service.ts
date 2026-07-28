@@ -26,7 +26,7 @@ const getDirectApiKey = () => {
     import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
     import.meta.env.VITE_IMMICH_API_KEY ||
     import.meta.env.VITE_IMMICH_KEY ||
-    "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+    "QuY9PZhRPWiPU2Z8Ii9iL4wYB530bDMr42FSlKGuX74"
   );
 };
 

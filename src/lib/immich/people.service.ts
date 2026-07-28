@@ -50,7 +50,7 @@ export class PeopleService {
       import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
       import.meta.env.VITE_IMMICH_API_KEY ||
       import.meta.env.VITE_IMMICH_KEY ||
-      "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+      "QuY9PZhRPWiPU2Z8Ii9iL4wYB530bDMr42FSlKGuX74"
     );
 
     return `${serverUrl}/api/people/${encodeURIComponent(id)}/thumbnail?apiKey=${apiKey}`;

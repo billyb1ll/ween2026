@@ -101,7 +101,13 @@ export class ImmichClient {
       headers["Content-Type"] = "application/json";
     }
 
-    const response = await fetch(url, {
+    let requestUrl = url;
+    // For POST search requests, route via same-origin proxy /api/immich/search to bypass browser CORS preflight 404
+    if (isAbsolute && method.toUpperCase() === "POST" && path.includes("/search/")) {
+      requestUrl = "/api/immich/search";
+    }
+
+    const response = await fetch(requestUrl, {
       method,
       headers,
       body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,

@@ -2,16 +2,17 @@ import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
   // Strip trailing /api or / from the base URL to prevent /api/api double-prefixing
-  const rawUrl = process.env.VITE_IMMICH_SERVER_URL || '';
+  const rawUrl = process.env.VITE_IMMICH_SERVER_URL || 'https://immich.b1lly.tech';
   const IMMICH_SERVER_URL = rawUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
   // Use the dedicated viewer key if available, otherwise fallback to master key
-  const IMMICH_API_KEY = process.env.IMMICH_VIEWER_API_KEY || process.env.IMMICH_API_KEY;
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+  const IMMICH_API_KEY = (
+    process.env.VITE_IMMICH_VIEWER_API_KEY ||
+    process.env.IMMICH_VIEWER_API_KEY ||
+    process.env.IMMICH_API_KEY ||
+    'QuY9PZhRPWiPU2Z8Ii9iL4wYB530bDMr42FSlKGuX74'
+  ).trim();
 
   if (req.method === 'POST') {
-
-
     // Resilient body parsing for Vercel serverless
     let parsedBody = req.body;
     if (!parsedBody || typeof parsedBody !== 'object') {
@@ -26,12 +27,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. Proxy request
+    // Proxy request to /api/search/metadata or /api/search/smart
     try {
-      const response = await fetch(`${IMMICH_SERVER_URL}/api/search/smart`, {
+      const endpoint = parsedBody.albumIds ? '/api/search/metadata' : '/api/search/smart';
+      const response = await fetch(`${IMMICH_SERVER_URL}${endpoint}?apiKey=${encodeURIComponent(IMMICH_API_KEY)}`, {
         method: 'POST',
         headers: {
-          'x-api-key': IMMICH_API_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(parsedBody),
@@ -50,6 +51,6 @@ export default async function handler(req, res) {
     }
   }
 
-  res.setHeader('Allow', ['POST'])
-  res.status(405).end(`Method ${req.method} Not Allowed`)
+  res.setHeader('Allow', ['POST']);
+  res.status(405).end(`Method ${req.method} Not Allowed`);
 }
