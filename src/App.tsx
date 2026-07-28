@@ -61,7 +61,6 @@ import { LoadingFallback } from './components/LoadingFallback'
 import { TermsOfUseModal } from './components/TermsOfUseModal'
 import { GalleryLightboxProvider } from './context/GalleryLightboxContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { SmoothScrollProvider } from './components/SmoothScrollProvider'
 
 /**
  * Safe Lazy Loader for Dynamic Module Imports
@@ -302,9 +301,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <UserProvider>
         <BrowserRouter>
-          <SmoothScrollProvider>
-            <AppContent />
-          </SmoothScrollProvider>
+          <AppContent />
         </BrowserRouter>
       </UserProvider>
     </QueryClientProvider>
