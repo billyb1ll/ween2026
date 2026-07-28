@@ -86,48 +86,52 @@ export function MyMomentsPage() {
           return;
         }
 
-        // Fetch all server albums to resolve all matching photographer albums per day (e.g. Gato Day-2, billy-Day2, Day-2)
-        const serverAlbums = await immich.albums.list().catch(() => []);
-        const albumIdsToQuerySet = new Set<string>();
-
-        if (selectedAlbumKey === "all") {
-          // All Moments: query photos across ALL mapped activity albums
-          for (const m of mappings) {
-            const ids = resolveAlbumIdsForMapping(m, serverAlbums);
-            ids.forEach((id) => albumIdsToQuerySet.add(id));
-          }
-        } else {
-          // Specific Day selected: query photos for all matching albums for that day
-          const targetMapping = mappings.find((m) => m.key === selectedAlbumKey);
-          if (targetMapping) {
-            const ids = resolveAlbumIdsForMapping(targetMapping, serverAlbums);
-            ids.forEach((id) => albumIdsToQuerySet.add(id));
-          }
-        }
-
-        const albumIdsToQuery = Array.from(albumIdsToQuerySet);
-
         let fetchedItems: ImmichAsset[] = [];
 
-        if (albumIdsToQuery.length > 0) {
-          // Immich API evaluates multiple albumIds as AND intersection.
-          // Perform parallel single-album queries per mapped album ID to achieve a clean OR union across all mapped activity albums.
-          const searchPromises = albumIdsToQuery.map((albumId) =>
-            immich.assets.searchMetadata({ personIds, albumIds: [albumId], size: 1000 })
-          );
-          const searchResults = await Promise.all(searchPromises);
-          const assetMap = new Map<string, ImmichAsset>();
-
-          for (const res of searchResults) {
-            for (const item of res.assets?.items || []) {
-              assetMap.set(item.id, item);
-            }
-          }
-          fetchedItems = Array.from(assetMap.values());
-        } else {
-          // Fallback if no activity albums mapped: search across all Immich assets
+        if (selectedAlbumKey === "unseen") {
+          // Unseen / Entire Library: search all photos of claimed face across the entire Immich server library without album restrictions
           const res = await immich.assets.searchMetadata({ personIds, size: 1000 });
           fetchedItems = res.assets?.items || [];
+        } else {
+          // Mapped albums query: resolve all matching albums configured in admin settings
+          const serverAlbums = await immich.albums.list().catch(() => []);
+          const albumIdsToQuerySet = new Set<string>();
+
+          if (selectedAlbumKey === "all") {
+            // All Event Moments: query photos across ALL mapped activity albums
+            for (const m of mappings) {
+              const ids = resolveAlbumIdsForMapping(m, serverAlbums);
+              ids.forEach((id) => albumIdsToQuerySet.add(id));
+            }
+          } else {
+            // Specific Day selected: query photos for mapped album for that day
+            const targetMapping = mappings.find((m) => m.key === selectedAlbumKey);
+            if (targetMapping) {
+              const ids = resolveAlbumIdsForMapping(targetMapping, serverAlbums);
+              ids.forEach((id) => albumIdsToQuerySet.add(id));
+            }
+          }
+
+          const albumIdsToQuery = Array.from(albumIdsToQuerySet);
+
+          if (albumIdsToQuery.length > 0) {
+            const searchPromises = albumIdsToQuery.map((albumId) =>
+              immich.assets.searchMetadata({ personIds, albumIds: [albumId], size: 1000 })
+            );
+            const searchResults = await Promise.all(searchPromises);
+            const assetMap = new Map<string, ImmichAsset>();
+
+            for (const res of searchResults) {
+              for (const item of res.assets?.items || []) {
+                assetMap.set(item.id, item);
+              }
+            }
+            fetchedItems = Array.from(assetMap.values());
+          } else {
+            // Fallback if no activity albums mapped: search across all Immich assets
+            const res = await immich.assets.searchMetadata({ personIds, size: 1000 });
+            fetchedItems = res.assets?.items || [];
+          }
         }
 
         // Sort items ASC by shoot time / capture date
@@ -243,12 +247,13 @@ export function MyMomentsPage() {
               outline: "none"
             }}
           >
-            <option value="all">All Moments</option>
+            <option value="all">All Event Moments (Mapped Albums)</option>
             {mappings.map((m) => (
               <option key={m.key} value={m.key}>
                 {m.label}
               </option>
             ))}
+            <option value="unseen">✨ Unseen / Entire Photo Library</option>
           </select>
         </Box>
       </Flex>
@@ -264,12 +269,16 @@ export function MyMomentsPage() {
           <Box as="span" className="material-symbols-outlined" fontSize="18px" flexShrink={0}>
             info
           </Box>
-          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Please check all photos in the main Gallery.
+          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Select "Unseen / Entire Photo Library" to inspect all photos across the server.
         </Text>
       </Box>
 
       <Text fontSize="xs" fontWeight="700" color="fg.muted" mb={4} textTransform="uppercase" letterSpacing="0.05em">
-        {selectedAlbumKey === "all" ? "All Photos" : `${mappings.find(m => m.key === selectedAlbumKey)?.label}`}
+        {selectedAlbumKey === "all"
+          ? "All Event Photos (Mapped Albums)"
+          : selectedAlbumKey === "unseen"
+          ? "Unseen / All Library Photos (Entire Immich Server)"
+          : `${mappings.find((m) => m.key === selectedAlbumKey)?.label}`}
       </Text>
 
       {loadingPhotos ? (
