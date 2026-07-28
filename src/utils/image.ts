@@ -123,3 +123,38 @@ export function getAvatarUrl(url: string | null | undefined): string | null {
   return `${supabaseUrl}/storage/v1/object/public/profiles/${cleanPath}`;
 }
 
+/**
+ * Extracts a numeric timestamp (ms since epoch) representing the shoot/capture time
+ * of an Immich asset using EXIF dateTimeOriginal, fileCreatedAt, localDateTime, or createdAt.
+ */
+export function getAssetShootTime(asset: {
+  exifInfo?: { dateTimeOriginal?: string | null };
+  fileCreatedAt?: string | null;
+  localDateTime?: string | null;
+  createdAt?: string | null;
+  fileModifiedAt?: string | null;
+} | null | undefined): number {
+  if (!asset) return 0;
+  if (asset.exifInfo?.dateTimeOriginal) {
+    const t = new Date(asset.exifInfo.dateTimeOriginal).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asset.fileCreatedAt) {
+    const t = new Date(asset.fileCreatedAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asset.localDateTime) {
+    const t = new Date(asset.localDateTime).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asset.createdAt) {
+    const t = new Date(asset.createdAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  if (asset.fileModifiedAt) {
+    const t = new Date(asset.fileModifiedAt).getTime();
+    if (!isNaN(t) && t > 0) return t;
+  }
+  return 0;
+}
+

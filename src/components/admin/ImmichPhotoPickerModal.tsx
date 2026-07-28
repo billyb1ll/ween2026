@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Flex,
@@ -23,6 +23,93 @@ interface ImmichPhotoPickerModalProps {
   currentUrls?: string[];
 }
 
+interface AssetItemCardProps {
+  asset: ImmichAsset;
+  isSelected: boolean;
+  isSaved: boolean;
+  onToggle: (asset: ImmichAsset) => void;
+}
+
+const AssetItemCard = React.memo(function AssetItemCard({
+  asset,
+  isSelected,
+  isSaved,
+  onToggle,
+}: AssetItemCardProps) {
+  const thumbnailUrl = useMemo(
+    () => immich.assets.thumbnailUrl(asset.id, "thumbnail"),
+    [asset.id]
+  );
+
+  return (
+    <Box
+      position="relative"
+      borderRadius="lg"
+      overflow="hidden"
+      aspectRatio={1}
+      cursor="pointer"
+      border="3px solid"
+      borderColor={isSelected ? "brand.solid" : "transparent"}
+      onClick={() => onToggle(asset)}
+      transition="all 0.15s var(--ease-out-quart)"
+      _hover={{
+        transform: "scale(0.97)",
+        borderColor: isSelected ? "brand.solid" : "border.muted",
+      }}
+    >
+      <img
+        src={thumbnailUrl}
+        alt="Immich photo"
+        style={{ objectFit: "cover", width: "100%", height: "100%", display: "block" }}
+        loading="lazy"
+        decoding="async"
+      />
+      {/* Overlay on hover and when selected */}
+      <Flex
+        position="absolute"
+        inset={0}
+        bg={isSelected ? "rgba(73,98,104,0.45)" : "rgba(0,0,0,0)"}
+        transition="all 0.15s"
+        align="center"
+        justify="center"
+      >
+        {isSelected && (
+          <Flex
+            w="36px"
+            h="36px"
+            bg="brand.solid"
+            borderRadius="full"
+            align="center"
+            justify="center"
+            color="white"
+            boxShadow="0 2px 12px rgba(0,0,0,0.25)"
+          >
+            <FiCheck size={20} />
+          </Flex>
+        )}
+      </Flex>
+      {/* Already saved indicator */}
+      {isSaved && !isSelected && (
+        <Box
+          position="absolute"
+          top={1.5}
+          right={1.5}
+          bg="rgba(0,0,0,0.55)"
+          color="white"
+          borderRadius="full"
+          px={2}
+          py={0.5}
+          fontSize="9px"
+          fontWeight="700"
+          letterSpacing="0.04em"
+        >
+          SAVED
+        </Box>
+      )}
+    </Box>
+  );
+});
+
 export const ImmichPhotoPickerModal = ({
   isOpen,
   onClose,
@@ -35,6 +122,16 @@ export const ImmichPhotoPickerModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // O(1) set lookup for currently saved featured photos
+  const savedAssetIdSet = useMemo(() => {
+    const set = new Set<string>();
+    currentUrls.forEach((url) => {
+      const match = url.match(/\/api\/assets\/([a-f0-9-]+)/i);
+      if (match) set.add(match[1]);
+    });
+    return set;
+  }, [currentUrls]);
 
   const loadAlbums = useCallback(async () => {
     setLoading(true);
@@ -78,7 +175,7 @@ export const ImmichPhotoPickerModal = ({
     }
   };
 
-  const toggleAsset = (asset: ImmichAsset) => {
+  const toggleAsset = useCallback((asset: ImmichAsset) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(asset.id)) {
@@ -88,7 +185,7 @@ export const ImmichPhotoPickerModal = ({
       }
       return next;
     });
-  };
+  }, []);
 
   const handleSave = () => {
     const urls = assets
@@ -234,74 +331,15 @@ export const ImmichPhotoPickerModal = ({
                     gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)" }}
                     gap={2}
                   >
-                    {assets.map((asset) => {
-                      const isSelected = selectedIds.has(asset.id);
-                      return (
-                        <Box
-                          key={asset.id}
-                          position="relative"
-                          borderRadius="lg"
-                          overflow="hidden"
-                          aspectRatio={1}
-                          cursor="pointer"
-                          border="3px solid"
-                          borderColor={isSelected ? "brand.solid" : "transparent"}
-                          onClick={() => toggleAsset(asset)}
-                          transition="all 0.18s var(--ease-out-quart)"
-                          _hover={{ transform: "scale(0.97)", borderColor: isSelected ? "brand.solid" : "border.muted" }}
-                        >
-                          <img
-                            src={immich.assets.thumbnailUrl(asset.id, "thumbnail")}
-                            alt="Immich photo"
-                            style={{ objectFit: "cover", width: "100%", height: "100%", display: "block" }}
-                            loading="lazy"
-                          />
-                          {/* Overlay on hover and when selected */}
-                          <Flex
-                            position="absolute"
-                            inset={0}
-                            bg={isSelected ? "rgba(73,98,104,0.45)" : "rgba(0,0,0,0)"}
-                            transition="all 0.18s"
-                            align="center"
-                            justify="center"
-                            _groupHover={{ bg: "rgba(0,0,0,0.2)" }}
-                          >
-                            {isSelected && (
-                              <Flex
-                                w="36px"
-                                h="36px"
-                                bg="brand.solid"
-                                borderRadius="full"
-                                align="center"
-                                justify="center"
-                                color="white"
-                                boxShadow="0 2px 12px rgba(0,0,0,0.25)"
-                              >
-                                <FiCheck size={20} />
-                              </Flex>
-                            )}
-                          </Flex>
-                          {/* Already saved indicator */}
-                          {currentUrls.some((u) => u.includes(asset.id)) && !isSelected && (
-                            <Box
-                              position="absolute"
-                              top={1.5}
-                              right={1.5}
-                              bg="rgba(0,0,0,0.55)"
-                              color="white"
-                              borderRadius="full"
-                              px={2}
-                              py={0.5}
-                              fontSize="9px"
-                              fontWeight="700"
-                              letterSpacing="0.04em"
-                            >
-                              SAVED
-                            </Box>
-                          )}
-                        </Box>
-                      );
-                    })}
+                    {assets.map((asset) => (
+                      <AssetItemCard
+                        key={asset.id}
+                        asset={asset}
+                        isSelected={selectedIds.has(asset.id)}
+                        isSaved={savedAssetIdSet.has(asset.id)}
+                        onToggle={toggleAsset}
+                      />
+                    ))}
                   </Box>
                 )
               )}

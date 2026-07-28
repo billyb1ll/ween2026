@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Box, Flex, Heading, Text, HStack, Badge } from "@chakra-ui/react";
 import { supabase } from "../lib/supabase";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
@@ -98,7 +98,6 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
   const isHero = variant === "hero";
   const [images, setImages] = useState<CarouselImage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const marqueeTrackRef = useRef<HTMLDivElement>(null);
   const tweenRef = useRef<gsap.core.Tween | null>(null);
@@ -183,6 +182,16 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
     };
   }, [loading, images, prefersReducedMotion, isHero]);
 
+  // Sort featured photos default ASC by shoot time/URL order
+  const sortedImages = useMemo(() => {
+    return [...images].sort((a, b) =>
+      a.url.localeCompare(b.url, undefined, { numeric: true, sensitivity: "base" })
+    );
+  }, [images]);
+
+  // Duplicate list for seamless infinite marquee loop
+  const displayImages = useMemo(() => [...sortedImages, ...sortedImages], [sortedImages]);
+
   if (loading || images.length === 0) return null;
 
   // Convert images to ImmichAsset format for Lightbox preview
@@ -225,9 +234,6 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
   const handleMouseLeave = () => {
     tweenRef.current?.play();
   };
-
-  // Duplicate list for seamless infinite marquee loop
-  const displayImages = [...images, ...images];
 
   return (
     <Box
@@ -318,206 +324,135 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
           ))}
         </Box>
       ) : (
-        <>
-          {/* MOBILE VIEW (<768px): Touch horizontal scroll deck */}
-          <Box display={{ base: "block", md: "none" }} position="relative" zIndex={1}>
-            <Flex
-              gap={3.5}
-              overflowX="auto"
-              pb={4}
-              pt={1}
-              px={1}
-              style={{
-                scrollSnapType: "x mandatory",
-                WebkitOverflowScrolling: "touch",
-                scrollbarWidth: "none",
-              }}
-              onScroll={(e) => {
-                const target = e.currentTarget;
-                const index = Math.round(target.scrollLeft / 220);
-                setActiveMobileIndex(Math.min(index, images.length - 1));
-              }}
-            >
-              {images.map((img, i) => (
-                <Box
-                  key={i}
-                  className="featured-photo-card"
-                  flexShrink={0}
-                  w={isHero ? "260px" : "220px"}
-                  h={isHero ? "220px" : "160px"}
-                  borderRadius="2xl"
-                  overflow="hidden"
-                  bg="bg.surface"
-                  border="1.5px solid"
-                  borderColor="border.subtle"
-                  boxShadow="0 8px 24px color-mix(in srgb, var(--chakra-colors-brand-900) 8%, transparent)"
-                  position="relative"
-                  cursor="pointer"
-                  onClick={() => handleCardClick(i)}
-                  style={{ scrollSnapAlign: "start" }}
-                  _active={{ transform: "scale(0.97)" }}
+        /* Unified GSAP Infinite Marquee Track for Mobile (<768px) & Desktop (>=768px) */
+        <Box
+          position="relative"
+          zIndex={1}
+          overflow="hidden"
+          borderRadius={{ base: "2xl", md: "3xl" }}
+          p={{ base: 1.5, md: 2 }}
+          bg="whiteAlpha.600"
+          backdropFilter="blur(12px)"
+          border="1px solid"
+          borderColor="border.subtle"
+          boxShadow="0 16px 40px color-mix(in srgb, var(--chakra-colors-brand-900) 6%, transparent)"
+          style={{
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
+            maskImage:
+              "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
+          }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onTouchStart={handleMouseEnter}
+          onTouchEnd={handleMouseLeave}
+        >
+          <div
+            ref={marqueeTrackRef}
+            style={{
+              display: "flex",
+              gap: "14px",
+              width: "max-content",
+              willChange: "transform",
+            }}
+          >
+            {displayImages.map((img, i) => (
+              <Box
+                key={i}
+                className="featured-photo-card"
+                flexShrink={0}
+                w={{ base: isHero ? "250px" : "210px", md: isHero ? "300px" : "260px" }}
+                h={{ base: isHero ? "200px" : "155px", md: isHero ? "240px" : "180px" }}
+                borderRadius="2xl"
+                overflow="hidden"
+                bg="bg.surface"
+                border="1px solid"
+                borderColor="border.subtle"
+                position="relative"
+                cursor="pointer"
+                onClick={() => handleCardClick(i)}
+                transition="all 0.35s var(--ease-out-quart)"
+                _hover={{
+                  transform: "translateY(-4px) scale(1.03)",
+                  boxShadow:
+                    "0 14px 32px color-mix(in srgb, var(--chakra-colors-brand-solid) 20%, transparent)",
+                  borderColor: "brand.solid",
+                  "& .zoom-icon": { opacity: 1, transform: "scale(1)" },
+                }}
+              >
+                <img
+                  src={img.url}
+                  alt={img.alt ?? `Featured moment ${i + 1}`}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                  loading={isHero ? "eager" : "lazy"}
+                />
+
+                {/* Dark Glass Overlay on Hover */}
+                <Flex
+                  position="absolute"
+                  inset={0}
+                  bg="rgba(0,0,0,0.3)"
+                  opacity={0}
+                  transition="all 0.3s var(--ease-out-quart)"
+                  align="center"
+                  justify="center"
+                  color="white"
+                  _hover={{ opacity: 1 }}
                 >
-                  <img
-                    src={img.url}
-                    alt={img.alt ?? `Featured moment ${i + 1}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    loading={isHero ? "eager" : "lazy"}
-                  />
-                  {/* Subtle Gradient Overlay */}
-                  <Box
-                    position="absolute"
-                    inset={0}
-                    bg="linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)"
-                  />
                   <Flex
-                    position="absolute"
-                    bottom={2.5}
-                    left={3}
-                    right={3}
-                    justify="space-between"
+                    className="zoom-icon"
+                    w={10}
+                    h={10}
+                    borderRadius="full"
+                    bg="whiteAlpha.300"
+                    backdropFilter="blur(8px)"
                     align="center"
-                    color="white"
+                    justify="center"
+                    boxShadow="0 4px 16px rgba(0,0,0,0.3)"
+                    opacity={0}
+                    transform="scale(0.8)"
+                    transition="all 0.3s var(--ease-out-quart)"
                   >
-                    <Text fontSize="xs" fontWeight="600" truncate maxW="140px">
-                      {img.alt || `Moment #${i + 1}`}
-                    </Text>
-                    <Box as="span" className="material-symbols-outlined" fontSize="16px">
+                    <Box as="span" className="material-symbols-outlined" fontSize="20px">
                       zoom_in
                     </Box>
                   </Flex>
-                </Box>
-              ))}
-            </Flex>
+                </Flex>
 
-            {/* Mobile Touch Indicator Pill */}
-            <Flex justify="center" align="center" gap={1.5} mt={1}>
-              {images.map((_, i) => (
-                <Box
-                  key={i}
-                  w={activeMobileIndex === i ? "16px" : "6px"}
-                  h="6px"
-                  bg={activeMobileIndex === i ? "brand.solid" : "border.default"}
-                  borderRadius="full"
-                  transition="all 0.3s var(--ease-out-quart)"
-                />
-              ))}
-            </Flex>
-          </Box>
-
-          {/* DESKTOP VIEW (>=768px): GSAP Infinite Marquee Track with Hover Pause */}
-          <Box
-            display={{ base: "none", md: "block" }}
-            position="relative"
-            zIndex={1}
-            overflow="hidden"
-            borderRadius="3xl"
-            p={2}
-            bg="whiteAlpha.600"
-            backdropFilter="blur(12px)"
-            border="1px solid"
-            borderColor="border.subtle"
-            boxShadow="0 16px 40px color-mix(in srgb, var(--chakra-colors-brand-900) 6%, transparent)"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-              maskImage:
-                "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-            }}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            <div
-              ref={marqueeTrackRef}
-              style={{
-                display: "flex",
-                gap: "16px",
-                width: "max-content",
-                willChange: "transform",
-              }}
-            >
-              {displayImages.map((img, i) => (
-                <Box
-                  key={i}
-                  className="featured-photo-card"
-                  flexShrink={0}
-                  w={isHero ? "300px" : "260px"}
-                  h={isHero ? "240px" : "180px"}
-                  borderRadius="2xl"
-                  overflow="hidden"
-                  bg="bg.surface"
-                  border="1px solid"
-                  borderColor="border.subtle"
-                  position="relative"
-                  cursor="pointer"
-                  onClick={() => handleCardClick(i)}
-                  transition="all 0.35s var(--ease-out-quart)"
-                  _hover={{
-                    transform: "translateY(-4px) scale(1.03)",
-                    boxShadow: "0 14px 32px color-mix(in srgb, var(--chakra-colors-brand-solid) 20%, transparent)",
-                    borderColor: "brand.solid",
-                    "& .zoom-icon": { opacity: 1, transform: "scale(1)" },
-                  }}
+                {/* Bottom Title Bar */}
+                <Flex
+                  position="absolute"
+                  bottom={0}
+                  left={0}
+                  right={0}
+                  p={3}
+                  bg="linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)"
+                  align="center"
+                  justify="space-between"
+                  color="white"
+                  pointerEvents="none"
                 >
-                  <img
-                    src={img.url}
-                    alt={img.alt ?? `Featured moment ${i + 1}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    loading={isHero ? "eager" : "lazy"}
-                  />
-
-                  {/* Dark Glass Overlay on Hover */}
-                  <Flex
-                    position="absolute"
-                    inset={0}
-                    bg="rgba(0,0,0,0.3)"
-                    opacity={0}
-                    transition="all 0.3s"
-                    align="center"
-                    justify="center"
-                    _hover={{ opacity: 1 }}
-                  >
-                    <Flex
-                      className="zoom-icon"
-                      w="40px"
-                      h="40px"
-                      bg="brand.solid"
-                      color="white"
-                      borderRadius="full"
-                      align="center"
-                      justify="center"
-                      boxShadow="0 4px 16px rgba(0,0,0,0.3)"
-                      opacity={0}
-                      transform="scale(0.8)"
-                      transition="all 0.3s var(--ease-out-quart)"
-                    >
-                      <Box as="span" className="material-symbols-outlined" fontSize="20px">
-                        fullscreen
-                      </Box>
-                    </Flex>
-                  </Flex>
-
-                  {/* Badge */}
-                  <Box
-                    position="absolute"
-                    bottom={2.5}
-                    left={3}
-                    bg="rgba(0,0,0,0.6)"
-                    backdropFilter="blur(4px)"
-                    color="white"
-                    px={2.5}
-                    py={0.5}
-                    borderRadius="md"
-                    fontSize="10px"
+                  <Text fontSize="xs" fontWeight="600" truncate maxW="180px">
+                    {img.alt || `Moment #${(i % images.length) + 1}`}
+                  </Text>
+                  <Text
+                    fontSize="2xs"
                     fontWeight="700"
-                    letterSpacing="0.04em"
+                    letterSpacing="0.05em"
+                    opacity={0.8}
                   >
-                    BAAN 7
-                  </Box>
-                </Box>
-              ))}
-            </div>
-          </Box>
-        </>
+                    {(i % images.length) + 1}/{images.length}
+                  </Text>
+                </Flex>
+              </Box>
+            ))}
+          </div>
+        </Box>
       )}
     </Box>
   );

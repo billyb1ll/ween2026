@@ -2683,46 +2683,73 @@ export function AdminDashboardPage() {
                     </VStack>
                     {/* Photo list */}
                     {featuredPhotoUrls.length > 0 ? (
-                      <VStack align="stretch" gap={1} maxH="120px" overflow="auto">
-                        {featuredPhotoUrls.map((url, i) => (
-                          <Flex
-                            key={i}
-                            align="center"
-                            gap={2}
-                            p={2}
-                            bg="bg.hero"
-                            borderRadius="md"
-                            border="1px solid"
-                            borderColor="border.subtle"
-                          >
-                            <Text
-                              fontSize="xs"
-                              color="fg.default"
-                              flex={1}
-                              overflow="hidden"
-                              textOverflow="ellipsis"
-                              whiteSpace="nowrap"
+                      <VStack align="stretch" gap={1.5} maxH="220px" overflow="auto">
+                        {featuredPhotoUrls.map((url, i) => {
+                          const formattedThumbnail = url.includes("/api/assets/")
+                            ? url.replace(/\/preview(\?|$)/, "/thumbnail?size=thumbnail&")
+                            : url;
+                          return (
+                            <Flex
+                              key={i}
+                              align="center"
+                              gap={2.5}
+                              p={1.5}
+                              bg="bg.surface"
+                              borderRadius="lg"
+                              border="1px solid"
+                              borderColor="border.subtle"
                             >
-                              {url}
-                            </Text>
-                            <Box
-                              as="button"
-                              className="material-symbols-outlined"
-                              fontSize="16px"
-                              color="fg.muted"
-                              cursor="pointer"
-                              _hover={{ color: "red.500" }}
-                              onClick={() =>
-                                handleSaveFeaturedPhotos(
-                                  featuredPhotoUrls.filter((_, idx) => idx !== i)
-                                )
-                              }
-                              aria-label={`Remove photo ${i + 1}`}
-                            >
-                              close
-                            </Box>
-                          </Flex>
-                        ))}
+                              <Box
+                                w="36px"
+                                h="36px"
+                                borderRadius="md"
+                                overflow="hidden"
+                                flexShrink={0}
+                                bg="bg.muted"
+                              >
+                                <img
+                                  src={formattedThumbnail}
+                                  alt={`Featured #${i + 1}`}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                    display: "block",
+                                  }}
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              </Box>
+                              <Text
+                                fontSize="xs"
+                                fontWeight="500"
+                                color="fg.default"
+                                flex={1}
+                                overflow="hidden"
+                                textOverflow="ellipsis"
+                                whiteSpace="nowrap"
+                              >
+                                Photo #{i + 1} ({url.split("/").pop()?.slice(0, 18)}...)
+                              </Text>
+                              <Box
+                                as="button"
+                                className="material-symbols-outlined"
+                                fontSize="16px"
+                                color="fg.muted"
+                                cursor="pointer"
+                                _hover={{ color: "red.500" }}
+                                onClick={() =>
+                                  handleSaveFeaturedPhotos(
+                                    featuredPhotoUrls.filter((_, idx) => idx !== i)
+                                  )
+                                }
+                                aria-label={`Remove photo ${i + 1}`}
+                              >
+                                close
+                              </Box>
+                            </Flex>
+                          );
+                        })}
                       </VStack>
                     ) : (
                       <Text fontSize="xs" color="fg.subtle" fontStyle="italic">

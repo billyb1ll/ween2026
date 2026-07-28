@@ -19,6 +19,8 @@ import { ImmichImage } from "../components/gallery/ImmichImage";
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
 
+import { getAssetShootTime } from "../utils/image";
+
 export function GalleryPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,6 +38,7 @@ export function GalleryPage() {
   const [photos, setPhotos] = useState<ImmichAsset[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [isAtTop, setIsAtTop] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // System Config & User Memory Post Count
   const [isMemoryBoardActive, setIsMemoryBoardActive] = useState(true);
@@ -150,7 +153,18 @@ export function GalleryPage() {
     fetchPhotos();
   }, [activeDay, mappings]);
 
-  const activeAssets = photos;
+  const sortedActiveAssets = React.useMemo(() => {
+    return [...photos].sort((a, b) => {
+      const timeA = getAssetShootTime(a);
+      const timeB = getAssetShootTime(b);
+      if (timeA === timeB) {
+        return sortOrder === "asc" ? a.id.localeCompare(b.id) : b.id.localeCompare(a.id);
+      }
+      return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+    });
+  }, [photos, sortOrder]);
+
+  const activeAssets = sortedActiveAssets;
   const loadingActiveAssets = loadingPhotos;
 
   const isStaffOrMod =
@@ -575,17 +589,43 @@ export function GalleryPage() {
             ))}
           </Flex>
 
-          {/* Main Photo Layout Grid with Virtuoso */}
-          <Text
-            fontSize="xs"
-            fontWeight="700"
-            color="fg.muted"
-            mb={4}
-            textTransform="uppercase"
-            letterSpacing="0.05em"
-          >
-            {mappings.find((m) => m.key === activeDay)?.label || "Gallery"}
-          </Text>
+          {/* Main Photo Layout Grid Header with Sorter Control */}
+          <Flex align="center" justify="space-between" mb={4} wrap="wrap" gap={3}>
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              color="fg.muted"
+              textTransform="uppercase"
+              letterSpacing="0.05em"
+            >
+              {mappings.find((m) => m.key === activeDay)?.label || "Gallery"} ({activeAssets.length} photos)
+            </Text>
+
+            <Button
+              size="sm"
+              variant="outline"
+              borderRadius="full"
+              px={4}
+              h="36px"
+              fontSize="xs"
+              fontWeight="600"
+              color="brand.900"
+              borderColor="border.subtle"
+              bg="bg.surface"
+              boxShadow="xs"
+              onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+              _hover={{ bg: "bg.muted", borderColor: "brand.solid" }}
+              _active={{ transform: "scale(0.97)" }}
+            >
+              <Box as="span" className="material-symbols-outlined" fontSize="16px" mr={1.5}>
+                swap_vert
+              </Box>
+              Shoot Time: {sortOrder === "asc" ? "Oldest First (ASC)" : "Newest First (DESC)"}
+              <Badge ml={2} colorPalette={sortOrder === "asc" ? "blue" : "purple"} variant="subtle" size="sm">
+                {sortOrder.toUpperCase()}
+              </Badge>
+            </Button>
+          </Flex>
 
           {loadingActiveAssets ? (
             <Flex justify="center" py={12}>
