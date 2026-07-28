@@ -28,47 +28,47 @@ function formatFeaturedPhotoUrl(rawUrl: string): string {
     "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
   );
 
-  let formatted = rawUrl.trim();
+  let str = rawUrl.trim();
 
-  // Fix invalid /api/assets/{id}/preview URLs saved in database to valid Immich thumbnail endpoint
-  if (formatted.includes("/api/assets/") && formatted.includes("/preview")) {
-    formatted = formatted.replace(/\/api\/assets\/([^/]+)\/preview(\?|$)/, (_match, id, query) => {
-      const existingParams = query.startsWith("?") ? query.substring(1) : "";
-      const params = new URLSearchParams(existingParams);
-      if (!params.has("size")) {
-        params.set("size", "preview");
-      }
-      return `/api/assets/${id}/thumbnail?${params.toString()}`;
-    });
+  if (str.startsWith("/api/immich/")) {
+    str = str.replace("/api/immich", `${serverUrl}/api`);
+  } else if (str.startsWith("/api/")) {
+    str = `${serverUrl}${str}`;
+  } else if (str.startsWith("/")) {
+    str = `${serverUrl}${str}`;
+  } else if (!str.startsWith("http://") && !str.startsWith("https://")) {
+    str = `${serverUrl}/${str}`;
   }
 
-  if (formatted.startsWith("/api/immich/")) {
-    formatted = formatted.replace("/api/immich", `${serverUrl}/api`);
-  } else if (formatted.startsWith("/api/")) {
-    formatted = `${serverUrl}${formatted}`;
-  } else if (formatted.startsWith("/")) {
-    formatted = `${serverUrl}${formatted}`;
-  } else if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {
-    formatted = `${serverUrl}/${formatted}`;
-  }
+  try {
+    const urlObj = new URL(str);
 
-  // Ensure apiKey query parameter is present for Immich API asset URLs
-  if (formatted.includes("/api/assets/")) {
-    try {
-      const parsedUrl = new URL(formatted);
-      if (!parsedUrl.searchParams.get("apiKey")) {
-        parsedUrl.searchParams.set("apiKey", apiKey);
-        formatted = parsedUrl.toString();
-      }
-    } catch {
-      if (!formatted.includes("apiKey=")) {
-        const separator = formatted.includes("?") ? "&" : "?";
-        formatted = `${formatted}${separator}apiKey=${apiKey}`;
+    // Fix invalid /api/assets/{id}/preview endpoint -> /api/assets/{id}/thumbnail?size=preview
+    if (urlObj.pathname.includes("/api/assets/") && urlObj.pathname.endsWith("/preview")) {
+      urlObj.pathname = urlObj.pathname.replace(/\/preview$/, "/thumbnail");
+      if (!urlObj.searchParams.has("size")) {
+        urlObj.searchParams.set("size", "preview");
       }
     }
-  }
 
-  return formatted;
+    // Ensure size parameter defaults to "preview" on /thumbnail endpoint if missing
+    if (urlObj.pathname.includes("/api/assets/") && urlObj.pathname.endsWith("/thumbnail")) {
+      if (!urlObj.searchParams.has("size")) {
+        urlObj.searchParams.set("size", "preview");
+      }
+    }
+
+    // Ensure valid apiKey parameter is attached
+    if (urlObj.pathname.includes("/api/assets/")) {
+      if (!urlObj.searchParams.get("apiKey")) {
+        urlObj.searchParams.set("apiKey", apiKey);
+      }
+    }
+
+    return urlObj.toString();
+  } catch {
+    return str;
+  }
 }
 
 function parsePhotoUrls(raw: string | null): CarouselImage[] {
