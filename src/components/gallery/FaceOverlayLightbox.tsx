@@ -56,13 +56,35 @@ export const FaceOverlayLightbox: React.FC<FaceOverlayLightboxProps> = ({
       asset.id.startsWith("https://") ||
       asset.id.startsWith("featured-");
 
-    const src = isDirectUrl
+    let src = isDirectUrl
       ? (asset.originalPath || asset.id)
       : immichService.assets.previewUrl(asset.id);
 
-    const downloadUrl = isDirectUrl
+    if (src.includes("/api/assets/") && src.includes("/preview")) {
+      src = src.replace(/\/api\/assets\/([^/]+)\/preview(\?|$)/, (_match, id, query) => {
+        const existingParams = query.startsWith("?") ? query.substring(1) : "";
+        const params = new URLSearchParams(existingParams);
+        if (!params.has("size")) {
+          params.set("size", "preview");
+        }
+        return `/api/assets/${id}/thumbnail?${params.toString()}`;
+      });
+    }
+
+    let downloadUrl = isDirectUrl
       ? (asset.originalPath || asset.id)
       : immichService.assets.downloadUrl(asset.id);
+
+    if (downloadUrl.includes("/api/assets/") && downloadUrl.includes("/preview")) {
+      downloadUrl = downloadUrl.replace(/\/api\/assets\/([^/]+)\/preview(\?|$)/, (_match, id, query) => {
+        const existingParams = query.startsWith("?") ? query.substring(1) : "";
+        const params = new URLSearchParams(existingParams);
+        if (!params.has("size")) {
+          params.set("size", "preview");
+        }
+        return `/api/assets/${id}/thumbnail?${params.toString()}`;
+      });
+    }
 
     return {
       src,
