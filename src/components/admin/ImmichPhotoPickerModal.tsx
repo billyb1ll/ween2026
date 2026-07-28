@@ -167,6 +167,14 @@ export const ImmichPhotoPickerModal = ({
     try {
       const data = await immich.albums.getAssets(album.id);
       setAssets(data);
+      // Pre-select photos that are already in currentUrls
+      const preSelected = new Set<string>();
+      data.forEach((asset) => {
+        if (savedAssetIdSet.has(asset.id)) {
+          preSelected.add(asset.id);
+        }
+      });
+      setSelectedIds(preSelected);
     } catch (err) {
       console.error("Failed to load immich assets:", err);
       setError("Failed to load photos for this album.");

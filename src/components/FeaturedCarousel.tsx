@@ -195,39 +195,41 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
   // Duplicate list for seamless infinite marquee loop
   const displayImages = useMemo(() => [...sortedImages, ...sortedImages], [sortedImages]);
 
+  // Convert sortedImages to ImmichAsset format for Lightbox preview
+  const immichAssets: ImmichAsset[] = useMemo(() => {
+    return sortedImages.map((img, idx) => {
+      const uuidMatch = img.url.match(/\/api\/assets\/([a-f0-9-]+)/i);
+      const assetId = uuidMatch ? uuidMatch[1] : `featured-${idx}`;
+
+      return {
+        id: assetId,
+        deviceAssetId: assetId,
+        ownerId: "system",
+        deviceId: "system",
+        type: "IMAGE",
+        originalPath: img.url,
+        originalFileName: img.alt || `featured-${idx}.jpg`,
+        resized: false,
+        checksum: assetId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        fileCreatedAt: new Date().toISOString(),
+        fileModifiedAt: new Date().toISOString(),
+        localDateTime: new Date().toISOString(),
+        isFavorite: false,
+        isArchived: false,
+        isTrashed: false,
+        isOffline: false,
+        duration: "0",
+        exifInfo: {},
+      };
+    });
+  }, [sortedImages]);
+
   if (loading || images.length === 0) return null;
 
-  // Convert images to ImmichAsset format for Lightbox preview
-  const immichAssets: ImmichAsset[] = images.map((img, idx) => {
-    const uuidMatch = img.url.match(/\/api\/assets\/([a-f0-9-]+)/i);
-    const assetId = uuidMatch ? uuidMatch[1] : `featured-${idx}`;
-
-    return {
-      id: assetId,
-      deviceAssetId: assetId,
-      ownerId: "system",
-      deviceId: "system",
-      type: "IMAGE",
-      originalPath: img.url,
-      originalFileName: img.alt || `featured-${idx}.jpg`,
-      resized: false,
-      checksum: assetId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      fileCreatedAt: new Date().toISOString(),
-      fileModifiedAt: new Date().toISOString(),
-      localDateTime: new Date().toISOString(),
-      isFavorite: false,
-      isArchived: false,
-      isTrashed: false,
-      isOffline: false,
-      duration: "0",
-      exifInfo: {},
-    };
-  });
-
   const handleCardClick = (idx: number) => {
-    openLightbox(idx % images.length, immichAssets);
+    openLightbox(idx % sortedImages.length, immichAssets);
   };
 
   const handleMouseEnter = () => {

@@ -89,9 +89,34 @@ export function MyMomentsPage() {
         let fetchedItems: ImmichAsset[] = [];
 
         if (selectedAlbumKey === "unseen") {
-          // Unseen / Entire Library: search all photos of claimed face across the entire Immich server library without album restrictions
-          const res = await immich.assets.searchMetadata({ personIds, size: 1000 });
-          fetchedItems = res.assets?.items || [];
+          // Unseen Photos: All photos of claimed face EXCEPT those present in any mapped activity album
+          const allRes = await immich.assets.searchMetadata({ personIds, size: 1000 });
+          const allLibraryPhotos = allRes.assets?.items || [];
+
+          // Collect asset IDs of photos present in any mapped activity album
+          const serverAlbums = await immich.albums.list().catch(() => []);
+          const allMappedAlbumIdsSet = new Set<string>();
+          for (const m of mappings) {
+            const ids = resolveAlbumIdsForMapping(m, serverAlbums);
+            ids.forEach((id) => allMappedAlbumIdsSet.add(id));
+          }
+          const allMappedAlbumIds = Array.from(allMappedAlbumIdsSet);
+
+          const mappedAssetIds = new Set<string>();
+          if (allMappedAlbumIds.length > 0) {
+            const mappedPromises = allMappedAlbumIds.map((albumId) =>
+              immich.assets.searchMetadata({ personIds, albumIds: [albumId], size: 1000 })
+            );
+            const mappedResults = await Promise.all(mappedPromises);
+            for (const res of mappedResults) {
+              for (const item of res.assets?.items || []) {
+                mappedAssetIds.add(item.id);
+              }
+            }
+          }
+
+          // Filter to photos NOT present in any mapped album
+          fetchedItems = allLibraryPhotos.filter((p) => !mappedAssetIds.has(p.id));
         } else {
           // Mapped albums query: resolve all matching albums configured in admin settings
           const serverAlbums = await immich.albums.list().catch(() => []);
@@ -253,7 +278,7 @@ export function MyMomentsPage() {
                 {m.label}
               </option>
             ))}
-            <option value="unseen">✨ Unseen / Entire Photo Library</option>
+            <option value="unseen">✨ Unseen Photos (Outside Mapped Albums)</option>
           </select>
         </Box>
       </Flex>
@@ -269,7 +294,7 @@ export function MyMomentsPage() {
           <Box as="span" className="material-symbols-outlined" fontSize="18px" flexShrink={0}>
             info
           </Box>
-          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Select "Unseen / Entire Photo Library" to inspect all photos across the server.
+          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Select "Unseen Photos" to view all photos outside mapped event albums.
         </Text>
       </Box>
 
@@ -277,7 +302,7 @@ export function MyMomentsPage() {
         {selectedAlbumKey === "all"
           ? "All Event Photos (Mapped Albums)"
           : selectedAlbumKey === "unseen"
-          ? "Unseen / All Library Photos (Entire Immich Server)"
+          ? "Unseen Photos (Outside Mapped Event Albums)"
           : `${mappings.find((m) => m.key === selectedAlbumKey)?.label}`}
       </Text>
 

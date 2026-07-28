@@ -4682,9 +4682,10 @@ export function AdminDashboardPage() {
       <ImmichPhotoPickerModal
         isOpen={isImmichModalOpen}
         onClose={() => setIsImmichModalOpen(false)}
-        onSelectMultiple={(urls) => {
-          if (urls.length > 0) {
-            handleSaveFeaturedPhotos(urls);
+        onSelectMultiple={(newUrls) => {
+          if (newUrls.length > 0) {
+            const merged = Array.from(new Set([...featuredPhotoUrls, ...newUrls]));
+            handleSaveFeaturedPhotos(merged);
           }
         }}
         currentUrls={featuredPhotoUrls}
