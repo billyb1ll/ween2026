@@ -14,7 +14,7 @@ import type { ImmichAsset } from "../lib/immich";
 import { VirtuosoGrid } from "react-virtuoso";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useGalleryLightbox } from "../context/GalleryLightboxContext";
-import { useAlbumMappings } from "../config/album-mapping";
+import { useAlbumMappings, resolveAlbumIdsForMapping } from "../config/album-mapping";
 import { ImmichImage } from "../components/gallery/ImmichImage";
 import { useUser } from "../context/UserContext";
 import { supabase } from "../lib/supabase";
@@ -41,9 +41,9 @@ export function GalleryPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // System Config & User Memory Post Count
-  const [isMemoryBoardActive, setIsMemoryBoardActive] = useState(true);
-  const [userMemoryPostCount, setUserMemoryPostCount] = useState<number | null>(null);
-  const [checkingMemoryPosts, setCheckingMemoryPosts] = useState(false);
+  const [isMemoryBoardActive, setIsMemoryBoardActive] = useState<boolean>(true);
+  const [userMemoryPostCount, setUserMemoryPostCount] = useState<number>(0);
+  const [checkingMemoryPosts, setCheckingMemoryPosts] = useState<boolean>(false);
 
   // Track window scroll for jump to top button
   useEffect(() => {
@@ -120,44 +120,28 @@ export function GalleryPage() {
         const mapping = mappings.find((m) => m.key === activeDay);
         if (!mapping) return;
 
-        // Stage 1: Try direct asset search by album ID
-        if (mapping.immichAlbumId) {
-          try {
-            const assets = await immich.albums.getAssets(mapping.immichAlbumId);
-            if (assets && assets.length > 0) {
-              setPhotos(assets);
-              return;
-            }
-          } catch (e) {
-            console.warn("Direct asset search for album failed:", e);
-          }
-        }
+        // Fetch all server albums to resolve all matching photographer albums for active tab (e.g. Day-2, Gato Day-2, billy-Day2)
+        const serverAlbums = await immich.albums.list().catch(() => []);
+        const targetAlbumIds = resolveAlbumIdsForMapping(mapping, serverAlbums);
 
-        // Stage 2: Fall back to album getById or findByName
-        let album = null;
-        if (mapping.immichAlbumId) {
-          try {
-            album = await immich.albums.getById(mapping.immichAlbumId);
-          } catch {
-            album = null;
-          }
-        }
-        
-        if (!album && mapping.immichAlbumName) {
-          album = await immich.albums.findByName(mapping.immichAlbumName);
-        }
+        if (targetAlbumIds.length > 0) {
+          const fetchPromises = targetAlbumIds.map((albumId) =>
+            immich.albums.getAssets(albumId).catch(async () => {
+              const fullAlbum = await immich.albums.getById(albumId).catch(() => null);
+              return fullAlbum?.assets || [];
+            })
+          );
 
-        if (album) {
-          if (album.assets && album.assets.length > 0) {
-            setPhotos(album.assets);
-          } else {
-            try {
-              const assets = await immich.albums.getAssets(album.id);
-              setPhotos(assets);
-            } catch (err) {
-              console.error("Error fetching assets for album:", err);
+          const results = await Promise.all(fetchPromises);
+          const assetMap = new Map<string, ImmichAsset>();
+
+          for (const list of results) {
+            for (const asset of list || []) {
+              assetMap.set(asset.id, asset);
             }
           }
+
+          setPhotos(Array.from(assetMap.values()));
         }
       } catch (err) {
         console.error("Error fetching gallery photos:", err);

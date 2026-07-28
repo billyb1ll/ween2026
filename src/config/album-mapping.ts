@@ -60,3 +60,28 @@ export function useAlbumMappings() {
 
   return { mappings, loading, refetch: fetchMappings };
 }
+
+/**
+ * Resolves all relevant Immich album IDs strictly configured in the admin mapping.
+ */
+export function resolveAlbumIdsForMapping(
+  mapping: AlbumMapping,
+  serverAlbums: { id: string; albumName: string }[]
+): string[] {
+  const matchedIds = new Set<string>();
+
+  if (mapping.immichAlbumId) {
+    matchedIds.add(mapping.immichAlbumId);
+  }
+
+  if (mapping.immichAlbumName) {
+    const targetName = mapping.immichAlbumName.trim().toLowerCase();
+    for (const album of serverAlbums) {
+      if ((album.albumName || "").trim().toLowerCase() === targetName) {
+        matchedIds.add(album.id);
+      }
+    }
+  }
+
+  return Array.from(matchedIds);
+}
