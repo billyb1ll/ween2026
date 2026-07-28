@@ -36,10 +36,24 @@ export class PeopleService {
   }
 
   /**
-   * Build the URL for a person's face thumbnail.
+   * Build the direct URL for a person's face thumbnail.
+   * Direct fetch from Immich origin with apiKey (0 Vercel bandwidth).
    */
   thumbnailUrl(id: string): string {
-    return this.client.buildUrl(`/api/people/${encodeURIComponent(id)}/thumbnail`);
+    const serverUrl = (
+      import.meta.env.VITE_IMMICH_SERVER_URL ||
+      import.meta.env.VITE_IMMICH_DIRECT_URL ||
+      "https://immich.b1lly.tech"
+    ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+    const apiKey = (
+      import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+      import.meta.env.VITE_IMMICH_API_KEY ||
+      import.meta.env.VITE_IMMICH_KEY ||
+      "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+    );
+
+    return `${serverUrl}/api/people/${encodeURIComponent(id)}/thumbnail?apiKey=${apiKey}`;
   }
 
   /**

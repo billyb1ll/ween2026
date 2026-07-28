@@ -879,6 +879,7 @@ export function BoardPage() {
     handleCreatePost,
     handleLikePost,
     handleDeletePost,
+    handleTogglePinPost,
   } = useBoardRealtime("memory", user, getAdminPin());
 
   // Live chat — new hook (only active when on hype tab)
@@ -2584,11 +2585,12 @@ export function BoardPage() {
                                   flexDirection: "column",
                                 }}
                               >
-                                <MemoryCard
+                        <MemoryCard
                                   post={post}
                                   index={index}
                                   onLike={handleLikePost}
                                   onDelete={handleDeletePost}
+                                  onPin={handleTogglePinPost}
                                   currentUserRole={user?.role}
                                   onInspectUser={handleInspectUser}
                                   isWide={isWide}
@@ -3645,11 +3647,13 @@ export const HypeCard = memo(function HypeCard({
     <Box
       bg={cardBg}
       color={cardColor}
-      border="none"
-      borderColor="transparent"
+      border={post.is_pinned ? "2px solid var(--c-lagoon)" : "none"}
+      borderColor={post.is_pinned ? "var(--c-lagoon)" : "transparent"}
       borderRadius="2xl"
       p={{ base: 4, md: 5 }}
       mb="24px"
+      position="relative"
+      boxShadow={post.is_pinned ? "var(--shadow-card-hover)" : "none"}
       transition="all 0.3s var(--ease-out-quart)"
       animation={`fade-in-up 0.5s var(--ease-out-expo) ${Math.min(0.1 + index * 0.05, 0.4)}s both`}
       _hover={{
@@ -3657,6 +3661,27 @@ export const HypeCard = memo(function HypeCard({
         boxShadow: "var(--shadow-card-hover)",
       }}
     >
+      {post.is_pinned && (
+        <Badge
+          bg="var(--c-lagoon)"
+          color="white"
+          px={3}
+          py={1}
+          borderRadius="full"
+          fontSize="xs"
+          fontWeight="700"
+          display="inline-flex"
+          alignItems="center"
+          gap={1.5}
+          boxShadow="0 2px 8px rgba(73, 98, 104, 0.3)"
+          mb={3}
+        >
+          <Box as="span" className="material-symbols-outlined" fontSize="14px">
+            push_pin
+          </Box>
+          Pinned Memo
+        </Badge>
+      )}
       <Flex
         align="center"
         gap={3}
@@ -3853,7 +3878,7 @@ export const HypeCard = memo(function HypeCard({
           <Button
             type="button"
             variant="ghost"
-            bg="transparent"
+            bg={post.is_pinned ? "var(--c-lagoon-light)" : "transparent"}
             w={{ base: "40px", md: "32px" }}
             h={{ base: "40px", md: "32px" }}
             minW={{ base: "40px", md: "32px" }}
@@ -3863,8 +3888,9 @@ export const HypeCard = memo(function HypeCard({
               e.stopPropagation();
               if (onPin) onPin(post.id, post.is_pinned ?? false);
             }}
-            color={post.is_pinned ? "brand.900" : cardSubtleColor}
-            _hover={{ bg: "bg.hero" }}
+            color={post.is_pinned ? "var(--c-lagoon)" : cardSubtleColor}
+            _hover={{ bg: "var(--c-lagoon-light)" }}
+            title={post.is_pinned ? "Unpin Memo" : "Pin Memo to Top"}
           >
             <Box className="material-symbols-outlined" fontSize="sm">
               push_pin

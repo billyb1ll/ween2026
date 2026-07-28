@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { toaster } from "../components/ui/toaster";
 import type { User } from "../context/UserContext";
 import type { BoardTab } from "./useBoardRealtime";
 import type { DBPost, ChatMessage } from "./useBoardQueriesTypes";
@@ -363,6 +364,49 @@ export function useDeletePostMutation(activeTab: BoardTab) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: boardQueryKeys.posts(activeTab) });
+    },
+  });
+}
+
+/**
+ * Mutation to toggle pinned status of a memo post.
+ */
+export function useTogglePinPostMutation(activeTab: BoardTab) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ postId, isPinned }: { postId: number; isPinned: boolean }) => {
+      const { data, error } = await supabase
+        .from("posts")
+        .update({ is_pinned: isPinned })
+        .eq("id", postId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Toggle pin post error:", error);
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: boardQueryKeys.posts(activeTab) });
+      toaster.create({
+        title: variables.isPinned ? "📌 Memo Pinned" : "📌 Memo Unpinned",
+        description: variables.isPinned
+          ? "This memo is now pinned at the top of the board."
+          : "This memo has been unpinned.",
+        type: "success",
+        duration: 3000,
+      });
+    },
+    onError: (err) => {
+      toaster.create({
+        title: "Pin action failed",
+        description: (err as Error).message || "Could not update memo pinned status.",
+        type: "error",
+        duration: 4000,
+      });
     },
   });
 }

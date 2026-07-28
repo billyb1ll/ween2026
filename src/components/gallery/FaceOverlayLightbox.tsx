@@ -21,10 +21,9 @@ interface FaceOverlayLightboxProps {
 
 export const FaceOverlayLightbox: React.FC<FaceOverlayLightboxProps> = ({ open, close, index, assets, immichService, onView }) => {
   const slides = assets.map((asset) => {
-    const token = localStorage.getItem('baan7_session_token') || '';
     return {
-      src: `${immichService.assets.previewUrl(asset.id)}?token=${token}`,
-      downloadUrl: `${immichService.assets.downloadUrl(asset.id)}?token=${token}`,
+      src: immichService.assets.previewUrl(asset.id),
+      downloadUrl: immichService.assets.downloadUrl(asset.id),
     };
   });
 

@@ -127,7 +127,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const [isOpenCrop, setIsOpenCrop] = useState(false);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-  const serverUrl = import.meta.env.VITE_IMMICH_SERVER_URL;
+  const serverUrl = import.meta.env.VITE_IMMICH_SERVER_URL || "https://immich.b1lly.tech";
 
   const isComingSoon =
     !serverUrl ||
@@ -211,7 +211,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
   const handleClaimSuggestion = async () => {
     if (!user || !suggestedAsset) return;
     try {
-      const previewUrl = `${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=is_preview`;
+      const previewUrl = immich.assets.thumbnailUrl(suggestedAsset.id, "preview");
       
       // Write A (Local Core Sync)
       const success = await updateProfile({
@@ -582,7 +582,7 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
                   >
                     <HStack gap={3} align="center" w={{ base: "100%", sm: "auto" }}>
                       <Image
-                        src={`${serverUrl}/api/assets/${suggestedAsset.id}/thumbnail?size=thumbnail`}
+                        src={immich.assets.thumbnailUrl(suggestedAsset.id, "thumbnail")}
                         alt={`Suggested profile picture for ${user?.nickname || 'you'}`}
                         w="44px"
                         h="44px"

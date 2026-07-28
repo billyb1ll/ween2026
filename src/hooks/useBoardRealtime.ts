@@ -7,6 +7,7 @@ import {
   useCreatePostMutation,
   useLikePostMutation,
   useDeletePostMutation,
+  useTogglePinPostMutation,
 } from "./useBoardQueries";
 import type { DBPost, BoardTab } from "./useBoardQueriesTypes";
 
@@ -26,6 +27,7 @@ export interface UseBoardRealtimeReturn {
   ) => Promise<void>;
   handleLikePost: (postId: number) => Promise<void>;
   handleDeletePost: (postId: number) => Promise<void>;
+  handleTogglePinPost: (postId: number, currentPinnedStatus: boolean) => Promise<void>;
 }
 
 export function useBoardRealtime(
@@ -39,6 +41,7 @@ export function useBoardRealtime(
   const createPostMutation = useCreatePostMutation(activeTab);
   const likePostMutation = useLikePostMutation(activeTab);
   const deletePostMutation = useDeletePostMutation(activeTab);
+  const togglePinPostMutation = useTogglePinPostMutation(activeTab);
 
   const [hypeActive, setHypeActive] = useState(true);
   const [memoryActive, setMemoryActive] = useState(true);
@@ -157,6 +160,20 @@ export function useBoardRealtime(
     [user, adminPin, deletePostMutation]
   );
 
+  const handleTogglePinPost = useCallback(
+    async (postId: number, currentPinnedStatus: boolean) => {
+      try {
+        await togglePinPostMutation.mutateAsync({
+          postId,
+          isPinned: !currentPinnedStatus,
+        });
+      } catch (err) {
+        console.error("[Board] Toggle pin post error:", err);
+      }
+    },
+    [togglePinPostMutation]
+  );
+
   return {
     posts,
     loading: isLoading,
@@ -166,5 +183,6 @@ export function useBoardRealtime(
     handleCreatePost,
     handleLikePost,
     handleDeletePost,
+    handleTogglePinPost,
   };
 }

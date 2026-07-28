@@ -1,66 +1,33 @@
 import { Image, Box } from '@chakra-ui/react';
 import type { ImageProps } from '@chakra-ui/react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 interface ImmichImageProps extends Omit<ImageProps, 'src'> {
   endpoint: string;
   fallbackBg?: string;
 }
 
+/**
+ * Renders an Immich image directly from the Immich origin server.
+ * The `endpoint` must be a full absolute URL (e.g. https://immich.b1lly.tech/api/assets/{id}/thumbnail?apiKey=...).
+ * No proxy fallback — 0 Vercel bandwidth guaranteed.
+ */
 export function ImmichImage({ endpoint, fallbackBg = "bg.muted", ...props }: ImmichImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [useProxyFallback, setUseProxyFallback] = useState(false);
   const [prevEndpoint, setPrevEndpoint] = useState(endpoint);
 
   if (prevEndpoint !== endpoint) {
     setPrevEndpoint(endpoint);
     setIsLoaded(false);
     setHasError(false);
-    setUseProxyFallback(false);
   }
 
-  const directUrl = useMemo(() => {
-    if (!endpoint) return "";
-    
-    // Check if Immich server URL is configured for direct browser fetches (0 bytes Vercel bandwidth)
-    const immichServerUrl = (
-      import.meta.env.VITE_IMMICH_SERVER_URL || 
-      import.meta.env.VITE_IMMICH_DIRECT_URL || 
-      "https://immich.b1lly.tech"
-    ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
-
-    const apiKey = 
-      import.meta.env.VITE_IMMICH_VIEWER_API_KEY || 
-      import.meta.env.VITE_IMMICH_API_KEY || 
-      import.meta.env.VITE_IMMICH_KEY || 
-      "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg";
-
-    if (!useProxyFallback && immichServerUrl && endpoint.startsWith('/api/immich/')) {
-      const pathSuffix = endpoint.substring('/api/immich'.length);
-      const separator = pathSuffix.includes('?') ? '&' : '?';
-      const keyParam = apiKey ? `${separator}apiKey=${apiKey}` : '';
-      return `${immichServerUrl}/api${pathSuffix}${keyParam}`;
-    }
-
-    if (!endpoint.startsWith('/api/immich/')) {
-      return endpoint;
-    }
-    const token = localStorage.getItem('baan7_session_token');
-    const separator = endpoint.includes('?') ? '&' : '?';
-    return `${endpoint}${separator}token=${token || ''}`;
-  }, [endpoint, useProxyFallback]);
-
   const handleImageError = () => {
-    if (!useProxyFallback && endpoint.startsWith('/api/immich/')) {
-      console.warn(`[ImmichImage] Direct fetch failed for ${endpoint}, falling back to Vercel proxy.`);
-      setUseProxyFallback(true);
-    } else {
-      setHasError(true);
-    }
+    setHasError(true);
   };
 
-  if (!directUrl || hasError) {
+  if (!endpoint || hasError) {
     return (
       <Box
         bg={fallbackBg}
@@ -98,7 +65,7 @@ export function ImmichImage({ endpoint, fallbackBg = "bg.muted", ...props }: Imm
       }}
     >
       <Image 
-        src={directUrl} 
+        src={endpoint} 
         decoding={decoding || "async"}
         loading={loading}
         alt={alt}

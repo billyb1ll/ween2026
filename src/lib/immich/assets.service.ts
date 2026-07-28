@@ -12,6 +12,24 @@ import type {
   ImmichAsset,
 } from "./types";
 
+const getDirectImmichServerUrl = () => {
+  const url = (
+    import.meta.env.VITE_IMMICH_SERVER_URL ||
+    import.meta.env.VITE_IMMICH_DIRECT_URL ||
+    "https://immich.b1lly.tech"
+  ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+  return url || "https://immich.b1lly.tech";
+};
+
+const getDirectApiKey = () => {
+  return (
+    import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+    import.meta.env.VITE_IMMICH_API_KEY ||
+    import.meta.env.VITE_IMMICH_KEY ||
+    "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+  );
+};
+
 export class AssetsService {
   private readonly client: ImmichClient;
 
@@ -20,38 +38,46 @@ export class AssetsService {
   }
 
   /**
-   * Build the URL for an asset thumbnail.
-   * Use this to construct <img src="..."> URLs — does NOT fetch data.
+   * Build the direct URL for an asset thumbnail.
+   * Direct fetch from Immich origin with apiKey (0 Vercel bandwidth).
    *
    * @param id    - Asset UUID
    * @param size  - "thumbnail" (small) or "preview" (large)
    */
   thumbnailUrl(id: string, size: ThumbnailSize = "thumbnail"): string {
-    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/thumbnail`, { size });
+    const serverUrl = getDirectImmichServerUrl();
+    const apiKey = getDirectApiKey();
+    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/thumbnail?size=${size}&apiKey=${apiKey}`;
   }
 
   /**
-   * Build the URL for an asset preview (720p).
-   * Points to the dedicated Vercel Edge caching route.
+   * Build the direct URL for an asset preview (720p).
+   * Direct fetch from Immich origin for Lightbox and Preview modals (0 Vercel bandwidth).
    */
   previewUrl(id: string): string {
-    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/preview`);
+    const serverUrl = getDirectImmichServerUrl();
+    const apiKey = getDirectApiKey();
+    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/preview?apiKey=${apiKey}`;
   }
 
   /**
-   * Build the URL for the original (full-resolution) asset file.
-   * This route issues a 302 redirect for bandwidth savings.
+   * Build the direct URL for the original (full-resolution) asset file.
+   * Direct fetch from Immich origin (0 Vercel bandwidth).
    */
   originalUrl(id: string): string {
-    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/original`);
+    const serverUrl = getDirectImmichServerUrl();
+    const apiKey = getDirectApiKey();
+    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/original?apiKey=${apiKey}`;
   }
 
   /**
-   * Build the URL specifically for downloading the asset.
-   * This route streams bytes through Vercel and forces Content-Disposition: attachment.
+   * Build the direct URL specifically for downloading the asset.
+   * Direct browser download from Immich origin (0 Vercel bandwidth).
    */
   downloadUrl(id: string): string {
-    return this.client.buildUrl(`/api/assets/${encodeURIComponent(id)}/download`);
+    const serverUrl = getDirectImmichServerUrl();
+    const apiKey = getDirectApiKey();
+    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/original?apiKey=${apiKey}`;
   }
 
   /**
