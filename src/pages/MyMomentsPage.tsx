@@ -8,7 +8,7 @@ import {
   Badge,
   Spinner,
 } from "@chakra-ui/react";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useUser } from "../context/UserContext";
 import { immich } from "../lib/immich";
 import type { ImmichAsset } from "../lib/immich";
@@ -28,7 +28,6 @@ export function MyMomentsPage() {
   const [photos, setPhotos] = useState<ImmichAsset[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [selectedAlbumKey, setSelectedAlbumKey] = useState<string>("all");
-  const [albumAssetsCache, setAlbumAssetsCache] = useState<Record<string, Set<string>>>({});
   
   const isModerator = user?.role === "moderator" || user?.role === "staff" || user?.role === "superadmin";
   const [allUsers, setAllUsers] = useState<Array<{ student_id: string; nickname: string | null; faculty: string | null; role: string }>>([]);
@@ -60,133 +59,98 @@ export function MyMomentsPage() {
     }
   }, [user, hasClaimedFace, isModerator, loadingUser, navigate]);
 
-  // 1. Fetch target student's claimed faces & corresponding photos (exact same logic)
+  // 1. Fetch target student's claimed faces & corresponding photos directly for selected album/all mapped albums
   useEffect(() => {
-    if (!activeStudentId) return;
+    if (!activeStudentId || loadingMappings) return;
 
     const fetchMyMoments = async () => {
       setLoadingPhotos(true);
       try {
         // Fetch claimed faces for target student
         const { data, error } = await supabase
-          .from('user_faces')
-          .select('immich_person_id')
-          .eq('student_id', activeStudentId);
-          
+          .from("user_faces")
+          .select("immich_person_id")
+          .eq("student_id", activeStudentId);
+
         if (error) {
           console.error("Error fetching user faces:", error);
           setLoadingPhotos(false);
           return;
         }
 
-        const personIds = data.map(d => d.immich_person_id);
-        
+        const personIds = data.map((d) => d.immich_person_id).filter(Boolean);
+
         if (personIds.length === 0) {
           setPhotos([]);
           setLoadingPhotos(false);
           return;
         }
 
-        // Fetch assets for those faces
-        const res = await immich.assets.searchMetadata({ personIds });
-        setPhotos(res.assets?.items || []);
-        
+        // Determine target album IDs based on mappings setting
+        const albumIdsToQuery: string[] = [];
+
+        if (selectedAlbumKey === "all") {
+          // All Moments: query photos across ALL mapped activity albums (e.g. Day 1, Day 2, Day 3)
+          for (const m of mappings) {
+            if (m.immichAlbumId) {
+              albumIdsToQuery.push(m.immichAlbumId);
+            } else if (m.immichAlbumName) {
+              try {
+                const found = await immich.albums.findByName(m.immichAlbumName);
+                if (found?.id) albumIdsToQuery.push(found.id);
+              } catch (e) {
+                console.warn(`Could not resolve album ID for ${m.immichAlbumName}:`, e);
+              }
+            }
+          }
+        } else {
+          // Specific Day selected: query photos for that single activity album
+          const targetMapping = mappings.find((m) => m.key === selectedAlbumKey);
+          if (targetMapping?.immichAlbumId) {
+            albumIdsToQuery.push(targetMapping.immichAlbumId);
+          } else if (targetMapping?.immichAlbumName) {
+            try {
+              const found = await immich.albums.findByName(targetMapping.immichAlbumName);
+              if (found?.id) albumIdsToQuery.push(found.id);
+            } catch (e) {
+              console.warn(`Could not resolve album ID for ${targetMapping.immichAlbumName}:`, e);
+            }
+          }
+        }
+
+        // Search Immich metadata with personIds and target albumIds
+        const searchPayload: { personIds: string[]; albumIds?: string[]; size: number } = {
+          personIds,
+          size: 1000,
+        };
+
+        if (albumIdsToQuery.length > 0) {
+          searchPayload.albumIds = albumIdsToQuery;
+        }
+
+        const res = await immich.assets.searchMetadata(searchPayload);
+        const fetchedItems = res.assets?.items || [];
+
+        // Sort items ASC by shoot time / capture date
+        fetchedItems.sort((a, b) => {
+          const timeA = new Date(a.exifInfo?.dateTimeOriginal || a.fileCreatedAt || a.createdAt || 0).getTime();
+          const timeB = new Date(b.exifInfo?.dateTimeOriginal || b.fileCreatedAt || b.createdAt || 0).getTime();
+          return timeA - timeB;
+        });
+
+        setPhotos(fetchedItems);
       } catch (err) {
         console.error("Error fetching moments:", err);
+        setPhotos([]);
       } finally {
         setLoadingPhotos(false);
       }
     };
-    
+
     fetchMyMoments();
-  }, [activeStudentId]);
+  }, [activeStudentId, selectedAlbumKey, mappings, loadingMappings]);
 
-  // 2. Parallel Pre-fetch all activity album mappings into albumAssetsCache concurrently
-  useEffect(() => {
-    if (mappings.length === 0 || photos.length === 0) return;
-
-    let active = true;
-
-    const fetchAlbumCache = async () => {
-      const uncachedMappings = mappings.filter((m) => !albumAssetsCache[m.key]);
-      if (uncachedMappings.length === 0) return;
-
-      const fetchSingleAlbum = async (m: typeof mappings[0]): Promise<[string, Set<string>]> => {
-        try {
-          let album = null;
-          if (m.immichAlbumId) {
-            album = await immich.albums.getById(m.immichAlbumId);
-          } else if (m.immichAlbumName) {
-            album = await immich.albums.findByName(m.immichAlbumName);
-          }
-
-          if (album) {
-            try {
-              const assets = await immich.albums.getAssets(album.id);
-              return [m.key, new Set(assets.map((a) => a.id))];
-            } catch {
-              const fullAlbum = await immich.albums.getById(album.id);
-              return [m.key, new Set((fullAlbum.assets || []).map((a) => a.id))];
-            }
-          }
-        } catch (err) {
-          console.error(`Error loading album cache for ${m.key}:`, err);
-        }
-        return [m.key, new Set()];
-      };
-
-      const results = await Promise.all(uncachedMappings.map((m) => fetchSingleAlbum(m)));
-
-      if (active) {
-        setAlbumAssetsCache((prev) => {
-          const next = { ...prev };
-          for (const [key, set] of results) {
-            next[key] = set;
-          }
-          return next;
-        });
-      }
-    };
-
-    fetchAlbumCache();
-
-    return () => {
-      active = false;
-    };
-  }, [mappings, photos, albumAssetsCache]);
-
-  // 3. Instant zero-latency memoized filtering
-  const filteredPhotos = useMemo(() => {
-    if (photos.length === 0) return [];
-
-    if (selectedAlbumKey !== "all") {
-      const cachedSet = albumAssetsCache[selectedAlbumKey];
-      if (cachedSet) {
-        return photos.filter((p) => cachedSet.has(p.id));
-      }
-      return photos;
-    }
-
-    // When 'all' is selected: filter to photos present in ANY configured activity album
-    if (mappings.length > 0) {
-      const allActivityAssetIds = new Set<string>();
-      let hasAnyCached = false;
-
-      for (const m of mappings) {
-        const cachedSet = albumAssetsCache[m.key];
-        if (cachedSet) {
-          hasAnyCached = true;
-          cachedSet.forEach((id) => allActivityAssetIds.add(id));
-        }
-      }
-
-      if (hasAnyCached && allActivityAssetIds.size > 0) {
-        return photos.filter((p) => allActivityAssetIds.has(p.id));
-      }
-    }
-
-    return photos;
-  }, [photos, selectedAlbumKey, mappings, albumAssetsCache]);
+  const filteredPhotos = photos;
 
 
   if (loadingMappings) {

@@ -29,7 +29,8 @@ export default async function handler(req, res) {
 
     // Proxy request to /api/search/metadata or /api/search/smart
     try {
-      const endpoint = parsedBody.albumIds ? '/api/search/metadata' : '/api/search/smart';
+      const isSmartSearch = req.query?.type === 'smart' || (Boolean(parsedBody.query) && !parsedBody.personIds && !parsedBody.albumIds);
+      const endpoint = isSmartSearch ? '/api/search/smart' : '/api/search/metadata';
       const response = await fetch(`${IMMICH_SERVER_URL}${endpoint}?apiKey=${encodeURIComponent(IMMICH_API_KEY)}`, {
         method: 'POST',
         headers: {
