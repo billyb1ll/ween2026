@@ -57,7 +57,7 @@ export class AssetsService {
   previewUrl(id: string): string {
     const serverUrl = getDirectImmichServerUrl();
     const apiKey = getDirectApiKey();
-    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/preview?apiKey=${apiKey}`;
+    return `${serverUrl}/api/assets/${encodeURIComponent(id)}/thumbnail?size=preview&apiKey=${apiKey}`;
   }
 
   /**
