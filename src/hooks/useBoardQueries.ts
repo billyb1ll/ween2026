@@ -84,7 +84,7 @@ export function useBoardPosts(activeTab: BoardTab) {
         .eq("is_hidden", false)
         .order("is_pinned", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .limit(25);
+        .limit(500);
 
       if (error) {
         console.error("Fetch board posts error:", error);
