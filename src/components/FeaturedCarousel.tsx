@@ -13,6 +13,41 @@ interface CarouselImage {
   alt?: string;
 }
 
+function formatFeaturedPhotoUrl(rawUrl: string): string {
+  if (!rawUrl) return "";
+  const serverUrl = (
+    import.meta.env.VITE_IMMICH_SERVER_URL ||
+    import.meta.env.VITE_IMMICH_DIRECT_URL ||
+    "https://immich.b1lly.tech"
+  ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+  const apiKey = (
+    import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+    import.meta.env.VITE_IMMICH_API_KEY ||
+    import.meta.env.VITE_IMMICH_KEY ||
+    ""
+  );
+
+  let formatted = rawUrl.trim();
+
+  if (formatted.startsWith("/api/immich/")) {
+    formatted = formatted.replace("/api/immich", `${serverUrl}/api`);
+  } else if (formatted.startsWith("/api/")) {
+    formatted = `${serverUrl}${formatted}`;
+  } else if (formatted.startsWith("/")) {
+    formatted = `${serverUrl}${formatted}`;
+  } else if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {
+    formatted = `${serverUrl}/${formatted}`;
+  }
+
+  if (formatted.includes("/api/assets/") && !formatted.includes("apiKey=")) {
+    const separator = formatted.includes("?") ? "&" : "?";
+    formatted = `${formatted}${separator}apiKey=${apiKey}`;
+  }
+
+  return formatted;
+}
+
 function parsePhotoUrls(raw: string | null): CarouselImage[] {
   if (!raw) return [];
   try {
@@ -24,9 +59,13 @@ function parsePhotoUrls(raw: string | null): CarouselImage[] {
           typeof item === "string" ||
           (typeof item === "object" && item !== null && "url" in item),
       )
-      .map((item) =>
-        typeof item === "string" ? { url: item, alt: "Featured photo" } : item,
-      );
+      .map((item) => {
+        const rawUrl = typeof item === "string" ? item : item.url;
+        const formattedUrl = formatFeaturedPhotoUrl(rawUrl);
+        const alt = typeof item === "object" && item?.alt ? item.alt : "Featured photo";
+        return { url: formattedUrl, alt };
+      })
+      .filter((item) => Boolean(item.url));
   } catch {
     return [];
   }
@@ -122,28 +161,33 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
   if (loading || images.length === 0) return null;
 
   // Convert images to ImmichAsset format for Lightbox preview
-  const immichAssets: ImmichAsset[] = images.map((img, idx) => ({
-    id: `featured-${idx}`,
-    deviceAssetId: `featured-${idx}`,
-    ownerId: "system",
-    deviceId: "system",
-    type: "IMAGE",
-    originalPath: img.url,
-    originalFileName: img.alt || `featured-${idx}.jpg`,
-    resized: false,
-    checksum: `featured-${idx}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    fileCreatedAt: new Date().toISOString(),
-    fileModifiedAt: new Date().toISOString(),
-    localDateTime: new Date().toISOString(),
-    isFavorite: false,
-    isArchived: false,
-    isTrashed: false,
-    isOffline: false,
-    duration: "0",
-    exifInfo: {},
-  }));
+  const immichAssets: ImmichAsset[] = images.map((img, idx) => {
+    const uuidMatch = img.url.match(/\/api\/assets\/([a-f0-9-]+)/i);
+    const assetId = uuidMatch ? uuidMatch[1] : `featured-${idx}`;
+
+    return {
+      id: assetId,
+      deviceAssetId: assetId,
+      ownerId: "system",
+      deviceId: "system",
+      type: "IMAGE",
+      originalPath: img.url,
+      originalFileName: img.alt || `featured-${idx}.jpg`,
+      resized: false,
+      checksum: assetId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      fileCreatedAt: new Date().toISOString(),
+      fileModifiedAt: new Date().toISOString(),
+      localDateTime: new Date().toISOString(),
+      isFavorite: false,
+      isArchived: false,
+      isTrashed: false,
+      isOffline: false,
+      duration: "0",
+      exifInfo: {},
+    };
+  });
 
   const handleCardClick = (idx: number) => {
     openLightbox(idx % images.length, immichAssets);
