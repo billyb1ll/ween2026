@@ -91,14 +91,14 @@ export function getAvatarUrl(url: string | null | undefined): string | null {
     return url;
   }
 
-  // If it's a relative Immich proxy path, map it to production URL if configured
+  // If it's a relative Immich proxy path, map it to direct Immich origin
   if (url.startsWith("/api/immich/")) {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || "";
-    if (apiBase && apiBase.startsWith("http")) {
-      // replace /api/immich prefix with the apiBase
-      return `${apiBase}${url.substring(11)}`;
-    }
-    return url;
+    const directImmichUrl = (
+      import.meta.env.VITE_IMMICH_SERVER_URL ||
+      import.meta.env.VITE_IMMICH_DIRECT_URL ||
+      "https://immich.b1lly.tech"
+    ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+    return `${directImmichUrl}/api/${url.substring(12)}`;
   }
 
   // For Supabase paths (relative bucket path or filename)

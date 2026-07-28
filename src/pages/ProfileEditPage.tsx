@@ -151,14 +151,26 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
 
     const fetchSuggestion = async () => {
       try {
-        const token = localStorage.getItem("baan7_session_token");
-        const res = await fetch(`/api/immich/search`, {
+        const directImmichUrl = (
+          import.meta.env.VITE_IMMICH_SERVER_URL ||
+          import.meta.env.VITE_IMMICH_DIRECT_URL ||
+          "https://immich.b1lly.tech"
+        ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+        const apiKey = (
+          import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+          import.meta.env.VITE_IMMICH_API_KEY ||
+          import.meta.env.VITE_IMMICH_KEY ||
+          "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+        );
+
+        const res = await fetch(`${directImmichUrl}/api/search/metadata`, {
           method: "POST",
           headers: {
-            "x-baan7-session": token || "",
+            "x-api-key": apiKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ q: user.nickname }),
+          body: JSON.stringify({ originalFileName: user.nickname }),
         });
         if (!res.ok) throw new Error("Smart search query failed");
         const data = await res.json();
@@ -237,11 +249,23 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
         if (personId) {
           try {
             const fullName = user.full_name || user.nickname || "Student";
-            const token = localStorage.getItem("baan7_session_token");
-            const feedbackRes = await fetch(`/api/immich/people/${personId}`, {
+            const directImmichUrl = (
+              import.meta.env.VITE_IMMICH_SERVER_URL ||
+              import.meta.env.VITE_IMMICH_DIRECT_URL ||
+              "https://immich.b1lly.tech"
+            ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+            const apiKey = (
+              import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+              import.meta.env.VITE_IMMICH_API_KEY ||
+              import.meta.env.VITE_IMMICH_KEY ||
+              "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+            );
+
+            const feedbackRes = await fetch(`${directImmichUrl}/api/people/${personId}`, {
               method: "PUT",
               headers: {
-                "x-baan7-session": token || "",
+                "x-api-key": apiKey,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({

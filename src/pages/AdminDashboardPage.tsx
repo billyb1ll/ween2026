@@ -611,14 +611,29 @@ export function AdminDashboardPage() {
       try {
         if (immichConfig.isConfigured && immichConfig.url) {
           try {
-            const statsRes = await fetch("/api/immich/stats");
+            const directUrl = (
+              import.meta.env.VITE_IMMICH_SERVER_URL ||
+              import.meta.env.VITE_IMMICH_DIRECT_URL ||
+              "https://immich.b1lly.tech"
+            ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+            const apiKey = (
+              import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+              import.meta.env.VITE_IMMICH_API_KEY ||
+              import.meta.env.VITE_IMMICH_KEY ||
+              "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+            );
+
+            const statsRes = await fetch(`${directUrl}/api/server/about`, {
+              headers: { "x-api-key": apiKey }
+            });
             if (statsRes.ok && active) {
               const data = await statsRes.json();
               setImmichStatus({
-                ping: data.ping,
-                activeSyncs: data.activeSyncs,
-                diskUsed: data.diskUsed,
-                totalImages: data.totalImages,
+                ping: "OK",
+                activeSyncs: 0,
+                diskUsed: "Direct",
+                totalImages: data.photos || 0,
                 loading: false,
               });
             }

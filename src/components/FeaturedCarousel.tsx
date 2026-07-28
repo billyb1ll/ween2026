@@ -30,6 +30,18 @@ function formatFeaturedPhotoUrl(rawUrl: string): string {
 
   let formatted = rawUrl.trim();
 
+  // Fix invalid /api/assets/{id}/preview URLs saved in database to valid Immich thumbnail endpoint
+  if (formatted.includes("/api/assets/") && formatted.includes("/preview")) {
+    formatted = formatted.replace(/\/api\/assets\/([^/]+)\/preview(\?|$)/, (_match, id, query) => {
+      const existingParams = query.startsWith("?") ? query.substring(1) : "";
+      const params = new URLSearchParams(existingParams);
+      if (!params.has("size")) {
+        params.set("size", "preview");
+      }
+      return `/api/assets/${id}/thumbnail?${params.toString()}`;
+    });
+  }
+
   if (formatted.startsWith("/api/immich/")) {
     formatted = formatted.replace("/api/immich", `${serverUrl}/api`);
   } else if (formatted.startsWith("/api/")) {

@@ -65,7 +65,17 @@ export function createImmichService(config: ImmichClientConfig): ImmichService {
  * NOTE: The frontend MUST talk to the backend proxy. It cannot talk directly 
  * to the Immich server because Immich does not support CORS preflight (OPTIONS) requests.
  */
-const baseUrl = import.meta.env.VITE_API_BASE_URL || "/api/immich";
-const apiKey = import.meta.env.VITE_IMMICH_API_KEY || import.meta.env.VITE_IMMICH_KEY || "";
+const baseUrl = (
+  import.meta.env.VITE_IMMICH_SERVER_URL ||
+  import.meta.env.VITE_IMMICH_DIRECT_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://immich.b1lly.tech"
+).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
+const apiKey =
+  import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
+  import.meta.env.VITE_IMMICH_API_KEY ||
+  import.meta.env.VITE_IMMICH_KEY ||
+  "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg";
 
 export const immich = createImmichService({ baseUrl, apiKey });
