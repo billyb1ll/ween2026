@@ -32,7 +32,8 @@ function parsePhotoUrls(raw: string | null): CarouselImage[] {
   }
 }
 
-export function FeaturedCarousel() {
+export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "section" }) {
+  const isHero = variant === "hero";
   const [images, setImages] = useState<CarouselImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
@@ -164,53 +165,57 @@ export function FeaturedCarousel() {
       ref={containerRef}
       id="featured-photos-section"
       as="section"
-      mb={{ base: 8, md: 14 }}
+      mb={isHero ? { base: 6, md: 10 } : { base: 8, md: 14 }}
       aria-label="Featured photos"
       position="relative"
     >
-      {/* Background Ambient Glow */}
-      <Box
-        position="absolute"
-        top="-20%"
-        left="50%"
-        transform="translateX(-50%)"
-        w="70%"
-        h="140%"
-        bg="radial-gradient(ellipse at center, color-mix(in srgb, var(--chakra-colors-accent-solid) 10%, transparent) 0%, transparent 70%)"
-        pointerEvents="none"
-        zIndex={0}
-      />
+      {/* Background Ambient Glow — only in section mode */}
+      {!isHero && (
+        <Box
+          position="absolute"
+          top="-20%"
+          left="50%"
+          transform="translateX(-50%)"
+          w="70%"
+          h="140%"
+          bg="radial-gradient(ellipse at center, color-mix(in srgb, var(--chakra-colors-accent-solid) 10%, transparent) 0%, transparent 70%)"
+          pointerEvents="none"
+          zIndex={0}
+        />
+      )}
 
-      {/* Header */}
-      <Flex align="center" justify="space-between" mb={{ base: 4, md: 6 }} position="relative" zIndex={1}>
-        <HStack gap={3}>
-          <Box w={8} h="2px" bg="brand.solid" borderRadius="full" />
-          <Heading
-            as="h2"
-            fontFamily="'Playfair Display', serif"
-            fontSize={{ base: "1.4rem", md: "1.85rem" }}
-            fontWeight={700}
-            color="brand.900"
-            letterSpacing="-0.02em"
+      {/* Header — only in section mode */}
+      {!isHero && (
+        <Flex align="center" justify="space-between" mb={{ base: 4, md: 6 }} position="relative" zIndex={1}>
+          <HStack gap={3}>
+            <Box w={8} h="2px" bg="brand.solid" borderRadius="full" />
+            <Heading
+              as="h2"
+              fontFamily="'Playfair Display', serif"
+              fontSize={{ base: "1.4rem", md: "1.85rem" }}
+              fontWeight={700}
+              color="brand.900"
+              letterSpacing="-0.02em"
+            >
+              Featured Moments
+            </Heading>
+          </HStack>
+          <Badge
+            bg="bg.surface"
+            border="1px solid"
+            borderColor="border.subtle"
+            color="fg.subtle"
+            px={3}
+            py={1}
+            borderRadius="full"
+            fontSize="xs"
+            fontWeight="600"
+            display={{ base: "none", sm: "flex" }}
           >
-            Featured Moments
-          </Heading>
-        </HStack>
-        <Badge
-          bg="bg.surface"
-          border="1px solid"
-          borderColor="border.subtle"
-          color="fg.subtle"
-          px={3}
-          py={1}
-          borderRadius="full"
-          fontSize="xs"
-          fontWeight="600"
-          display={{ base: "none", sm: "flex" }}
-        >
-          {images.length} Highlights
-        </Badge>
-      </Flex>
+            {images.length} Highlights
+          </Badge>
+        </Flex>
+      )}
 
       {prefersReducedMotion ? (
         /* Reduced Motion Fallback Grid */
@@ -269,8 +274,8 @@ export function FeaturedCarousel() {
                   key={i}
                   className="featured-photo-card"
                   flexShrink={0}
-                  w="220px"
-                  h="160px"
+                  w={isHero ? "260px" : "220px"}
+                  h={isHero ? "220px" : "160px"}
                   borderRadius="2xl"
                   overflow="hidden"
                   bg="bg.surface"
@@ -366,8 +371,8 @@ export function FeaturedCarousel() {
                   key={i}
                   className="featured-photo-card"
                   flexShrink={0}
-                  w="260px"
-                  h="180px"
+                  w={isHero ? "300px" : "260px"}
+                  h={isHero ? "240px" : "180px"}
                   borderRadius="2xl"
                   overflow="hidden"
                   bg="bg.surface"

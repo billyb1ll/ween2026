@@ -1,4 +1,4 @@
-import { Badge, Box, Flex, Heading, HStack, Text, VStack } from "@chakra-ui/react";
+import { Box, Flex, Heading, HStack, Text, VStack } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { getImmichConfig } from "../utils/immich";
@@ -292,6 +292,33 @@ export function HomePage() {
           </HStack>
         </Flex>
 
+        {/* ─── Featured Moments Hero Band ─── */}
+        {/* Rendered first so photos are the emotional anchor above all copy */}
+        <Box
+          as="section"
+          mb={{ base: 6, md: 10 }}
+          animation="fade-in-up 0.6s var(--ease-out-expo) both"
+          style={{ animationDelay: "0.05s" }}
+        >
+          {/* Section heading — editorial eyebrow style */}
+          <Flex align="center" justify="space-between" mb={{ base: 4, md: 6 }}>
+            <HStack gap={3}>
+              <Box w={8} h="2px" bg="brand.solid" borderRadius="full" />
+              <Heading
+                as="h2"
+                fontFamily="'Playfair Display', serif"
+                fontSize={{ base: "1.4rem", md: "1.85rem" }}
+                fontWeight={700}
+                color="brand.900"
+                letterSpacing="-0.02em"
+              >
+                Featured Moments
+              </Heading>
+            </HStack>
+          </Flex>
+          <FeaturedCarousel variant="hero" />
+        </Box>
+
         {/* Hero Section — mobile compact, desktop spacious */}
         <Box
           as="section"
@@ -435,138 +462,244 @@ export function HomePage() {
         {/* Face Claim Banner */}
         <Box mb={8} animation="fade-in-up 0.7s var(--ease-out-expo) both">
           <Link to="/face-claim">
-            <Flex
+            <Box
               w="100%"
-              bg="white"
-              border="2px dashed"
-              borderColor="brand.solid"
+              bg="bg.surface"
               borderRadius="2xl"
-              p={{ base: 5, md: 8 }}
-              align="center"
-              justify="center"
-              direction={{ base: "column", md: "row" }}
-              gap={4}
-              transition="all 0.3s var(--ease-out-quart)"
-              _hover={{ bg: "brand.subtle", transform: "translateY(-4px)", boxShadow: "var(--shadow-card-hover)" }}
+              overflow="hidden"
+              border="1px solid"
+              borderColor="border.subtle"
+              role="group"
+              transition="all 0.35s var(--ease-out-quart)"
+              _hover={{
+                borderColor: "brand.solid",
+                boxShadow: "0 12px 40px rgba(73, 98, 104, 0.14)",
+                transform: "translateY(-3px)",
+              }}
               _focusVisible={{ outline: "2.5px solid #496268", outlineOffset: "3px" }}
             >
-              <Flex bg="brand.solid" color="white" w={12} h={12} borderRadius="full" align="center" justify="center" flexShrink={0}>
-                <Box as="span" className="material-symbols-outlined" fontSize="24px">face</Box>
+              <Flex direction={{ base: "column", md: "row" }}>
+                {/* Warm accent panel with icon */}
+                <Flex
+                  bg="brand.subtle"
+                  w={{ base: "100%", md: "180px" }}
+                  minH={{ base: "100px", md: "auto" }}
+                  align="center"
+                  justify="center"
+                  position="relative"
+                  overflow="hidden"
+                  flexShrink={0}
+                >
+                  {/* Decorative concentric rings */}
+                  <Box
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    transform="translate(-50%, -50%)"
+                    w="140px"
+                    h="140px"
+                    borderRadius="full"
+                    border="1px solid"
+                    borderColor="brand.solid"
+                    opacity={0.12}
+                  />
+                  <Box
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    transform="translate(-50%, -50%)"
+                    w="100px"
+                    h="100px"
+                    borderRadius="full"
+                    border="1px solid"
+                    borderColor="brand.solid"
+                    opacity={0.18}
+                  />
+                  <Flex
+                    w={14}
+                    h={14}
+                    bg="brand.solid"
+                    color="white"
+                    borderRadius="xl"
+                    align="center"
+                    justify="center"
+                    position="relative"
+                    zIndex={1}
+                    transition="transform 0.35s var(--ease-out-quart)"
+                    _groupHover={{ transform: "scale(1.08)" }}
+                  >
+                    <Box as="span" className="material-symbols-outlined" fontSize="28px">face</Box>
+                  </Flex>
+                </Flex>
+
+                {/* Content */}
+                <Flex
+                  flex={1}
+                  p={{ base: 5, md: 8 }}
+                  align="center"
+                  justify="space-between"
+                  gap={4}
+                >
+                  <VStack align="start" gap={2} flex={1}>
+                    <HStack gap={2} align="center" flexWrap="wrap">
+                      <Heading
+                        as="h2"
+                        fontFamily="'Playfair Display', serif"
+                        fontSize={{ base: "md", md: "lg" }}
+                        fontWeight={700}
+                        color="fg.default"
+                        letterSpacing="-0.01em"
+                      >
+                        AI Face Match is now live!
+                      </Heading>
+                      <Box
+                        bg="brand.subtle"
+                        color="brand.solid"
+                        px={2.5}
+                        py={0.5}
+                        borderRadius="full"
+                        fontSize="2xs"
+                        fontWeight="800"
+                        letterSpacing="0.06em"
+                        textTransform="uppercase"
+                        flexShrink={0}
+                      >
+                        New
+                      </Box>
+                    </HStack>
+                    <Text color="fg.muted" fontSize="sm" lineHeight={1.65} maxW="55ch">
+                      Unclaimed faces have been detected in our orientation gallery. Find yours and claim it before someone else does!
+                    </Text>
+                  </VStack>
+
+                  {/* Arrow CTA */}
+                  <Flex
+                    w={10}
+                    h={10}
+                    bg="accent.solid"
+                    color="white"
+                    borderRadius="full"
+                    align="center"
+                    justify="center"
+                    flexShrink={0}
+                    display={{ base: "none", md: "flex" }}
+                    transition="all 0.35s var(--ease-out-quart)"
+                    _groupHover={{ transform: "translateX(4px)" }}
+                  >
+                    <Box as="span" className="material-symbols-outlined" fontSize="20px">arrow_forward</Box>
+                  </Flex>
+                </Flex>
               </Flex>
-              <VStack align={{ base: "center", md: "start" }} gap={1} flex={1}>
-                <Heading as="h2" fontSize={{ base: "md", md: "lg" }} color="brand.solid">AI Face Match is now live!</Heading>
-                <Text color="fg.muted" fontSize="sm" textAlign={{ base: "center", md: "left" }} maxW="65ch">
-                  Unclaimed faces have been detected in our orientation gallery. Find yours and claim it before someone else does!
-                </Text>
-              </VStack>
-              <Box as="span" className="material-symbols-outlined" color="brand.solid" display={{ base: "none", md: "block" }}>arrow_forward</Box>
-            </Flex>
+            </Box>
           </Link>
         </Box>
 
         {/* Memory Board Showcase Section */}
         <Box mb={10} animation="fade-in-up 0.8s var(--ease-out-expo) both">
-          <Box
-            position="relative"
-            overflow="hidden"
-            bg="linear-gradient(135deg, #1C2D37 0%, #2A434F 100%)"
-            color="white"
-            borderRadius="3xl"
-            p={{ base: 6, md: 10 }}
-            boxShadow="0 20px 40px -15px rgba(28, 45, 55, 0.4)"
-            border="1px solid rgba(255, 255, 255, 0.1)"
-          >
-            {/* Decorative background glow */}
+          <Link to="/board">
             <Box
-              position="absolute"
-              top="-50px"
-              right="-50px"
-              w="220px"
-              h="220px"
-              bg="var(--c-clay)"
-              filter="blur(70px)"
-              opacity={0.3}
-              borderRadius="full"
-              pointerEvents="none"
-            />
-
-            <Flex
-              direction={{ base: "column", md: "row" }}
-              align="center"
-              justify="space-between"
-              gap={6}
               position="relative"
-              zIndex={1}
+              overflow="hidden"
+              bg="linear-gradient(140deg, #2e1a0e 0%, #7c563f 60%, #5a3d2a 100%)"
+              color="white"
+              borderRadius="2xl"
+              p={{ base: 6, md: 10 }}
+              border="1px solid rgba(255, 255, 255, 0.06)"
+              role="group"
+              transition="all 0.4s var(--ease-out-quart)"
+              _hover={{
+                transform: "translateY(-3px)",
+                boxShadow: "0 24px 60px rgba(46, 26, 14, 0.45)",
+              }}
+              _focusVisible={{ outline: "2.5px solid #496268", outlineOffset: "3px" }}
             >
-              <VStack align={{ base: "center", md: "start" }} gap={3} maxW="2xl">
-                <HStack gap={2}>
-                  <Box
-                    bg="rgba(255, 255, 255, 0.15)"
-                    backdropFilter="blur(8px)"
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                    display="flex"
-                    alignItems="center"
-                    gap={1.5}
-                  >
-                    <Box
-                      as="span"
-                      className="material-symbols-outlined"
-                      fontSize="16px"
-                      color="accent.solid"
+              {/* Warm amber radial glow */}
+              <Box
+                position="absolute"
+                top="-60px"
+                right="-60px"
+                w="300px"
+                h="300px"
+                bg="rgba(255, 185, 100, 0.14)"
+                filter="blur(70px)"
+                borderRadius="full"
+                pointerEvents="none"
+              />
+              {/* Subtle dot texture */}
+              <Box
+                position="absolute"
+                inset={0}
+                bgImage="radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)"
+                bgSize="28px 28px"
+                pointerEvents="none"
+              />
+
+              <Flex
+                direction={{ base: "column", md: "row" }}
+                align={{ base: "start", md: "center" }}
+                justify="space-between"
+                gap={6}
+                position="relative"
+                zIndex={1}
+              >
+                <VStack align="start" gap={3} maxW="2xl">
+                  {/* Heading with icon — no eyebrow badge */}
+                  <HStack gap={3} align="center">
+                    <Flex
+                      w={10}
+                      h={10}
+                      bg="rgba(255, 255, 255, 0.12)"
+                      borderRadius="xl"
+                      align="center"
+                      justify="center"
+                      flexShrink={0}
+                      transition="transform 0.35s var(--ease-out-quart)"
+                      _groupHover={{ transform: "rotate(-8deg) scale(1.1)" }}
                     >
-                      push_pin
-                    </Box>
-                    <Text fontSize="xs" fontWeight="700" letterSpacing="0.05em" textTransform="uppercase">
-                      MEMORIES & MOMENTS
-                    </Text>
-                  </Box>
-                  <Badge colorPalette="amber" variant="subtle" px={2.5} py={0.5} borderRadius="full" fontSize="xs" display="inline-flex" alignItems="center" gap={1}>
-                    <Box as="span" className="material-symbols-outlined" fontSize="13px">
-                      push_pin
-                    </Box>
-                    <Text as="span">MEMORY BOARD</Text>
-                  </Badge>
-                </HStack>
+                      <Box as="span" className="material-symbols-outlined" fontSize="20px">
+                        push_pin
+                      </Box>
+                    </Flex>
+                    <Heading
+                      as="h2"
+                      fontFamily="'Playfair Display', serif"
+                      fontSize={{ base: "xl", md: "2xl" }}
+                      fontWeight={700}
+                      color="white"
+                      letterSpacing="-0.02em"
+                    >
+                      Memory Board บ้าน 7
+                    </Heading>
+                  </HStack>
 
-                <Heading
-                  as="h2"
-                  fontFamily="'Playfair Display', serif"
-                  fontSize={{ base: "xl", md: "2xl" }}
-                  fontWeight="700"
-                  color="white"
-                  textAlign={{ base: "center", md: "left" }}
-                >
-                  Memory Board บ้าน 7
-                </Heading>
+                  <Text
+                    fontSize={{ base: "sm", md: "md" }}
+                    color="rgba(255, 255, 255, 0.78)"
+                    lineHeight={1.7}
+                    maxW="50ch"
+                  >
+                    แชร์ภาพความประทับใจ ติดโน้ตข้อความทรงจำกิจกรรมรับน้อง และส่งความรู้สึกดีๆ ถึงเพื่อนๆ และพี่ๆ บ้าน 7 ได้ที่นี่!
+                  </Text>
+                </VStack>
 
-                <Text
-                  fontSize={{ base: "sm", md: "md" }}
-                  color="rgba(255, 255, 255, 0.82)"
-                  textAlign={{ base: "center", md: "left" }}
-                  lineHeight={1.6}
-                >
-                  แชร์ภาพความประทับใจ ติดโน้ตข้อความทรงจำกิจกรรมรับน้อง และส่งความรู้สึกดีๆ ถึงเพื่อนๆ และพี่ๆ บ้าน 7 ได้ที่นี่!
-                </Text>
-              </VStack>
-
-              <Link to="/board">
+                {/* CTA — visual only; outer Link handles navigation */}
                 <HStack
-                  bg="accent.solid"
-                  color="brand.900"
+                  as="span"
+                  bg="white"
+                  color="brand.solid"
                   px={{ base: 6, md: 8 }}
                   py={{ base: 3.5, md: 4 }}
                   borderRadius="full"
-                  fontWeight="700"
+                  fontWeight={700}
                   fontSize="md"
                   gap={2}
                   whiteSpace="nowrap"
-                  transition="all 0.3s var(--ease-out-quart)"
-                  boxShadow="0 8px 24px rgba(0, 0, 0, 0.2)"
-                  _hover={{
-                    transform: "translateY(-3px) scale(1.02)",
-                    boxShadow: "0 12px 32px rgba(0, 0, 0, 0.3)",
+                  flexShrink={0}
+                  transition="all 0.35s var(--ease-out-quart)"
+                  _groupHover={{
+                    bg: "accent.solid",
+                    color: "white",
+                    transform: "translateY(-2px) scale(1.03)",
                   }}
                   _active={{ transform: "scale(0.97)" }}
                 >
@@ -575,13 +708,10 @@ export function HomePage() {
                     arrow_forward
                   </Box>
                 </HStack>
-              </Link>
-            </Flex>
-          </Box>
+              </Flex>
+            </Box>
+          </Link>
         </Box>
-
-        {/* Featured Carousel — only when both modules are live */}
-        {vibecheckEnabled && hypeBoardEnabled && <FeaturedCarousel />}
 
         {/* Features Grid — mobile-first: stacked with hierarchy */}
         <Box as="section" py={{ base: 4, md: 10 }} id="features">
