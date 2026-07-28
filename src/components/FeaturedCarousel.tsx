@@ -145,25 +145,27 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
     };
   }, []);
 
-  // GSAP Animations (ScrollTrigger + Continuous Marquee)
+  // GSAP Animations (Continuous Marquee + optional Entrance)
   useEffect(() => {
     if (loading || images.length === 0 || prefersReducedMotion) return;
 
     const ctx = gsap.context(() => {
-      // 1. Entrance animation on scroll
-      gsap.from(".featured-photo-card", {
-        opacity: 0,
-        y: 40,
-        scale: 0.92,
-        duration: 0.8,
-        stagger: 0.08,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top 85%",
-          once: true,
-        },
-      });
+      // 1. Entrance animation only for non-hero section mode (below the fold)
+      if (!isHero) {
+        gsap.from(".featured-photo-card", {
+          opacity: 0,
+          y: 40,
+          scale: 0.92,
+          duration: 0.8,
+          stagger: 0.08,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 85%",
+            once: true,
+          },
+        });
+      }
 
       // 2. Continuous smooth Marquee for desktop
       if (marqueeTrackRef.current) {
@@ -179,7 +181,7 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
     return () => {
       ctx.revert();
     };
-  }, [loading, images, prefersReducedMotion]);
+  }, [loading, images, prefersReducedMotion, isHero]);
 
   if (loading || images.length === 0) return null;
 
@@ -359,7 +361,7 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
                     src={img.url}
                     alt={img.alt ?? `Featured moment ${i + 1}`}
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    loading="lazy"
+                    loading={isHero ? "eager" : "lazy"}
                   />
                   {/* Subtle Gradient Overlay */}
                   <Box
@@ -460,7 +462,7 @@ export function FeaturedCarousel({ variant = "section" }: { variant?: "hero" | "
                     src={img.url}
                     alt={img.alt ?? `Featured moment ${i + 1}`}
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    loading="lazy"
+                    loading={isHero ? "eager" : "lazy"}
                   />
 
                   {/* Dark Glass Overlay on Hover */}
