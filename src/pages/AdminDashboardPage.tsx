@@ -4682,10 +4682,17 @@ export function AdminDashboardPage() {
       <ImmichPhotoPickerModal
         isOpen={isImmichModalOpen}
         onClose={() => setIsImmichModalOpen(false)}
-        onSelectMultiple={(newUrls) => {
+        onSelectMultiple={(newUrls, mode) => {
           if (newUrls.length > 0) {
-            const merged = Array.from(new Set([...featuredPhotoUrls, ...newUrls]));
-            handleSaveFeaturedPhotos(merged);
+            let finalUrls: string[] = [];
+            if (mode === "append") {
+              // Add to existing list (deduplicated)
+              finalUrls = Array.from(new Set([...featuredPhotoUrls, ...newUrls]));
+            } else {
+              // Replace entire list (deduplicated)
+              finalUrls = Array.from(new Set(newUrls));
+            }
+            handleSaveFeaturedPhotos(finalUrls);
           }
         }}
         currentUrls={featuredPhotoUrls}

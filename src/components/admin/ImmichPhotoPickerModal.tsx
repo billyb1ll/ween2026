@@ -11,6 +11,7 @@ import {
   IconButton,
   Portal,
   Badge,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import { immich } from "../../lib/immich";
 import { FiX, FiChevronLeft, FiCheck } from "react-icons/fi";
@@ -19,7 +20,7 @@ import type { ImmichAlbum, ImmichAsset } from "../../lib/immich";
 interface ImmichPhotoPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectMultiple: (urls: string[]) => void;
+  onSelectMultiple: (urls: string[], mode?: "append" | "replace") => void;
   currentUrls?: string[];
 }
 
@@ -195,11 +196,19 @@ export const ImmichPhotoPickerModal = ({
     });
   }, []);
 
-  const handleSave = () => {
+  const handleSaveAppend = () => {
     const urls = assets
       .filter((a) => selectedIds.has(a.id))
       .map((a) => immich.assets.previewUrl(a.id));
-    onSelectMultiple(urls);
+    onSelectMultiple(urls, "append");
+    onClose();
+  };
+
+  const handleSaveReplace = () => {
+    const urls = assets
+      .filter((a) => selectedIds.has(a.id))
+      .map((a) => immich.assets.previewUrl(a.id));
+    onSelectMultiple(urls, "replace");
     onClose();
   };
 
@@ -226,117 +235,121 @@ export const ImmichPhotoPickerModal = ({
             flexDirection="column"
           >
             {/* Header */}
-            <Dialog.Header
+            <Flex
               p={{ base: 4, md: 5 }}
               borderBottom="1px solid"
               borderColor="border.subtle"
+              justify="space-between"
+              align="center"
+              bg="white"
               flexShrink={0}
-              bg="bg.canvas"
             >
-              <Flex justify="space-between" align="center">
-                <HStack gap={3}>
-                  {selectedAlbum && (
-                    <IconButton
-                      aria-label="Back to albums"
-                      variant="ghost"
-                      size="sm"
-                      borderRadius="full"
-                      onClick={resetView}
-                    >
-                      <FiChevronLeft />
-                    </IconButton>
-                  )}
-                  <Box>
-                    <Dialog.Title fontFamily="heading" fontSize="lg" color="brand.900" lineHeight={1.2}>
-                      {selectedAlbum ? selectedAlbum.albumName : "Select from Immich Gallery"}
-                    </Dialog.Title>
-                    {selectedAlbum && (
-                      <Text fontSize="xs" color="fg.muted" mt={0.5}>
-                        Click photos to select. Save all at once.
-                      </Text>
-                    )}
-                  </Box>
-                </HStack>
-                <HStack gap={2}>
-                  {selectedIds.size > 0 && (
-                    <Badge
-                      bg="brand.solid"
-                      color="white"
-                      borderRadius="full"
-                      px={3}
-                      py={1}
-                      fontSize="sm"
-                      fontWeight="700"
-                    >
-                      {selectedIds.size} selected
-                    </Badge>
-                  )}
-                  <Dialog.CloseTrigger asChild>
-                    <IconButton aria-label="Close" variant="ghost" size="sm" borderRadius="full">
-                      <FiX />
-                    </IconButton>
-                  </Dialog.CloseTrigger>
-                </HStack>
-              </Flex>
-            </Dialog.Header>
+              <HStack gap={3}>
+                {selectedAlbum && (
+                  <IconButton
+                    aria-label="Back to albums"
+                    variant="ghost"
+                    size="sm"
+                    borderRadius="full"
+                    onClick={resetView}
+                  >
+                    <FiChevronLeft size={20} />
+                  </IconButton>
+                )}
+                <Box>
+                  <Heading size="md" fontWeight="700" color="brand.900">
+                    {selectedAlbum ? selectedAlbum.albumName : "Select Immich Album"}
+                  </Heading>
+                  <Text fontSize="xs" color="fg.muted">
+                    {selectedAlbum
+                      ? `${assets.length} photos available — pick images to feature`
+                      : "Choose an album to browse and select featured photos"}
+                  </Text>
+                </Box>
+              </HStack>
+
+              <HStack gap={2}>
+                {selectedIds.size > 0 && (
+                  <Badge colorPalette="teal" variant="subtle" px={2.5} py={1} borderRadius="full">
+                    {selectedIds.size} Selected
+                  </Badge>
+                )}
+                <IconButton
+                  aria-label="Close modal"
+                  variant="ghost"
+                  size="sm"
+                  borderRadius="full"
+                  onClick={onClose}
+                >
+                  <FiX size={18} />
+                </IconButton>
+              </HStack>
+            </Flex>
 
             {/* Body */}
-            <Dialog.Body p={4} overflowY="auto" flex={1} bg="bg.canvas">
-              {error && (
-                <Box p={4} bg="red.50" color="red.700" borderRadius="xl" mb={4} fontSize="sm">
-                  {error}
-                </Box>
-              )}
-
+            <Dialog.Body p={{ base: 4, md: 6 }} overflowY="auto" flex={1}>
               {loading ? (
-                <Flex align="center" justify="center" p={16}>
-                  <Spinner size="lg" color="brand.solid" />
+                <Flex justify="center" align="center" py={16}>
+                  <Spinner size="xl" color="brand.900" />
+                </Flex>
+              ) : error ? (
+                <Flex justify="center" align="center" py={12} direction="column" gap={3}>
+                  <Text color="red.500" fontSize="sm">
+                    {error}
+                  </Text>
+                  <Button size="sm" variant="outline" onClick={selectedAlbum ? () => loadAssets(selectedAlbum) : loadAlbums}>
+                    Retry
+                  </Button>
                 </Flex>
               ) : !selectedAlbum ? (
-                // Album Selection View
+                /* Album Grid */
                 albums.length === 0 ? (
-                  <Flex align="center" justify="center" p={10}>
-                    <Text color="fg.muted">No albums found in Immich.</Text>
-                  </Flex>
+                  <Text color="fg.muted" textAlign="center" py={12}>
+                    No albums found on Immich server.
+                  </Text>
                 ) : (
-                  <Box
-                    display="grid"
-                    gridTemplateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }}
-                    gap={3}
-                  >
+                  <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={4}>
                     {albums.map((album) => (
                       <Box
                         key={album.id}
                         p={4}
-                        bg="white"
                         borderRadius="xl"
-                        border="1.5px solid"
+                        border="1px solid"
                         borderColor="border.subtle"
+                        bg="bg.surface"
                         cursor="pointer"
-                        _hover={{ borderColor: "brand.solid", transform: "translateY(-2px)", boxShadow: "0 8px 24px rgba(73,98,104,0.12)" }}
-                        transition="all 0.2s var(--ease-out-quart)"
+                        transition="all 0.2s"
+                        _hover={{
+                          transform: "translateY(-2px)",
+                          boxShadow: "0 8px 24px rgba(73,98,104,0.12)",
+                          borderColor: "brand.solid",
+                        }}
                         onClick={() => loadAssets(album)}
                       >
-                        <Heading size="sm" mb={1} truncate color="brand.900">
+                        <Heading size="sm" color="brand.900" mb={1} truncate>
                           {album.albumName}
                         </Heading>
                         <Text fontSize="xs" color="fg.muted">
-                          {album.assetCount} items
+                          {album.assetCount} photos
                         </Text>
                       </Box>
                     ))}
-                  </Box>
+                  </SimpleGrid>
                 )
               ) : (
-                // Multi-select Asset View
+                /* Asset Grid */
                 assets.length === 0 ? (
-                  <Flex align="center" justify="center" p={10}>
-                    <Text color="fg.muted">No photos found in this album.</Text>
-                  </Flex>
+                  <Text color="fg.muted" textAlign="center" py={12}>
+                    No photos found in this album.
+                  </Text>
                 ) : (
                   <Box
                     display="grid"
-                    gridTemplateColumns={{ base: "repeat(2, 1fr)", sm: "repeat(3, 1fr)", md: "repeat(4, 1fr)" }}
+                    gridTemplateColumns={{
+                      base: "repeat(2, 1fr)",
+                      sm: "repeat(3, 1fr)",
+                      md: "repeat(4, 1fr)",
+                    }}
                     gap={2}
                   >
                     {assets.map((asset) => (
@@ -362,13 +375,13 @@ export const ImmichPhotoPickerModal = ({
                 bg="white"
                 flexShrink={0}
               >
-                <Flex justify="space-between" align="center" gap={3}>
+                <Flex justify="space-between" align="center" gap={3} flexWrap="wrap">
                   <Text fontSize="sm" color="fg.muted">
                     {selectedIds.size === 0
                       ? "Select photos to feature on the homepage"
-                      : `${selectedIds.size} photo${selectedIds.size !== 1 ? "s" : ""} selected — replaces current set`}
+                      : `${selectedIds.size} photo${selectedIds.size !== 1 ? "s" : ""} selected`}
                   </Text>
-                  <HStack gap={2}>
+                  <HStack gap={2} flexWrap="wrap">
                     <Button
                       variant="outline"
                       borderRadius="xl"
@@ -380,16 +393,29 @@ export const ImmichPhotoPickerModal = ({
                       Back
                     </Button>
                     <Button
+                      variant="outline"
+                      borderRadius="xl"
+                      size="sm"
+                      px={4}
+                      disabled={selectedIds.size === 0}
+                      onClick={handleSaveAppend}
+                      color="brand.900"
+                      borderColor="brand.solid"
+                      _hover={{ bg: "bg.subtle" }}
+                    >
+                      + Add to Existing Selection ({selectedIds.size})
+                    </Button>
+                    <Button
                       bg="brand.solid"
                       color="white"
                       borderRadius="xl"
                       size="sm"
-                      px={6}
+                      px={4}
                       disabled={selectedIds.size === 0}
-                      onClick={handleSave}
+                      onClick={handleSaveReplace}
                       _hover={{ bg: "brand.600" }}
                     >
-                      Save {selectedIds.size > 0 ? `${selectedIds.size} ` : ""}Photos
+                      Replace Entire List ({selectedIds.size})
                     </Button>
                   </HStack>
                 </Flex>
