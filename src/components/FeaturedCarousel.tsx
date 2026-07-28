@@ -25,7 +25,7 @@ function formatFeaturedPhotoUrl(rawUrl: string): string {
     import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
     import.meta.env.VITE_IMMICH_API_KEY ||
     import.meta.env.VITE_IMMICH_KEY ||
-    ""
+    "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
   );
 
   let formatted = rawUrl.trim();
@@ -52,9 +52,20 @@ function formatFeaturedPhotoUrl(rawUrl: string): string {
     formatted = `${serverUrl}/${formatted}`;
   }
 
-  if (formatted.includes("/api/assets/") && !formatted.includes("apiKey=")) {
-    const separator = formatted.includes("?") ? "&" : "?";
-    formatted = `${formatted}${separator}apiKey=${apiKey}`;
+  // Ensure apiKey query parameter is present for Immich API asset URLs
+  if (formatted.includes("/api/assets/")) {
+    try {
+      const parsedUrl = new URL(formatted);
+      if (!parsedUrl.searchParams.get("apiKey")) {
+        parsedUrl.searchParams.set("apiKey", apiKey);
+        formatted = parsedUrl.toString();
+      }
+    } catch {
+      if (!formatted.includes("apiKey=")) {
+        const separator = formatted.includes("?") ? "&" : "?";
+        formatted = `${formatted}${separator}apiKey=${apiKey}`;
+      }
+    }
   }
 
   return formatted;
