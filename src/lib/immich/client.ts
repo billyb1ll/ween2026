@@ -58,6 +58,10 @@ export class ImmichClient {
       }
     }
 
+    if (this.apiKey && !url.searchParams.has("apiKey")) {
+      url.searchParams.set("apiKey", this.apiKey);
+    }
+
     return isAbsolute ? url.toString() : url.pathname + url.search;
   }
 
@@ -74,6 +78,7 @@ export class ImmichClient {
   ): Promise<T> {
     const { method = "GET", params, body } = options;
     const url = this.buildUrl(path, params);
+    const isAbsolute = /^https?:\/\//i.test(this.baseUrl);
 
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -83,12 +88,15 @@ export class ImmichClient {
       headers["x-api-key"] = this.apiKey;
     }
 
-    const sessionToken = typeof window !== "undefined" ? localStorage.getItem("baan7_session_token") : null;
-    const token = this.config.accessToken || sessionToken;
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-      headers["x-session-token"] = token;
-      headers["x-baan7-session"] = token;
+    // Only attach custom Baan 7 session headers for local proxy endpoints, not for direct Immich origin
+    if (!isAbsolute) {
+      const sessionToken = typeof window !== "undefined" ? localStorage.getItem("baan7_session_token") : null;
+      const token = this.config.accessToken || sessionToken;
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        headers["x-session-token"] = token;
+        headers["x-baan7-session"] = token;
+      }
     }
 
     if (body !== undefined && !(body instanceof FormData)) {

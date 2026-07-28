@@ -118,28 +118,44 @@ export function GalleryPage() {
       setPhotos([]);
       try {
         const mapping = mappings.find((m) => m.key === activeDay);
+        if (!mapping) return;
 
+        // Stage 1: Try direct asset search by album ID
+        if (mapping.immichAlbumId) {
+          try {
+            const assets = await immich.albums.getAssets(mapping.immichAlbumId);
+            if (assets && assets.length > 0) {
+              setPhotos(assets);
+              return;
+            }
+          } catch (e) {
+            console.warn("Direct asset search for album failed:", e);
+          }
+        }
+
+        // Stage 2: Fall back to album getById or findByName
         let album = null;
-        if (mapping?.immichAlbumId) {
-          album = await immich.albums.getById(mapping.immichAlbumId);
-        } else if (mapping?.immichAlbumName) {
+        if (mapping.immichAlbumId) {
+          try {
+            album = await immich.albums.getById(mapping.immichAlbumId);
+          } catch {
+            album = null;
+          }
+        }
+        
+        if (!album && mapping.immichAlbumName) {
           album = await immich.albums.findByName(mapping.immichAlbumName);
-        } else {
-          console.warn(`No valid mapping found for ${activeDay}`);
-          return;
         }
 
         if (album) {
-          try {
-            const assets = await immich.albums.getAssets(album.id);
-            setPhotos(assets);
-          } catch (err) {
-            console.error("Error fetching album assets:", err);
-            if (album.assets && album.assets.length > 0) {
-              setPhotos(album.assets);
-            } else {
-              const fullAlbum = await immich.albums.getById(album.id);
-              setPhotos(fullAlbum.assets || []);
+          if (album.assets && album.assets.length > 0) {
+            setPhotos(album.assets);
+          } else {
+            try {
+              const assets = await immich.albums.getAssets(album.id);
+              setPhotos(assets);
+            } catch (err) {
+              console.error("Error fetching assets for album:", err);
             }
           }
         }
