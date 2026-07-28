@@ -168,14 +168,7 @@ export const ImmichPhotoPickerModal = ({
     try {
       const data = await immich.albums.getAssets(album.id);
       setAssets(data);
-      // Pre-select photos that are already in currentUrls
-      const preSelected = new Set<string>();
-      data.forEach((asset) => {
-        if (savedAssetIdSet.has(asset.id)) {
-          preSelected.add(asset.id);
-        }
-      });
-      setSelectedIds(preSelected);
+      setSelectedIds(new Set());
     } catch (err) {
       console.error("Failed to load immich assets:", err);
       setError("Failed to load photos for this album.");
@@ -403,7 +396,7 @@ export const ImmichPhotoPickerModal = ({
                       borderColor="brand.solid"
                       _hover={{ bg: "bg.subtle" }}
                     >
-                      + Add to Existing Selection ({selectedIds.size})
+                      + Add to Existing List ({selectedIds.size})
                     </Button>
                     <Button
                       bg="brand.solid"
@@ -415,7 +408,7 @@ export const ImmichPhotoPickerModal = ({
                       onClick={handleSaveReplace}
                       _hover={{ bg: "brand.600" }}
                     >
-                      Replace Entire List ({selectedIds.size})
+                      Create New List ({selectedIds.size})
                     </Button>
                   </HStack>
                 </Flex>
