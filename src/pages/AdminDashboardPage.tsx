@@ -624,9 +624,7 @@ export function AdminDashboardPage() {
               "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
             );
 
-            const statsRes = await fetch(`${directUrl}/api/server/about`, {
-              headers: { "x-api-key": apiKey }
-            });
+            const statsRes = await fetch(`${directUrl}/api/server/about?apiKey=${encodeURIComponent(apiKey.trim())}`);
             if (statsRes.ok && active) {
               const data = await statsRes.json();
               setImmichStatus({

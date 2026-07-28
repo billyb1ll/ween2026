@@ -80,16 +80,14 @@ export class ImmichClient {
     const url = this.buildUrl(path, params);
     const isAbsolute = /^https?:\/\//i.test(this.baseUrl);
 
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-    };
+    const headers: Record<string, string> = {};
 
-    if (this.apiKey) {
-      headers["x-api-key"] = this.apiKey;
-    }
-
-    // Only attach custom Baan 7 session headers for local proxy endpoints, not for direct Immich origin
+    // Only attach custom Baan 7 / x-api-key session headers for local proxy endpoints, not for direct Immich origin
     if (!isAbsolute) {
+      headers["Accept"] = "application/json";
+      if (this.apiKey) {
+        headers["x-api-key"] = this.apiKey.trim();
+      }
       const sessionToken = typeof window !== "undefined" ? localStorage.getItem("baan7_session_token") : null;
       const token = this.config.accessToken || sessionToken;
       if (token) {

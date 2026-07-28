@@ -164,10 +164,9 @@ function ProfileEditForm({ user }: ProfileEditFormProps) {
           "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
         );
 
-        const res = await fetch(`${directImmichUrl}/api/search/metadata`, {
+        const res = await fetch(`${directImmichUrl}/api/search/metadata?apiKey=${encodeURIComponent(apiKey.trim())}`, {
           method: "POST",
           headers: {
-            "x-api-key": apiKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ originalFileName: user.nickname }),
