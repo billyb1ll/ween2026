@@ -19,14 +19,17 @@ function formatFeaturedPhotoUrl(rawUrl: string): string {
     import.meta.env.VITE_IMMICH_SERVER_URL ||
     import.meta.env.VITE_IMMICH_DIRECT_URL ||
     "https://immich.b1lly.tech"
-  ).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+  )
+    .replace(/\/api\/?$/, "")
+    .replace(/\/+$/, "")
+    .trim();
 
   const apiKey = (
     import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
     import.meta.env.VITE_IMMICH_API_KEY ||
     import.meta.env.VITE_IMMICH_KEY ||
     "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
-  );
+  ).trim();
 
   let str = rawUrl.trim();
 

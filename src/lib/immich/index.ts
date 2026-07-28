@@ -70,12 +70,16 @@ const baseUrl = (
   import.meta.env.VITE_IMMICH_DIRECT_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   "https://immich.b1lly.tech"
-).replace(/\/api\/?$/, "").replace(/\/+$/, "");
+)
+  .replace(/\/api\/?$/, "")
+  .replace(/\/+$/, "")
+  .trim();
 
-const apiKey =
+const apiKey = (
   import.meta.env.VITE_IMMICH_VIEWER_API_KEY ||
   import.meta.env.VITE_IMMICH_API_KEY ||
   import.meta.env.VITE_IMMICH_KEY ||
-  "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg";
+  "3nDuRtCN93Hv936GYFONHrsEwxrjnsYwU4lStEfhWg"
+).trim();
 
 export const immich = createImmichService({ baseUrl, apiKey });
