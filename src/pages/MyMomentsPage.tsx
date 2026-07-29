@@ -17,6 +17,7 @@ import { useGalleryLightbox } from "../context/GalleryLightboxContext";
 import { useAlbumMappings, resolveAlbumIdsForMapping } from "../config/album-mapping";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { AiGalleryNotice } from "../components/AiGalleryNotice";
 import { SearchableSelect } from "../components/SearchableSelect";
 import { ImmichImage } from "../components/gallery/ImmichImage";
 
@@ -283,20 +284,7 @@ export function MyMomentsPage() {
         </Box>
       </Flex>
 
-      <Box
-        mb={4}
-        p={3}
-        bg="#FFFDF6"
-        border="1.5px dashed #7c563f"
-        borderRadius="16px"
-      >
-        <Text fontSize="xs" color="#7c563f" fontWeight="600" display="flex" alignItems="center" gap={2}>
-          <Box as="span" className="material-symbols-outlined" fontSize="18px" flexShrink={0}>
-            info
-          </Box>
-          Beta Disclaimer: Some pictures might be missing because AI cannot recognize all face angles. Select "Unseen Photos" to view all photos outside mapped event albums.
-        </Text>
-      </Box>
+      <AiGalleryNotice />
 
       <Text fontSize="xs" fontWeight="700" color="fg.muted" mb={4} textTransform="uppercase" letterSpacing="0.05em">
         {selectedAlbumKey === "all"
