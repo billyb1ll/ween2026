@@ -149,7 +149,10 @@ export function MemoryBoardBento() {
             </Box>
           </Flex>
           <VStack align="start" gap={0}>
-            <HStack gap={2} align="center">
+            <HStack gap={1.5} align="center">
+              <Box className="material-symbols-outlined" fontSize="13px" color="brand.solid">
+                push_pin
+              </Box>
               <Text
                 fontSize="2xs"
                 fontWeight="800"
@@ -158,7 +161,7 @@ export function MemoryBoardBento() {
                 textTransform="uppercase"
                 fontFamily="'Mali', sans-serif"
               >
-                📌 Handcrafted Memory Board
+                Handcrafted Memory Board
               </Text>
             </HStack>
             <Heading
@@ -190,7 +193,7 @@ export function MemoryBoardBento() {
         </Badge>
       </Flex>
 
-      {/* Handcrafted Bento Board Layout (Solid Paper Surfaces, No Glossy Gradients) */}
+      {/* Handcrafted Bento Board Layout (Solid Paper Surfaces, No Emojis, No Glossy Gradients) */}
       <Box
         display="grid"
         gridTemplateColumns={{ base: "1fr", lg: "repeat(3, 1fr)" }}
@@ -229,9 +232,14 @@ export function MemoryBoardBento() {
           />
 
           <VStack align="start" gap={1.5} mb={4} zIndex={1}>
-            <Text fontSize="xs" fontWeight="700" color="brand.solid" textTransform="uppercase">
-              Handcrafted Highlights
-            </Text>
+            <HStack gap={1.5} align="center">
+              <Box className="material-symbols-outlined" fontSize="14px" color="brand.solid">
+                auto_awesome
+              </Box>
+              <Text fontSize="xs" fontWeight="700" color="brand.solid" textTransform="uppercase">
+                Handcrafted Highlights
+              </Text>
+            </HStack>
             <Text
               fontSize={{ base: "sm", md: "md" }}
               color="rgba(13, 26, 54, 0.8)"
@@ -333,8 +341,14 @@ export function MemoryBoardBento() {
                           py={0.5}
                           borderRadius="full"
                           fontWeight="700"
+                          display="inline-flex"
+                          alignItems="center"
+                          gap={1}
                         >
-                          ❤️ {post.likes}
+                          <Box className="material-symbols-outlined fill" fontSize="12px" color="#f26475">
+                            favorite
+                          </Box>
+                          {post.likes}
                         </Badge>
                       </Flex>
 
@@ -389,17 +403,21 @@ export function MemoryBoardBento() {
             boxShadow="0 4px 16px -2px rgba(13, 26, 54, 0.06)"
             flex={1}
           >
-            <Text
-              fontSize="2xs"
-              fontWeight="800"
-              color="brand.900"
-              textTransform="uppercase"
-              letterSpacing="0.06em"
-              mb={3}
-              fontFamily="'Mali', sans-serif"
-            >
-              📊 Community Activity
-            </Text>
+            <HStack gap={1.5} align="center" mb={3}>
+              <Box className="material-symbols-outlined" fontSize="15px" color="brand.900">
+                analytics
+              </Box>
+              <Text
+                fontSize="2xs"
+                fontWeight="800"
+                color="brand.900"
+                textTransform="uppercase"
+                letterSpacing="0.06em"
+                fontFamily="'Mali', sans-serif"
+              >
+                Community Activity
+              </Text>
+            </HStack>
 
             <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap={3}>
               <Box
