@@ -9,6 +9,7 @@ import type { Variants } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FeaturedCarousel } from "../components/FeaturedCarousel";
+import { MemoryBoardBento } from "../components/MemoryBoardBento";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -572,124 +573,8 @@ export function HomePage() {
           </Link>
         </Box>
 
-        {/* Memory Board Showcase Section */}
-        <Box mb={10} animation="fade-in-up 0.8s var(--ease-out-expo) both">
-          <Link to="/board">
-            <Box
-              position="relative"
-              overflow="hidden"
-              bg="linear-gradient(140deg, #2e1a0e 0%, #7c563f 60%, #5a3d2a 100%)"
-              color="white"
-              borderRadius="2xl"
-              p={{ base: 6, md: 10 }}
-              border="1px solid rgba(255, 255, 255, 0.06)"
-              role="group"
-              transition="all 0.4s var(--ease-out-quart)"
-              _hover={{
-                transform: "translateY(-3px)",
-                boxShadow: "0 24px 60px rgba(46, 26, 14, 0.45)",
-              }}
-              _focusVisible={{ outline: "2.5px solid #496268", outlineOffset: "3px" }}
-            >
-              {/* Warm amber radial glow */}
-              <Box
-                position="absolute"
-                top="-60px"
-                right="-60px"
-                w="300px"
-                h="300px"
-                bg="rgba(255, 185, 100, 0.14)"
-                filter="blur(70px)"
-                borderRadius="full"
-                pointerEvents="none"
-              />
-              {/* Subtle dot texture */}
-              <Box
-                position="absolute"
-                inset={0}
-                bgImage="radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px)"
-                bgSize="28px 28px"
-                pointerEvents="none"
-              />
-
-              <Flex
-                direction={{ base: "column", md: "row" }}
-                align={{ base: "start", md: "center" }}
-                justify="space-between"
-                gap={6}
-                position="relative"
-                zIndex={1}
-              >
-                <VStack align="start" gap={3} maxW="2xl">
-                  {/* Heading with icon — no eyebrow badge */}
-                  <HStack gap={3} align="center">
-                    <Flex
-                      w={10}
-                      h={10}
-                      bg="rgba(255, 255, 255, 0.12)"
-                      borderRadius="xl"
-                      align="center"
-                      justify="center"
-                      flexShrink={0}
-                      transition="transform 0.35s var(--ease-out-quart)"
-                      _groupHover={{ transform: "rotate(-8deg) scale(1.1)" }}
-                    >
-                      <Box as="span" className="material-symbols-outlined" fontSize="20px">
-                        push_pin
-                      </Box>
-                    </Flex>
-                    <Heading
-                      as="h2"
-                      fontFamily="'Playfair Display', serif"
-                      fontSize={{ base: "xl", md: "2xl" }}
-                      fontWeight={700}
-                      color="white"
-                      letterSpacing="-0.02em"
-                    >
-                      Memory Board บ้าน 7
-                    </Heading>
-                  </HStack>
-
-                  <Text
-                    fontSize={{ base: "sm", md: "md" }}
-                    color="rgba(255, 255, 255, 0.78)"
-                    lineHeight={1.7}
-                    maxW="50ch"
-                  >
-                    แชร์ภาพความประทับใจ ติดโน้ตข้อความทรงจำกิจกรรมรับน้อง และส่งความรู้สึกดีๆ ถึงเพื่อนๆ และพี่ๆ บ้าน 7 ได้ที่นี่!
-                  </Text>
-                </VStack>
-
-                {/* CTA — visual only; outer Link handles navigation */}
-                <HStack
-                  as="span"
-                  bg="white"
-                  color="brand.solid"
-                  px={{ base: 6, md: 8 }}
-                  py={{ base: 3.5, md: 4 }}
-                  borderRadius="full"
-                  fontWeight={700}
-                  fontSize="md"
-                  gap={2}
-                  whiteSpace="nowrap"
-                  flexShrink={0}
-                  transition="all 0.35s var(--ease-out-quart)"
-                  _groupHover={{
-                    bg: "accent.solid",
-                    color: "white",
-                    transform: "translateY(-2px) scale(1.03)",
-                  }}
-                  _active={{ transform: "scale(0.97)" }}
-                >
-                  <Text>ไปยัง Memory Board</Text>
-                  <Box as="span" className="material-symbols-outlined" fontSize="20px">
-                    arrow_forward
-                  </Box>
-                </HStack>
-              </Flex>
-            </Box>
-          </Link>
-        </Box>
+        {/* Memory Board Bento Showcase Section */}
+        <MemoryBoardBento />
 
         {/* Features Grid — mobile-first: stacked with hierarchy */}
         <Box as="section" py={{ base: 4, md: 10 }} id="features">

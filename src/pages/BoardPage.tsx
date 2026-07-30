@@ -34,6 +34,7 @@ import { toaster } from "../components/ui/toaster";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
+import { LikedByModal } from "../components/board/LikedByModal";
 import { FACULTIES } from "../lib/constants";
 import { immich } from "../lib/immich";
 
@@ -3961,6 +3962,7 @@ const MemoryCard = memo(function MemoryCard({
   const [localLiked, setLocalLiked] = useState(serverLiked);
   const [localLikesCount, setLocalLikesCount] = useState(post.likes);
   const [showComments, setShowComments] = useState(false);
+  const [isLikedByOpen, setIsLikedByOpen] = useState(false);
   const [prevServerLiked, setPrevServerLiked] = useState(serverLiked);
   const [prevPostLikes, setPrevPostLikes] = useState(post.likes);
 
@@ -4208,47 +4210,69 @@ const MemoryCard = memo(function MemoryCard({
                 </Box>
               </Text>
             </Box>
-            <Flex gap={3} align="center" mt="auto">
-              <Button
-                type="button"
-                role="group"
-                color={localLiked ? "#f26475" : "brand.900"}
-                bg={localLiked ? "rgba(242, 100, 117, 0.12)" : "rgba(13, 26, 54, 0.05)"}
-                border="1px solid"
-                borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
-                h="32px"
-                w="auto"
-                px={3}
-                borderRadius="full"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLike();
-                }}
-                disabled={!user}
-                _hover={{
-                  bg: "rgba(59, 106, 191, 0.12)",
-                  color: "brand.900",
-                  borderColor: "rgba(59, 106, 191, 0.35)",
-                }}
-              >
-                <Box
-                  className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
-                  fontSize="sm"
-                  color={localLiked ? "#f26475" : "inherit"}
-                  transition="transform 0.2s"
-                  _groupHover={{ transform: "scale(1.15)" }}
+            <Flex gap={2} align="center" mt="auto">
+              <HStack gap={1.5} align="center">
+                <Button
+                  type="button"
+                  role="group"
+                  color={localLiked ? "#f26475" : "brand.900"}
+                  bg={localLiked ? "rgba(242, 100, 117, 0.14)" : "rgba(13, 26, 54, 0.05)"}
+                  border="1px solid"
+                  borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
+                  h="32px"
+                  w="32px"
+                  minW="32px"
+                  p={0}
+                  borderRadius="full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLike();
+                  }}
+                  disabled={!user}
+                  aria-label={localLiked ? "Unlike post" : "Like post"}
+                  _hover={{
+                    bg: localLiked ? "rgba(242, 100, 117, 0.2)" : "rgba(59, 106, 191, 0.12)",
+                    borderColor: localLiked ? "#f26475" : "rgba(59, 106, 191, 0.35)",
+                  }}
                 >
-                  favorite
-                </Box>
-                <Text
+                  <Box
+                    className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+                    fontSize="18px"
+                    color={localLiked ? "#f26475" : "inherit"}
+                    transition="transform 0.2s"
+                    _groupHover={{ transform: "scale(1.18)" }}
+                  >
+                    favorite
+                  </Box>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  h="32px"
+                  px={2.5}
+                  borderRadius="full"
+                  bg="rgba(13, 26, 54, 0.05)"
+                  color="brand.900"
                   fontSize="xs"
                   fontWeight="700"
-                  ml={1.5}
-                  display="inline-block"
+                  border="1px solid"
+                  borderColor="rgba(13, 26, 54, 0.1)"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (localLikesCount > 0) {
+                      setIsLikedByOpen(true);
+                    } else {
+                      handleLike();
+                    }
+                  }}
+                  _hover={{
+                    bg: "rgba(59, 106, 191, 0.12)",
+                    borderColor: "rgba(59, 106, 191, 0.25)",
+                  }}
                 >
-                  {localLikesCount > 0 ? localLikesCount : "Like"}
-                </Text>
-              </Button>
+                  {localLikesCount > 0 ? `${localLikesCount} ${localLikesCount === 1 ? "like" : "likes"}` : "Like"}
+                </Button>
+              </HStack>
               <Button
                 type="button"
                 aria-label={
@@ -4441,47 +4465,69 @@ const MemoryCard = memo(function MemoryCard({
               </Box>
             )}
           </Box>
-          <Flex gap={3} align="center">
-            <Button
-              type="button"
-              role="group"
-              color={localLiked ? "#f26475" : "brand.900"}
-              bg={localLiked ? "rgba(242, 100, 117, 0.12)" : "rgba(13, 26, 54, 0.05)"}
-              border="1px solid"
-              borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
-              h="32px"
-              w="auto"
-              px={3}
-              borderRadius="full"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLike();
-              }}
-              disabled={!user}
-              _hover={{
-                bg: "rgba(59, 106, 191, 0.12)",
-                color: "brand.900",
-                borderColor: "rgba(59, 106, 191, 0.35)",
-              }}
-            >
-              <Box
-                className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
-                fontSize="sm"
-                color={localLiked ? "#f26475" : "inherit"}
-                transition="transform 0.2s"
-                _groupHover={{ transform: "scale(1.15)" }}
+          <Flex gap={2} align="center">
+            <HStack gap={1.5} align="center">
+              <Button
+                type="button"
+                role="group"
+                color={localLiked ? "#f26475" : "brand.900"}
+                bg={localLiked ? "rgba(242, 100, 117, 0.14)" : "rgba(13, 26, 54, 0.05)"}
+                border="1px solid"
+                borderColor={localLiked ? "#f26475" : "rgba(13, 26, 54, 0.15)"}
+                h="32px"
+                w="32px"
+                minW="32px"
+                p={0}
+                borderRadius="full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLike();
+                }}
+                disabled={!user}
+                aria-label={localLiked ? "Unlike post" : "Like post"}
+                _hover={{
+                  bg: localLiked ? "rgba(242, 100, 117, 0.2)" : "rgba(59, 106, 191, 0.12)",
+                  borderColor: localLiked ? "#f26475" : "rgba(59, 106, 191, 0.35)",
+                }}
               >
-                favorite
-              </Box>
-              <Text
+                <Box
+                  className={`material-symbols-outlined ${localLiked ? "fill" : ""}`}
+                  fontSize="18px"
+                  color={localLiked ? "#f26475" : "inherit"}
+                  transition="transform 0.2s"
+                  _groupHover={{ transform: "scale(1.18)" }}
+                >
+                  favorite
+                </Box>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                h="32px"
+                px={2.5}
+                borderRadius="full"
+                bg="rgba(13, 26, 54, 0.05)"
+                color="brand.900"
                 fontSize="xs"
                 fontWeight="700"
-                ml={1.5}
-                display="inline-block"
+                border="1px solid"
+                borderColor="rgba(13, 26, 54, 0.1)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (localLikesCount > 0) {
+                    setIsLikedByOpen(true);
+                  } else {
+                    handleLike();
+                  }
+                }}
+                _hover={{
+                  bg: "rgba(59, 106, 191, 0.12)",
+                  borderColor: "rgba(59, 106, 191, 0.25)",
+                }}
               >
-                {localLikesCount > 0 ? localLikesCount : "Like"}
-              </Text>
-            </Button>
+                {localLikesCount > 0 ? `${localLikesCount} ${localLikesCount === 1 ? "like" : "likes"}` : "Like"}
+              </Button>
+            </HStack>
             <Button
               type="button"
               aria-label={
@@ -4586,6 +4632,14 @@ const MemoryCard = memo(function MemoryCard({
           avatarFontSize="3xs"
         />
       )}
+
+      <LikedByModal
+        isOpen={isLikedByOpen}
+        onClose={() => setIsLikedByOpen(false)}
+        likedByStudentIds={post.liked_by}
+        postLikesCount={localLikesCount}
+        onInspectUser={onInspectUser}
+      />
     </Box>
   );
 });
