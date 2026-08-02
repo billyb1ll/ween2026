@@ -37,6 +37,10 @@ import { UserAvatar } from "../components/UserAvatar";
 import { LikedByModal } from "../components/board/LikedByModal";
 import { FACULTIES } from "../lib/constants";
 import { immich } from "../lib/immich";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 import { RoughNotation } from "react-rough-notation";
 
@@ -89,6 +93,7 @@ const Sentinel = memo(function Sentinel({
 
 const categories = [
   { label: "All", value: "all" },
+  { label: "P' Staff Cards", value: "staff" },
   { label: "#Hype", value: "#Hype" },
   { label: "#Question", value: "#Question" },
   { label: "#Memory", value: "#Memory" },
@@ -636,6 +641,131 @@ export function BoardPage() {
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isInspectorLoading, setIsInspectorLoading] = useState(false);
   const [memoryImage, setMemoryImage] = useState<File | null>(null);
+  const memoryGridRef = useRef<HTMLDivElement>(null);
+  const pageHeaderRef = useRef<HTMLDivElement>(null);
+  const categoryFilterRef = useRef<HTMLDivElement>(null);
+  const composerBoxRef = useRef<HTMLDivElement>(null);
+
+  // GSAP ScrollTrigger & entrance animations for Memory Board
+  useEffect(() => {
+    if (activeTab !== "memory" || !memoryGridRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const mm = gsap.matchMedia();
+      mm.add(
+        {
+          isDesktop: "(min-width: 768px)",
+          isMobile: "(max-width: 767px)",
+          isReduced: "(prefers-reduced-motion: reduce)",
+          isStandard: "(prefers-reduced-motion: no-preference)",
+        },
+        (context) => {
+          const { isReduced, isMobile } = context.conditions as {
+            isDesktop: boolean;
+            isMobile: boolean;
+            isReduced: boolean;
+            isStandard: boolean;
+          };
+
+          const cardNodes = memoryGridRef.current?.querySelectorAll(".memory-grid-card-item");
+
+          if (isReduced) {
+            if (cardNodes) gsap.set(cardNodes, { opacity: 1, y: 0, scale: 1 });
+            return;
+          }
+
+          // Header Scroll Parallax Effect
+          if (pageHeaderRef.current) {
+            gsap.to(pageHeaderRef.current, {
+              y: isMobile ? -12 : -28,
+              opacity: 0.82,
+              scrollTrigger: {
+                trigger: pageHeaderRef.current,
+                start: "top top",
+                end: "bottom top",
+                scrub: 0.5,
+              },
+            });
+          }
+
+          // Category Filter Bar Entrance Reveal
+          if (categoryFilterRef.current) {
+            gsap.fromTo(
+              categoryFilterRef.current,
+              { y: 20, opacity: 0 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.5,
+                ease: "power2.out",
+                scrollTrigger: {
+                  trigger: categoryFilterRef.current,
+                  start: "top 95%",
+                  toggleActions: "play none none reverse",
+                },
+              }
+            );
+          }
+
+          // Composer Box Entrance Reveal
+          if (composerBoxRef.current) {
+            gsap.fromTo(
+              composerBoxRef.current,
+              { y: 25, opacity: 0, scale: 0.98 },
+              {
+                y: 0,
+                opacity: 1,
+                scale: 1,
+                duration: 0.55,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: composerBoxRef.current,
+                  start: "top 90%",
+                  toggleActions: "play none none reverse",
+                },
+              }
+            );
+          }
+
+          // ScrollTrigger.batch for Memory Board Grid Cards
+          if (cardNodes && cardNodes.length > 0) {
+            ScrollTrigger.batch(cardNodes, {
+              start: "top 90%",
+              interval: 0.08,
+              batchMax: isMobile ? 2 : 4,
+              onEnter: (batch) => {
+                gsap.fromTo(
+                  batch,
+                  { opacity: 0, y: 32, scale: 0.94 },
+                  {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    duration: 0.55,
+                    stagger: isMobile ? 0.06 : 0.09,
+                    ease: "power3.out",
+                    overwrite: "auto",
+                  }
+                );
+              },
+              onLeaveBack: (batch) => {
+                gsap.to(batch, {
+                  opacity: 0,
+                  y: 20,
+                  scale: 0.96,
+                  duration: 0.3,
+                  stagger: 0.04,
+                  overwrite: "auto",
+                });
+              },
+            });
+          }
+        }
+      );
+    }, memoryGridRef);
+
+    return () => ctx.revert();
+  }, [activeTab, activeCategory, visibleCount]);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const shouldReduceMotion = useReducedMotion() ?? false;
   const [chatInput, setChatInput] = useState("");
@@ -1169,9 +1299,11 @@ export function BoardPage() {
     }, 1200);
   };
 
-  const filteredPosts = posts.filter((p) =>
-    activeCategory === "all" ? true : p.tags && p.tags.includes(activeCategory),
-  );
+  const filteredPosts = posts.filter((p) => {
+    if (activeCategory === "all") return true;
+    if (activeCategory === "staff") return p.author && p.author.role !== "student";
+    return p.tags && p.tags.includes(activeCategory);
+  });
 
   const visiblePosts = filteredPosts.slice(0, visibleCount);
   const hasMore = filteredPosts.length > visibleCount;
@@ -1197,6 +1329,7 @@ export function BoardPage() {
     >
       {/* Page Header */}
       <VStack
+        ref={pageHeaderRef}
         gap={2}
         mb={{ base: 3, md: 6 }}
         animation="fade-in-up 0.6s var(--ease-out-expo) both"
@@ -1917,6 +2050,7 @@ export function BoardPage() {
 
               {/* Category Filters */}
               <Box
+                ref={categoryFilterRef}
                 bg="bg.hero"
                 border="1px solid"
                 borderColor="border.subtle"
@@ -1927,7 +2061,6 @@ export function BoardPage() {
                 w="100%"
                 minW={0}
                 maxW="100%"
-                animation="fade-in-up 0.6s var(--ease-out-expo) 0.1s both"
               >
                 <Flex align="center" gap={{ base: 2, md: 3 }} flexWrap="wrap" w="100%" minW={0} maxW="100%">
                   <Text
@@ -2006,6 +2139,7 @@ export function BoardPage() {
                 <VStack align="stretch" gap={{ base: 4, md: 6 }} w="100%" minW={0} maxW="100%">
                   {/* Composer */}
                   <Box
+                    ref={composerBoxRef}
                     display="block"
                     bg="bg.surface"
                     border="1px solid"
@@ -2495,6 +2629,7 @@ export function BoardPage() {
                   ) : (
                     <VStack align="stretch" w="100%" minW={0} maxW="100%" gap={6}>
                       <Box
+                        ref={memoryGridRef}
                         display="grid"
                         gridTemplateColumns={{
                           base: "repeat(1, 1fr)",
@@ -2548,6 +2683,7 @@ export function BoardPage() {
                           return (
                             <Box
                               key={post.id}
+                              className="memory-grid-card-item"
                               gridColumn={gridColumn}
                               gridRow={gridRow}
                               w="100%"

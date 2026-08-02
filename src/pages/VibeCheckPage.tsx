@@ -59,6 +59,9 @@ interface StickerBookModalProps {
   onClose: () => void;
   searchQuery: string;
   setSearchQuery: (val: string) => void;
+  selectedRoleFilter: string;
+  setSelectedRoleFilter: (val: string) => void;
+  availablePositions: string[];
   groupedStaffData: {
     grouped: Record<string, DBStaff[]>;
     sortedKeys: string[];
@@ -72,11 +75,21 @@ function StickerBookModal({
   onClose,
   searchQuery,
   setSearchQuery,
+  selectedRoleFilter,
+  setSelectedRoleFilter,
+  availablePositions,
   groupedStaffData,
   collectedIds,
   setSelectedStaffDetail,
 }: StickerBookModalProps) {
   if (!isOpen) return null;
+
+  const filterOptions = [
+    { label: "All", value: "all" },
+    { label: "Collected", value: "collected" },
+    { label: "Uncollected", value: "uncollected" },
+    ...availablePositions.map((pos) => ({ label: pos, value: pos })),
+  ];
 
   return (
     <Portal>
@@ -137,11 +150,49 @@ function StickerBookModal({
           placeholder="Search by nickname or department..."
           bg="white"
           borderRadius="xl"
-          mb={4}
+          mb={3}
           fontSize="xs"
           h="38px"
           _focus={{ borderColor: "accent.solid" }}
         />
+
+        {/* Filter Chips Bar */}
+        <HStack
+          gap={1.5}
+          overflowX="auto"
+          whiteSpace="nowrap"
+          pb={3}
+          mb={2}
+          css={{
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          }}
+        >
+          {filterOptions.map((opt) => {
+            const isSelected = selectedRoleFilter === opt.value;
+            return (
+              <Button
+                key={opt.value}
+                size="xs"
+                h="28px"
+                px={3}
+                borderRadius="full"
+                bg={isSelected ? "brand.900" : "white"}
+                color={isSelected ? "white" : "brand.900"}
+                border="1px solid"
+                borderColor={isSelected ? "brand.900" : "border.subtle"}
+                fontSize="3xs"
+                fontWeight="700"
+                onClick={() => setSelectedRoleFilter(opt.value)}
+                cursor="pointer"
+                _hover={{ bg: isSelected ? "brand.900" : "bg.hero" }}
+              >
+                {opt.label}
+              </Button>
+            );
+          })}
+        </HStack>
 
         {/* List scroll wrapper */}
         <Box flex={1} overflowY="auto" pr={1}>
@@ -340,6 +391,7 @@ export function VibeCheckPage() {
   // Sticker Book Drawer States
   const [isStickerOpen, setIsStickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState("all");
   const [selectedStaffDetail, setSelectedStaffDetail] = useState<DBStaff | null>(null);
 
   // Mission Clear Celebration State
@@ -568,12 +620,33 @@ export function VibeCheckPage() {
   const nextProfile = currentIndex + 1 < deck.length ? deck[currentIndex + 1] : null;
 
   // Collection Book Filtering
-  const filteredStaff = useMemo(() => allStaff.filter(
-    (s) =>
+  const availablePositions = useMemo(() => {
+    const set = new Set<string>();
+    allStaff.forEach((s) => {
+      if (s.house_position) set.add(s.house_position);
+    });
+    return Array.from(set).sort();
+  }, [allStaff]);
+
+  const filteredStaff = useMemo(() => allStaff.filter((s) => {
+    const matchesSearch =
       (s.nickname || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.faculty || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.major || "").toLowerCase().includes(searchQuery.toLowerCase())
-  ), [allStaff, searchQuery]);
+      (s.major || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (selectedRoleFilter === "collected") {
+      return collectedIds?.has(s.student_id);
+    }
+    if (selectedRoleFilter === "uncollected") {
+      return !collectedIds?.has(s.student_id);
+    }
+    if (selectedRoleFilter !== "all") {
+      return (s.house_position || "General") === selectedRoleFilter;
+    }
+    return true;
+  }), [allStaff, searchQuery, selectedRoleFilter, collectedIds]);
 
   const groupedStaffData = useMemo(() => {
     const grouped: { [key: string]: DBStaff[] } = {};
@@ -1027,6 +1100,9 @@ export function VibeCheckPage() {
         onClose={() => setIsStickerOpen(false)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        selectedRoleFilter={selectedRoleFilter}
+        setSelectedRoleFilter={setSelectedRoleFilter}
+        availablePositions={availablePositions}
         groupedStaffData={groupedStaffData}
         collectedIds={collectedIds}
         setSelectedStaffDetail={setSelectedStaffDetail}

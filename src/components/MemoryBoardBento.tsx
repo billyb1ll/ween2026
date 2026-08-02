@@ -34,7 +34,7 @@ interface MemoryPostSummary {
   };
 }
 
-export function useMemoryBentoData() {
+function useMemoryBentoData() {
   return useQuery({
     queryKey: ["memory_bento_showcase"],
     queryFn: async () => {
@@ -102,21 +102,61 @@ export function MemoryBoardBento() {
     totalLikes: data?.totalLikes ?? 0,
   };
 
-  // GSAP entrance animation
+  // GSAP entrance & ambient animations
   useEffect(() => {
-    if (!isLoading && containerRef.current) {
-      gsap.fromTo(
-        containerRef.current.querySelectorAll(".bento-card"),
-        { opacity: 0, y: 16 },
+    if (isLoading || !containerRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const mm = gsap.matchMedia();
+
+      mm.add(
         {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          stagger: 0.1,
-          ease: "power2.out",
+          isStandard: "(prefers-reduced-motion: no-preference)",
+          isReduced: "(prefers-reduced-motion: reduce)",
+        },
+        (context) => {
+          const { isReduced } = context.conditions as { isReduced: boolean };
+          const cards = containerRef.current?.querySelectorAll(".bento-card");
+
+          if (!cards || cards.length === 0) return;
+
+          if (isReduced) {
+            gsap.set(cards, { opacity: 1, y: 0, scale: 1 });
+            return;
+          }
+
+          // Staggered pop-in with elastic back ease
+          gsap.fromTo(
+            cards,
+            { opacity: 0, y: 28, scale: 0.95 },
+            {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 0.65,
+              stagger: 0.08,
+              ease: "back.out(1.4)",
+              clearProps: "transform,opacity",
+            }
+          );
+
+          // Pin floating motion for the handcrafted icon
+          const pinIcons = containerRef.current?.querySelectorAll(".material-symbols-outlined");
+          if (pinIcons && pinIcons.length > 0) {
+            gsap.to(pinIcons[0], {
+              y: -3,
+              rotation: 4,
+              duration: 2,
+              repeat: -1,
+              yoyo: true,
+              ease: "sine.inOut",
+            });
+          }
         }
       );
-    }
+    }, containerRef);
+
+    return () => ctx.revert();
   }, [isLoading]);
 
   return (
