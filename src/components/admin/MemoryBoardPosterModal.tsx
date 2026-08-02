@@ -160,7 +160,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   );
   const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(true);
   const [highlightTopLiked, setHighlightTopLiked] = useState<boolean>(true);
-  const [avatarMode, setAvatarMode] = useState<AvatarMode>("full");
+  const [avatarMode, setAvatarMode] = useState<AvatarMode>("hidden");
   const [gridColumns, setGridColumns] = useState<number>(6); // 6 columns default for 4K Super Wide Board!
   const [sortBy, setSortBy] = useState<"likes" | "newest">("likes");
   const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
@@ -303,39 +303,39 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     if (selectedPreset === "desktop_4k_3840") {
       setGridColumns(6);
       setTextSizeScale("extra_large");
-      setAvatarMode("full");
-      setPageSize("all"); // Full 82-Card Poster!
+      setAvatarMode("hidden");
+      setPageSize("all");
       setExportDpi(4);
     } else if (selectedPreset === "widescreen_16_9") {
       setGridColumns(4);
       setTextSizeScale("extra_large");
-      setAvatarMode("full");
+      setAvatarMode("hidden");
       setPageSize(12);
       setCurrentPage(1);
       setExportDpi(3);
     } else if (selectedPreset === "mega_wall_2400") {
       setGridColumns(5);
       setTextSizeScale("extra_large");
-      setAvatarMode("full");
+      setAvatarMode("hidden");
       setPageSize("all");
       setExportDpi(4);
     } else if (selectedPreset === "desktop_1920") {
       setGridColumns(4);
       setTextSizeScale("extra_large");
-      setAvatarMode("full");
+      setAvatarMode("hidden");
       setPageSize("all");
       setExportDpi(3);
     } else if (selectedPreset === "ig_story") {
       setGridColumns(2);
       setTextSizeScale("extra_large");
-      setAvatarMode("full");
+      setAvatarMode("hidden");
       setPageSize(8);
       setCurrentPage(1);
       setExportDpi(3);
     } else if (selectedPreset === "hd_poster") {
       setGridColumns(3);
       setTextSizeScale("large");
-      setAvatarMode("compact");
+      setAvatarMode("hidden");
       setPageSize("all");
       setExportDpi(3);
     }
