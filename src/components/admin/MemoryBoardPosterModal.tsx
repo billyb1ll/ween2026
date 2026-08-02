@@ -20,7 +20,7 @@ import { supabase } from "../../lib/supabase";
 import { UserAvatar } from "../UserAvatar";
 import { downloadElementAsPng, uploadElementToSupabaseStorage } from "../../utils/posterExport";
 import { toaster } from "../ui/toaster";
-import { FiDownload, FiUpload, FiRefreshCw, FiGrid, FiLayers, FiCheck, FiHeart, FiSliders } from "react-icons/fi";
+import { FiDownload, FiUpload, FiRefreshCw, FiGrid, FiLayers, FiCheck, FiHeart, FiSmartphone, FiMonitor, FiImage, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 interface MemoryPostItem {
   id: number;
@@ -46,6 +46,9 @@ interface MemoryBoardPosterModalProps {
 
 type PosterTheme = "baan7_classic" | "midnight_lagoon" | "vintage_scrapbook" | "golden_gala";
 type AvatarMode = "compact" | "hidden" | "full";
+type CanvasPreset = "desktop_1920" | "ig_story" | "hd_poster" | "mega_wall_2400";
+type TextSizeScale = "medium" | "large" | "extra_large";
+type PageSizeOption = "all" | 16 | 20 | 24;
 
 /**
  * Parser for custom highlight tags like [h-blue]text[/h-blue], [h-gold], [h-pink], [h-green], [b], [i]
@@ -80,13 +83,13 @@ function parseFormattedContent(text: string): React.ReactNode {
       );
     } else {
       const highlightStyles: Record<string, { bg: string; color: string; border: string }> = {
-        "h-blue": { bg: "rgba(56, 189, 248, 0.25)", color: "#38bdf8", border: "rgba(56, 189, 248, 0.4)" },
-        "h-gold": { bg: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.4)" },
-        "h-yellow": { bg: "rgba(245, 158, 11, 0.25)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.4)" },
-        "h-pink": { bg: "rgba(244, 63, 94, 0.25)", color: "#fda4af", border: "rgba(244, 63, 94, 0.4)" },
-        "h-red": { bg: "rgba(239, 68, 68, 0.25)", color: "#fca5a5", border: "rgba(239, 68, 68, 0.4)" },
-        "h-green": { bg: "rgba(34, 197, 94, 0.25)", color: "#86efac", border: "rgba(34, 197, 94, 0.4)" },
-        "h-purple": { bg: "rgba(168, 85, 247, 0.25)", color: "#c084fc", border: "rgba(168, 85, 247, 0.4)" },
+        "h-blue": { bg: "rgba(56, 189, 248, 0.28)", color: "#38bdf8", border: "rgba(56, 189, 248, 0.5)" },
+        "h-gold": { bg: "rgba(245, 158, 11, 0.28)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.5)" },
+        "h-yellow": { bg: "rgba(245, 158, 11, 0.28)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.5)" },
+        "h-pink": { bg: "rgba(244, 63, 94, 0.28)", color: "#fda4af", border: "rgba(244, 63, 94, 0.5)" },
+        "h-red": { bg: "rgba(239, 68, 68, 0.28)", color: "#fca5a5", border: "rgba(239, 68, 68, 0.5)" },
+        "h-green": { bg: "rgba(34, 197, 94, 0.28)", color: "#86efac", border: "rgba(34, 197, 94, 0.5)" },
+        "h-purple": { bg: "rgba(168, 85, 247, 0.28)", color: "#c084fc", border: "rgba(168, 85, 247, 0.5)" },
       };
 
       const style = highlightStyles[tagType] || highlightStyles["h-blue"];
@@ -95,7 +98,7 @@ function parseFormattedContent(text: string): React.ReactNode {
         <Box
           as="span"
           key={match.index}
-          px={1.5}
+          px={2}
           py={0.5}
           mx={0.5}
           borderRadius="md"
@@ -125,14 +128,19 @@ function parseFormattedContent(text: string): React.ReactNode {
 export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterModalProps) {
   const posterRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<PosterTheme>("baan7_classic");
+  const [preset, setPreset] = useState<CanvasPreset>("desktop_1920");
+  const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("large");
+  const [pageSize, setPageSize] = useState<PageSizeOption>("all");
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [customNote, setCustomNote] = useState<string>(
     "Thank you everyone for contributing your heartwarming memories to Baan 7. Here is a complete recap of all memory cards captured together."
   );
   const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(false);
   const [highlightTopLiked, setHighlightTopLiked] = useState<boolean>(true);
-  const [avatarMode, setAvatarMode] = useState<AvatarMode>("compact");
-  const [gridColumns, setGridColumns] = useState<3 | 4 | 5>(4);
+  const [avatarMode, setAvatarMode] = useState<AvatarMode>("full");
+  const [gridColumns, setGridColumns] = useState<number>(3);
   const [sortBy, setSortBy] = useState<"likes" | "newest">("likes");
+  const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Fetch ALL non-hidden memory posts from Supabase
@@ -180,17 +188,61 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
   const totalLikes = posts.reduce((sum, item) => sum + (item.likes || 0), 0);
 
+  // Pagination calculation
+  const isPaginated = pageSize !== "all";
+  const numPageSize = typeof pageSize === "number" ? pageSize : posts.length;
+  const totalPages = isPaginated ? Math.ceil(posts.length / numPageSize) || 1 : 1;
+  const activePage = Math.min(currentPage, totalPages);
+
+  // Slice displayed posts
+  const displayedPosts = isPaginated
+    ? posts.slice((activePage - 1) * numPageSize, activePage * numPageSize)
+    : posts;
+
+  // Handle Preset Selection
+  const handlePresetSelect = (selectedPreset: CanvasPreset) => {
+    setPreset(selectedPreset);
+    if (selectedPreset === "desktop_1920") {
+      setGridColumns(3);
+      setTextSizeScale("large");
+      setAvatarMode("full");
+      setPageSize("all");
+      setExportDpi(3);
+    } else if (selectedPreset === "ig_story") {
+      setGridColumns(2);
+      setTextSizeScale("large");
+      setAvatarMode("full");
+      setPageSize(16);
+      setCurrentPage(1);
+      setExportDpi(3);
+    } else if (selectedPreset === "mega_wall_2400") {
+      setGridColumns(5);
+      setTextSizeScale("medium");
+      setAvatarMode("compact");
+      setPageSize("all");
+      setExportDpi(4); // Default to 4K Ultra High Resolution for 82-Card Mega Wall!
+    } else if (selectedPreset === "hd_poster") {
+      setGridColumns(3);
+      setTextSizeScale("medium");
+      setAvatarMode("compact");
+      setPageSize("all");
+      setExportDpi(3);
+    }
+  };
+
   const handleDownload = async () => {
     if (!posterRef.current) return;
     setIsExporting(true);
     try {
+      const pageSuffix = isPaginated ? `-sheet-${activePage}` : "";
       await downloadElementAsPng(posterRef.current, {
-        fileName: `baan7-memory-poster-${Date.now()}.png`,
-        pixelRatio: 2,
+        fileName: `baan7-memory-poster-${preset}${pageSuffix}-${Date.now()}.png`,
+        pixelRatio: exportDpi,
+        quality: 1.0,
       });
       toaster.create({
         title: "Export Successful",
-        description: "Memory Poster PNG saved to your downloads.",
+        description: `Ultra High-Res (${exportDpi}x DPI, 100% Quality) Memory Poster PNG saved to downloads (${displayedPosts.length} cards).`,
         type: "success",
       });
     } catch (err) {
@@ -209,13 +261,15 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     if (!posterRef.current) return;
     setIsExporting(true);
     try {
+      const pageSuffix = isPaginated ? `-sheet-${activePage}` : "";
       const res = await uploadElementToSupabaseStorage(posterRef.current, "memory-cards", {
-        fileName: `poster-${Date.now()}.png`,
-        pixelRatio: 2,
+        fileName: `poster-${preset}${pageSuffix}-${Date.now()}.png`,
+        pixelRatio: exportDpi,
+        quality: 1.0,
       });
       toaster.create({
         title: "Saved to Supabase Storage",
-        description: `Poster URL: ${res.publicUrl ?? res.path}`,
+        description: `Ultra High-Res (${exportDpi}x DPI) Poster URL: ${res.publicUrl ?? res.path}`,
         type: "success",
       });
     } catch (err) {
@@ -230,24 +284,40 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     }
   };
 
+  // Preset Width & Font Size Mappings
+  const canvasWidth =
+    preset === "mega_wall_2400"
+      ? "2400px"
+      : preset === "desktop_1920"
+      ? "1920px"
+      : preset === "ig_story"
+      ? "1080px"
+      : "1500px";
+
+  const fontSizes = {
+    medium: { cardText: "15px", authorName: "15px", timestamp: "12px", headerTitle: "38px" },
+    large: { cardText: "17px", authorName: "17px", timestamp: "13px", headerTitle: "44px" },
+    extra_large: { cardText: "19px", authorName: "19px", timestamp: "14px", headerTitle: "50px" },
+  }[textSizeScale];
+
   // Design Systems for Poster Canvas
   const themeSpecs = {
     baan7_classic: {
       name: "Baan 7 Warm Ivory & Chocolate",
       canvasBg: "linear-gradient(135deg, #2b1a13 0%, #1f120c 40%, #170d08 100%)",
-      headerBg: "rgba(43, 26, 19, 0.85)",
+      headerBg: "rgba(43, 26, 19, 0.88)",
       headerBorder: "1px solid rgba(253, 202, 173, 0.25)",
       titleColor: "#fdcaad",
       subtitleColor: "#e4e2e1",
       badgeBg: "#7c563f",
       badgeText: "#fcf9f8",
-      cardBg: "rgba(43, 26, 19, 0.9)",
-      cardBorder: "1px solid rgba(253, 202, 173, 0.2)",
+      cardBg: "rgba(43, 26, 19, 0.92)",
+      cardBorder: "1px solid rgba(253, 202, 173, 0.22)",
       cardTextColor: "#fcf9f8",
       cardSubText: "#c5e0e6",
       accentBadgeBg: "rgba(73, 98, 104, 0.3)",
       accentBadgeText: "#c5e0e6",
-      likesBadgeBg: "rgba(239, 68, 68, 0.2)",
+      likesBadgeBg: "rgba(239, 68, 68, 0.25)",
       likesBadgeText: "#fca5a5",
       heroCardBg: "linear-gradient(135deg, rgba(124, 86, 63, 0.95), rgba(73, 98, 104, 0.9))",
       heroCardBorder: "2px solid #fdcaad",
@@ -256,19 +326,19 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     midnight_lagoon: {
       name: "Midnight Lagoon",
       canvasBg: "linear-gradient(135deg, #0b1329 0%, #111c38 50%, #080d1d 100%)",
-      headerBg: "rgba(17, 28, 56, 0.85)",
+      headerBg: "rgba(17, 28, 56, 0.88)",
       headerBorder: "1px solid rgba(73, 98, 104, 0.4)",
       titleColor: "#c5e0e6",
       subtitleColor: "#94a3b8",
       badgeBg: "#496268",
       badgeText: "#ffffff",
-      cardBg: "rgba(17, 28, 56, 0.9)",
+      cardBg: "rgba(17, 28, 56, 0.92)",
       cardBorder: "1px solid rgba(73, 98, 104, 0.25)",
       cardTextColor: "#f8fafc",
       cardSubText: "#94a3b8",
       accentBadgeBg: "rgba(56, 189, 248, 0.15)",
       accentBadgeText: "#38bdf8",
-      likesBadgeBg: "rgba(244, 63, 94, 0.2)",
+      likesBadgeBg: "rgba(244, 63, 94, 0.25)",
       likesBadgeText: "#fda4af",
       heroCardBg: "linear-gradient(135deg, rgba(73, 98, 104, 0.95), rgba(15, 23, 42, 0.95))",
       heroCardBorder: "2px solid #38bdf8",
@@ -284,12 +354,12 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       badgeBg: "#7c563f",
       badgeText: "#ffffff",
       cardBg: "#ffffff",
-      cardBorder: "1px solid rgba(124, 86, 63, 0.15)",
+      cardBorder: "1px solid rgba(124, 86, 63, 0.18)",
       cardTextColor: "#1b1c1c",
       cardSubText: "#72787a",
-      accentBadgeBg: "rgba(73, 98, 104, 0.1)",
+      accentBadgeBg: "rgba(73, 98, 104, 0.12)",
       accentBadgeText: "#496268",
-      likesBadgeBg: "rgba(186, 26, 26, 0.1)",
+      likesBadgeBg: "rgba(186, 26, 26, 0.12)",
       likesBadgeText: "#ba1a1a",
       heroCardBg: "linear-gradient(135deg, #ffffff 0%, #fffdfa 100%)",
       heroCardBorder: "2px solid #7c563f",
@@ -329,15 +399,15 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="xl">
         <Dialog.Backdrop bg="blackAlpha.850" backdropFilter="blur(10px)" />
         <Dialog.Positioner zIndex={2300}>
-          <Dialog.Content maxW="1360px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
+          <Dialog.Content maxW="1400px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
             <Dialog.Header p={5} borderBottom="1px solid rgba(255,255,255,0.1)">
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Memory Board Mega Canvas Studio
+                    Memory Board High-Res Canvas Studio (All {posts.length} Memories)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Fit all {posts.length} memory cards seamlessly into 1 complete poster canvas.
+                    Export all {posts.length} memories as 1 Ultra 6-Column Mega Wall, Desktop 4K, or Multi-Sheet Story Carousel.
                   </Text>
                 </Box>
                 <HStack gap={3}>
@@ -360,52 +430,71 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   data-export-ignore="true"
                 >
                   <VStack align="stretch" gap={3}>
+                    {/* Row 1: Format Presets & Actions */}
                     <Flex direction={{ base: "column", lg: "row" }} gap={3} justify="space-between" align="center">
-                      {/* Theme Picker */}
-                      <HStack gap={1.5} flexWrap="wrap">
+                      <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Theme:
+                          Canvas Format Preset:
                         </Text>
-                        {(
-                          [
-                            { id: "baan7_classic", label: "Baan 7 Chocolate" },
-                            { id: "midnight_lagoon", label: "Midnight Lagoon" },
-                            { id: "vintage_scrapbook", label: "Vintage Scrapbook" },
-                            { id: "golden_gala", label: "Golden Gala" },
-                          ] as const
-                        ).map((t) => (
-                          <Button
-                            key={t.id}
-                            size="xs"
-                            variant={theme === t.id ? "solid" : "outline"}
-                            colorPalette={theme === t.id ? "amber" : "gray"}
-                            onClick={() => setTheme(t.id)}
-                            borderRadius="full"
-                            px={3}
-                          >
-                            {theme === t.id && <FiCheck style={{ marginRight: 3 }} />}
-                            {t.label}
-                          </Button>
-                        ))}
+                        <Button
+                          size="xs"
+                          variant={preset === "mega_wall_2400" ? "solid" : "outline"}
+                          colorPalette="amber"
+                          onClick={() => handlePresetSelect("mega_wall_2400")}
+                          borderRadius="lg"
+                        >
+                          <FiGrid style={{ marginRight: 4 }} />
+                          82-Card Mega Wall (2400px)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={preset === "desktop_1920" ? "solid" : "outline"}
+                          colorPalette="blue"
+                          onClick={() => handlePresetSelect("desktop_1920")}
+                          borderRadius="lg"
+                        >
+                          <FiMonitor style={{ marginRight: 4 }} />
+                          Desktop 4K (1920px)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={preset === "ig_story" ? "solid" : "outline"}
+                          colorPalette="purple"
+                          onClick={() => handlePresetSelect("ig_story")}
+                          borderRadius="lg"
+                        >
+                          <FiSmartphone style={{ marginRight: 4 }} />
+                          IG Story / Mobile (1080px)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={preset === "hd_poster" ? "solid" : "outline"}
+                          colorPalette="gray"
+                          onClick={() => handlePresetSelect("hd_poster")}
+                          borderRadius="lg"
+                        >
+                          <FiImage style={{ marginRight: 4 }} />
+                          HD Poster (1500px)
+                        </Button>
                       </HStack>
 
-                      {/* Export Actions */}
+                      {/* Export Buttons */}
                       <HStack gap={2}>
                         <Button
                           colorPalette="amber"
-                          size="xs"
+                          size="sm"
                           onClick={handleDownload}
                           loading={isExporting}
                           disabled={isLoading || posts.length === 0}
                           borderRadius="lg"
-                          px={4}
+                          px={5}
                         >
-                          <FiDownload /> Download Canvas PNG
+                          <FiDownload /> Export Canvas PNG
                         </Button>
                         <Button
                           colorPalette="teal"
                           variant="outline"
-                          size="xs"
+                          size="sm"
                           onClick={handleUploadSupabase}
                           loading={isExporting}
                           disabled={isLoading || posts.length === 0}
@@ -416,46 +505,152 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                       </HStack>
                     </Flex>
 
-                    {/* Canvas Density & Layout Controls */}
+                    {/* Row 2: Sheet Pagination & Slicing */}
+                    <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
+                      <HStack gap={2} flexWrap="wrap">
+                        <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
+                          Cards Per Sheet:
+                        </Text>
+                        {(["all", 16, 20, 24] as const).map((opt) => (
+                          <Button
+                            key={String(opt)}
+                            size="xs"
+                            variant={pageSize === opt ? "solid" : "outline"}
+                            colorPalette="teal"
+                            onClick={() => {
+                              setPageSize(opt);
+                              setCurrentPage(1);
+                            }}
+                            borderRadius="md"
+                          >
+                            {opt === "all" ? `All ${posts.length} Cards` : `${opt} Cards / Sheet`}
+                          </Button>
+                        ))}
+
+                        {isPaginated && (
+                          <HStack gap={2} ml={3}>
+                            <Text fontSize="xs" fontWeight="bold" color="gray.300">
+                              Sheet {activePage} of {totalPages}
+                            </Text>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={activePage <= 1}
+                              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            >
+                              <FiChevronLeft /> Prev
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={activePage >= totalPages}
+                              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            >
+                              Next <FiChevronRight />
+                            </Button>
+                          </HStack>
+                        )}
+                      </HStack>
+
+                      {/* Text Scaling & Density */}
+                      <HStack gap={2}>
+                        <Text fontSize="xs" fontWeight="bold" color="gray.300" mr={1}>
+                          Text Size:
+                        </Text>
+                        {(["medium", "large", "extra_large"] as const).map((sz) => (
+                          <Button
+                            key={sz}
+                            size="xs"
+                            variant={textSizeScale === sz ? "solid" : "outline"}
+                            colorPalette="blue"
+                            onClick={() => setTextSizeScale(sz)}
+                            borderRadius="md"
+                            textTransform="capitalize"
+                          >
+                            {sz.replace("_", " ")}
+                          </Button>
+                        ))}
+
+                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={2} mr={1}>
+                          Cols:
+                        </Text>
+                        {([2, 3, 4, 5, 6] as const).map((cols) => (
+                          <Button
+                            key={cols}
+                            size="xs"
+                            variant={gridColumns === cols ? "solid" : "outline"}
+                            colorPalette="purple"
+                            onClick={() => setGridColumns(cols)}
+                            borderRadius="md"
+                          >
+                            {cols}
+                          </Button>
+                        ))}
+                      </HStack>
+                    </Flex>
+
+                    {/* Row 3: Avatars & Themes */}
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="gray.300" mr={1}>
-                          <FiSliders style={{ display: "inline", marginRight: 4 }} />
-                          Grid Density:
+                          Theme:
                         </Text>
-                        <HStack gap={1}>
-                          {([3, 4, 5] as const).map((cols) => (
-                            <Button
-                              key={cols}
-                              size="xs"
-                              variant={gridColumns === cols ? "solid" : "outline"}
-                              colorPalette="blue"
-                              onClick={() => setGridColumns(cols)}
-                              borderRadius="md"
-                            >
-                              {cols} Columns
-                            </Button>
-                          ))}
-                        </HStack>
+                        {(
+                          [
+                            { id: "baan7_classic", label: "Chocolate" },
+                            { id: "midnight_lagoon", label: "Lagoon" },
+                            { id: "vintage_scrapbook", label: "Scrapbook" },
+                            { id: "golden_gala", label: "Gala" },
+                          ] as const
+                        ).map((t) => (
+                          <Button
+                            key={t.id}
+                            size="xs"
+                            variant={theme === t.id ? "solid" : "outline"}
+                            colorPalette={theme === t.id ? "amber" : "gray"}
+                            onClick={() => setTheme(t.id)}
+                            borderRadius="full"
+                            px={2.5}
+                          >
+                            {theme === t.id && <FiCheck style={{ marginRight: 2 }} />}
+                            {t.label}
+                          </Button>
+                        ))}
+                      </HStack>
 
-                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={3} mr={1}>
+                      <HStack gap={2} flexWrap="wrap">
+                        <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
+                          Export DPI Quality:
+                        </Text>
+                        {([2, 3, 4] as const).map((dpi) => (
+                          <Button
+                            key={dpi}
+                            size="xs"
+                            variant={exportDpi === dpi ? "solid" : "outline"}
+                            colorPalette={dpi === 4 ? "amber" : "blue"}
+                            onClick={() => setExportDpi(dpi)}
+                            borderRadius="md"
+                          >
+                            {dpi === 4 ? "4K Max (4x)" : dpi === 3 ? "Ultra HD (3x)" : "Standard (2x)"}
+                          </Button>
+                        ))}
+
+                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={2} mr={1}>
                           Avatar Display:
                         </Text>
-                        <HStack gap={1}>
-                          {(["compact", "hidden", "full"] as const).map((mode) => (
-                            <Button
-                              key={mode}
-                              size="xs"
-                              variant={avatarMode === mode ? "solid" : "outline"}
-                              colorPalette="purple"
-                              onClick={() => setAvatarMode(mode)}
-                              borderRadius="md"
-                              textTransform="capitalize"
-                            >
-                              {mode}
-                            </Button>
-                          ))}
-                        </HStack>
+                        {(["full", "compact", "hidden"] as const).map((mode) => (
+                          <Button
+                            key={mode}
+                            size="xs"
+                            variant={avatarMode === mode ? "solid" : "outline"}
+                            colorPalette="purple"
+                            onClick={() => setAvatarMode(mode)}
+                            borderRadius="md"
+                            textTransform="capitalize"
+                          >
+                            {mode} Profile Pic
+                          </Button>
+                        ))}
                       </HStack>
 
                       <HStack gap={2}>
@@ -514,16 +709,16 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   <Flex justify="center" align="center" py={16}>
                     <Spinner size="xl" color="#fdcaad" />
                     <Text ml={4} color="gray.300" fontSize="sm">
-                      Fetching all memory cards from database...
+                      Fetching all {posts.length} memory cards from database...
                     </Text>
                   </Flex>
                 ) : (
                   /* ─── POSTER CANVAS DOM NODE TO CAPTURE ─── */
                   <Box
                     ref={posterRef}
-                    w="1300px"
+                    w={canvasWidth}
                     mx="auto"
-                    p={8}
+                    p={ preset === "mega_wall_2400" ? 12 : preset === "desktop_1920" ? 10 : 8 }
                     style={{ background: themeSpecs.canvasBg }}
                     borderRadius="2xl"
                     boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.7)"
@@ -534,36 +729,38 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   >
                     {/* Poster Header */}
                     <Box
-                      p={6}
-                      borderRadius="xl"
+                      p={preset === "mega_wall_2400" ? 8 : 6}
+                      borderRadius="2xl"
                       style={{
                         background: themeSpecs.headerBg,
                         border: themeSpecs.headerBorder,
                         backdropFilter: "blur(16px)",
                       }}
-                      mb={6}
+                      mb={8}
                     >
                       <Flex justify="space-between" align="center">
-                        <Box maxW="800px">
-                          <HStack gap={2} mb={2}>
+                        <Box maxW={preset === "mega_wall_2400" ? "1600px" : "1000px"}>
+                          <HStack gap={2} mb={3}>
                             <Badge
-                              px={3}
-                              py={0.5}
+                              px={4}
+                              py={1}
                               borderRadius="full"
-                              fontSize="3xs"
+                              fontSize="xs"
                               fontWeight="bold"
                               letterSpacing="0.05em"
                               style={{ background: themeSpecs.badgeBg, color: themeSpecs.badgeText }}
                             >
                               BAAN 7 OFFICIAL MEMORY WALL 2026
                             </Badge>
-                            <Badge variant="outline" colorPalette="amber" px={2.5} py={0.5} borderRadius="full" fontSize="3xs">
-                              COMPLETE MEMORY CANVAS
+                            <Badge variant="outline" colorPalette="amber" px={3} py={1} borderRadius="full" fontSize="xs">
+                              {isPaginated
+                                ? `SHEET ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
+                                : `COMPLETE MEGA WALL (${posts.length} CARDS)`}
                             </Badge>
                           </HStack>
 
                           <Heading
-                            size="xl"
+                            fontSize={fontSizes.headerTitle}
                             fontWeight="800"
                             letterSpacing="-0.02em"
                             fontFamily='"Playfair Display", Georgia, serif'
@@ -572,45 +769,45 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             Ween 2026 Memory Board Recap
                           </Heading>
 
-                          <Text fontSize="sm" mt={2} lineHeight="1.5" style={{ color: themeSpecs.subtitleColor }}>
+                          <Text fontSize={preset === "mega_wall_2400" ? "lg" : "sm"} mt={3} lineHeight="1.6" style={{ color: themeSpecs.subtitleColor }}>
                             {customNote}
                           </Text>
                         </Box>
 
                         {/* Event Stats Counter */}
-                        <HStack gap={3}>
+                        <HStack gap={4}>
                           <Box
-                            px={5}
-                            py={3}
-                            borderRadius="xl"
+                            px={6}
+                            py={4}
+                            borderRadius="2xl"
                             textAlign="center"
                             style={{
                               background: themeSpecs.cardBg,
                               border: themeSpecs.cardBorder,
                             }}
                           >
-                            <Text fontSize="2xl" fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                            <Text fontSize={preset === "mega_wall_2400" ? "4xl" : "2xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                               {posts.length}
                             </Text>
-                            <Text fontSize="3xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
+                            <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
                               TOTAL MEMORIES
                             </Text>
                           </Box>
 
                           <Box
-                            px={5}
-                            py={3}
-                            borderRadius="xl"
+                            px={6}
+                            py={4}
+                            borderRadius="2xl"
                             textAlign="center"
                             style={{
                               background: themeSpecs.cardBg,
                               border: themeSpecs.cardBorder,
                             }}
                           >
-                            <Text fontSize="2xl" fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                            <Text fontSize={preset === "mega_wall_2400" ? "4xl" : "2xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                               {totalLikes}
                             </Text>
-                            <Text fontSize="3xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
+                            <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
                               TOTAL LIKES
                             </Text>
                           </Box>
@@ -619,23 +816,23 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     </Box>
 
                     {/* Posts Grid Layout */}
-                    <SimpleGrid columns={gridColumns} gap={4}>
-                      {posts.map((item, index) => {
+                    <SimpleGrid columns={gridColumns} gap={ preset === "mega_wall_2400" ? 5 : 6 }>
+                      {displayedPosts.map((item, index) => {
                         const isHero = highlightTopLiked && index < 3 && item.likes > 0;
                         const tilt = getTiltAngle(index);
 
                         return (
                           <Box
                             key={item.id}
-                            p={avatarMode === "compact" ? 4 : avatarMode === "hidden" ? 3.5 : 5}
-                            borderRadius="xl"
+                            p={preset === "mega_wall_2400" ? 5 : 4.5}
+                            borderRadius="2xl"
                             style={{
                               background: isHero ? themeSpecs.heroCardBg : themeSpecs.cardBg,
                               border: isHero ? themeSpecs.heroCardBorder : themeSpecs.cardBorder,
                               transform: tilt,
                               transition: "all 0.2s ease",
                             }}
-                            boxShadow="sm"
+                            boxShadow="md"
                             display="flex"
                             flexDirection="column"
                             justifyContent="space-between"
@@ -645,11 +842,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             {enablePolaroidTilt && (
                               <Box
                                 position="absolute"
-                                top="-6px"
+                                top="-8px"
                                 left="50%"
                                 style={{ transform: "translateX(-50%)" }}
-                                w="44px"
-                                h="10px"
+                                w="50px"
+                                h="12px"
                                 borderRadius="2px"
                                 bg={themeSpecs.tapeColor}
                               />
@@ -657,21 +854,21 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
                             <Box>
                               {/* Author & Header Info */}
-                              <Flex justify="space-between" align="center" mb={2}>
-                                <HStack gap={2}>
+                              <Flex justify="space-between" align="center" mb={3}>
+                                <HStack gap={3}>
                                   {avatarMode === "full" && (
                                     <UserAvatar
                                       src={item.author.profile_pic_url}
                                       name={item.is_anonymous ? "Anonymous" : item.author.nickname ?? "Student"}
                                       avatarColor={item.author.avatar_color}
-                                      size="2xs"
+                                      size={preset === "mega_wall_2400" ? "sm" : "xs"}
                                     />
                                   )}
 
                                   {avatarMode === "compact" && (
                                     <Box
-                                      w="8px"
-                                      h="8px"
+                                      w="10px"
+                                      h="10px"
                                       borderRadius="full"
                                       bg={item.author.avatar_color || "#496268"}
                                       flexShrink={0}
@@ -679,19 +876,19 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   )}
 
                                   <Box>
-                                    <HStack gap={1}>
-                                      <Text fontSize="xs" fontWeight="bold" lineHeight="1.2">
+                                    <HStack gap={1.5}>
+                                      <Text fontSize={fontSizes.authorName} fontWeight="bold" lineHeight="1.2">
                                         {item.is_anonymous ? "Anonymous" : item.author.nickname || "Student"}
                                       </Text>
                                       {isHero && (
-                                        <Badge colorPalette="amber" size="xs" fontSize="3xs" borderRadius="xs">
+                                        <Badge colorPalette="amber" size="xs" fontSize="xs" borderRadius="xs">
                                           TOP
                                         </Badge>
                                       )}
                                     </HStack>
 
                                     {item.author.faculty && (
-                                      <Text fontSize="3xs" style={{ color: themeSpecs.cardSubText }}>
+                                      <Text fontSize="xs" style={{ color: themeSpecs.cardSubText }}>
                                         {item.author.faculty}
                                       </Text>
                                     )}
@@ -699,26 +896,26 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 </HStack>
 
                                 <Badge
-                                  px={2}
+                                  px={2.5}
                                   py={0.5}
                                   borderRadius="full"
-                                  fontSize="3xs"
+                                  fontSize="xs"
                                   fontWeight="bold"
                                   style={{
                                     background: themeSpecs.likesBadgeBg,
                                     color: themeSpecs.likesBadgeText,
                                   }}
                                 >
-                                  <FiHeart style={{ display: "inline", marginRight: 2 }} />
+                                  <FiHeart style={{ display: "inline", marginRight: 3 }} />
                                   {item.likes}
                                 </Badge>
                               </Flex>
 
                               {/* Memory Content Text with Highlight Tag Parsing */}
                               <Text
-                                fontSize="xs"
-                                lineHeight="1.5"
-                                mb={2.5}
+                                fontSize={fontSizes.cardText}
+                                lineHeight="1.6"
+                                mb={3}
                                 whiteSpace="pre-wrap"
                                 fontWeight={isHero ? "600" : "400"}
                               >
@@ -728,10 +925,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                               {/* Memory Attached Image (if any) */}
                               {item.image_url && (
                                 <Box
-                                  borderRadius="lg"
+                                  borderRadius="xl"
                                   overflow="hidden"
-                                  mb={2}
-                                  maxH={gridColumns === 5 ? "120px" : "160px"}
+                                  mb={3}
+                                  maxH={preset === "mega_wall_2400" ? "200px" : "180px"}
                                   border="1px solid rgba(255,255,255,0.1)"
                                 >
                                   <Image
@@ -747,10 +944,12 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             </Box>
 
                             {/* Card Footer Timestamp */}
-                            <Text fontSize="3xs" textAlign="right" style={{ color: themeSpecs.cardSubText }} mt={1}>
+                            <Text fontSize={fontSizes.timestamp} textAlign="right" style={{ color: themeSpecs.cardSubText }} mt={2}>
                               {new Date(item.created_at).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
                               })}
                             </Text>
                           </Box>
@@ -762,15 +961,19 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex
                       justify="space-between"
                       align="center"
-                      mt={8}
-                      pt={5}
+                      mt={10}
+                      pt={6}
                       borderTop={themeSpecs.headerBorder}
-                      fontSize="xs"
+                      fontSize="sm"
                       fontWeight="500"
                       style={{ color: themeSpecs.subtitleColor }}
                     >
                       <Text>Curated by Baan 7 Moderator Team • Ween 2026</Text>
-                      <Text>Captured on {new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}</Text>
+                      <Text>
+                        {isPaginated
+                          ? `Sheet ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
+                          : `Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
+                      </Text>
                     </Flex>
                   </Box>
                 )}

@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 export interface ExportPosterOptions {
   fileName?: string;
   pixelRatio?: number;
+  quality?: number;
 }
 
 const exportFilter = (node: Node): boolean => {
@@ -22,25 +23,25 @@ export async function downloadElementAsPng(
   element: HTMLElement,
   options: ExportPosterOptions = {}
 ): Promise<string> {
-  const { fileName = `memory-board-poster-${Date.now()}.png`, pixelRatio = 2 } = options;
+  const { fileName = `memory-board-poster-${Date.now()}.png`, pixelRatio = 3, quality = 1.0 } = options;
 
   let dataUrl: string;
 
   try {
-    // Attempt 1: Standard high-DPI export
+    // Attempt 1: Maximum high-DPI resolution export (e.g. 3x or 4x pixelRatio)
     dataUrl = await toPng(element, {
-      quality: 0.95,
+      quality,
       pixelRatio,
       cacheBust: false,
       filter: exportFilter,
       skipFonts: true, // Prevents CORS font fetch failures
     });
   } catch (firstErr) {
-    console.warn("[PosterExport] High-DPI export attempt failed, retrying with fallback options...", firstErr);
-    // Attempt 2: Fallback export at 1.5x pixelRatio without font embedding
+    console.warn("[PosterExport] Maximum resolution export attempt failed, retrying with fallback options...", firstErr);
+    // Attempt 2: Fallback export at 2.0x pixelRatio
     dataUrl = await toPng(element, {
-      quality: 0.9,
-      pixelRatio: 1.5,
+      quality: 0.95,
+      pixelRatio: 2.0,
       cacheBust: false,
       filter: exportFilter,
       skipFonts: true,
@@ -59,13 +60,13 @@ export async function uploadElementToSupabaseStorage(
   bucketName: string = "memory-cards",
   options: ExportPosterOptions = {}
 ): Promise<{ publicUrl: string | null; path: string }> {
-  const { fileName = `poster-${Date.now()}.png`, pixelRatio = 2 } = options;
+  const { fileName = `poster-${Date.now()}.png`, pixelRatio = 3, quality = 1.0 } = options;
 
   let blob: Blob | null = null;
 
   try {
     blob = await toBlob(element, {
-      quality: 0.95,
+      quality,
       pixelRatio,
       cacheBust: false,
       filter: exportFilter,
@@ -74,8 +75,8 @@ export async function uploadElementToSupabaseStorage(
   } catch (firstErr) {
     console.warn("[PosterExport] Blob generation failed, retrying fallback...", firstErr);
     blob = await toBlob(element, {
-      quality: 0.9,
-      pixelRatio: 1.5,
+      quality: 0.95,
+      pixelRatio: 2.0,
       cacheBust: false,
       filter: exportFilter,
       skipFonts: true,
