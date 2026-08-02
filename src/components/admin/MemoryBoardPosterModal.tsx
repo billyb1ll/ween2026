@@ -28,10 +28,7 @@ import {
   FiLayers,
   FiCheck,
   FiHeart,
-  FiSmartphone,
   FiMonitor,
-  FiChevronLeft,
-  FiChevronRight,
   FiTv,
   FiZoomIn,
   FiZoomOut,
@@ -63,9 +60,9 @@ interface MemoryBoardPosterModalProps {
   onClose: () => void;
 }
 
-type PosterTheme = "baan7_classic" | "midnight_lagoon" | "vintage_scrapbook" | "golden_gala";
+type PosterTheme = "desktop_app" | "baan7_classic" | "midnight_lagoon" | "vintage_scrapbook" | "golden_gala";
 type AvatarMode = "compact" | "hidden" | "full";
-type CanvasPreset = "widescreen_16_9" | "mega_wall_2400" | "desktop_1920" | "ig_story" | "hd_poster";
+type CanvasPreset = "desktop_4k_3840" | "mega_wall_2400" | "widescreen_16_9" | "desktop_1920" | "ig_story" | "hd_poster";
 type TextSizeScale = "medium" | "large" | "extra_large";
 type PageSizeOption = "all" | 8 | 9 | 12 | 16 | 18 | 20 | 24;
 type PostTypeFilter = "all" | "memory" | "board";
@@ -103,13 +100,13 @@ function parseFormattedContent(text: string): React.ReactNode {
       );
     } else {
       const highlightStyles: Record<string, { bg: string; color: string; border: string }> = {
-        "h-blue": { bg: "rgba(56, 189, 248, 0.32)", color: "#38bdf8", border: "rgba(56, 189, 248, 0.6)" },
-        "h-gold": { bg: "rgba(245, 158, 11, 0.32)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.6)" },
-        "h-yellow": { bg: "rgba(245, 158, 11, 0.32)", color: "#fbbf24", border: "rgba(245, 158, 11, 0.6)" },
-        "h-pink": { bg: "rgba(244, 63, 94, 0.32)", color: "#fda4af", border: "rgba(244, 63, 94, 0.6)" },
-        "h-red": { bg: "rgba(239, 68, 68, 0.32)", color: "#fca5a5", border: "rgba(239, 68, 68, 0.6)" },
-        "h-green": { bg: "rgba(34, 197, 94, 0.32)", color: "#86efac", border: "rgba(34, 197, 94, 0.6)" },
-        "h-purple": { bg: "rgba(168, 85, 247, 0.32)", color: "#c084fc", border: "rgba(168, 85, 247, 0.6)" },
+        "h-blue": { bg: "rgba(56, 189, 248, 0.32)", color: "#0284c7", border: "rgba(56, 189, 248, 0.6)" },
+        "h-gold": { bg: "rgba(245, 158, 11, 0.32)", color: "#d97706", border: "rgba(245, 158, 11, 0.6)" },
+        "h-yellow": { bg: "rgba(245, 158, 11, 0.32)", color: "#d97706", border: "rgba(245, 158, 11, 0.6)" },
+        "h-pink": { bg: "rgba(244, 63, 94, 0.32)", color: "#e11d48", border: "rgba(244, 63, 94, 0.6)" },
+        "h-red": { bg: "rgba(239, 68, 68, 0.32)", color: "#dc2626", border: "rgba(239, 68, 68, 0.6)" },
+        "h-green": { bg: "rgba(34, 197, 94, 0.32)", color: "#16a34a", border: "rgba(34, 197, 94, 0.6)" },
+        "h-purple": { bg: "rgba(168, 85, 247, 0.32)", color: "#9333ea", border: "rgba(168, 85, 247, 0.6)" },
       };
 
       const style = highlightStyles[tagType] || highlightStyles["h-blue"];
@@ -151,8 +148,8 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [containerWidth, setContainerWidth] = useState<number>(1300);
   const [posterHeight, setPosterHeight] = useState<number>(1440);
 
-  const [theme, setTheme] = useState<PosterTheme>("baan7_classic");
-  const [preset, setPreset] = useState<CanvasPreset>("mega_wall_2400"); // Default to Full Size Mega Wall!
+  const [theme, setTheme] = useState<PosterTheme>("desktop_app"); // Default to Live Desktop Board Theme!
+  const [preset, setPreset] = useState<CanvasPreset>("desktop_4k_3840"); // Default to 3840px 4K Super Wide Wall!
   const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large");
   const [pageSize, setPageSize] = useState<PageSizeOption>("all"); // Default to ALL cards for Full Size Image!
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -161,10 +158,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [customNote, setCustomNote] = useState<string>(
     "Thank you everyone for contributing your heartwarming memories to Baan 7. Here is a complete recap of all memory cards captured together."
   );
-  const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(false);
+  const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(true);
   const [highlightTopLiked, setHighlightTopLiked] = useState<boolean>(true);
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("full");
-  const [gridColumns, setGridColumns] = useState<number>(5);
+  const [gridColumns, setGridColumns] = useState<number>(6); // 6 columns default for 4K Super Wide Board!
   const [sortBy, setSortBy] = useState<"likes" | "newest">("likes");
   const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -195,7 +192,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     });
     observer.observe(posterRef.current);
     return () => observer.disconnect();
-  }, [isOpen, preset, textSizeScale, gridColumns, pageSize, currentPage, typeFilter]);
+  }, [isOpen, preset, textSizeScale, gridColumns, pageSize, currentPage, typeFilter, theme]);
 
   // Fetch ALL cards from Supabase with robust multi-type & fallback queries
   const { data: posts = [], isLoading, error: fetchError, refetch } = useQuery<MemoryPostItem[]>({
@@ -303,7 +300,13 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   // Handle Preset Selection
   const handlePresetSelect = (selectedPreset: CanvasPreset) => {
     setPreset(selectedPreset);
-    if (selectedPreset === "widescreen_16_9") {
+    if (selectedPreset === "desktop_4k_3840") {
+      setGridColumns(6);
+      setTextSizeScale("extra_large");
+      setAvatarMode("full");
+      setPageSize("all"); // Full 82-Card Poster!
+      setExportDpi(4);
+    } else if (selectedPreset === "widescreen_16_9") {
       setGridColumns(4);
       setTextSizeScale("extra_large");
       setAvatarMode("full");
@@ -314,10 +317,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       setGridColumns(5);
       setTextSizeScale("extra_large");
       setAvatarMode("full");
-      setPageSize("all"); // Full 82-Card Poster!
+      setPageSize("all");
       setExportDpi(4);
     } else if (selectedPreset === "desktop_1920") {
-      setGridColumns(3);
+      setGridColumns(4);
       setTextSizeScale("extra_large");
       setAvatarMode("full");
       setPageSize("all");
@@ -350,7 +353,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       });
       toaster.create({
         title: "Export Successful",
-        description: `Full Size High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
+        description: `Full Desktop-Style High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
         type: "success",
       });
     } catch (err) {
@@ -394,7 +397,9 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
   // Preset Width & Height Numerical Constants
   const canvasWidthNum =
-    preset === "widescreen_16_9"
+    preset === "desktop_4k_3840"
+      ? 3840
+      : preset === "widescreen_16_9"
       ? 2560
       : preset === "mega_wall_2400"
       ? 2400
@@ -419,15 +424,40 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const scaledOuterWidth = `${canvasWidthNum * effectiveScale}px`;
   const scaledOuterHeight = `${targetHeight * effectiveScale}px`;
 
-  // BOOSTED READABLE FONT SIZES
+  // BOOSTED READABLE FONT SIZES FOR BIGGER WALLS
   const fontSizes = {
-    medium: { cardText: "19px", authorName: "19px", timestamp: "14px", headerTitle: "46px" },
-    large: { cardText: "22px", authorName: "22px", timestamp: "16px", headerTitle: "54px" },
-    extra_large: { cardText: "26px", authorName: "26px", timestamp: "18px", headerTitle: "64px" },
+    medium: { cardText: "20px", authorName: "20px", timestamp: "15px", headerTitle: "50px" },
+    large: { cardText: "24px", authorName: "24px", timestamp: "17px", headerTitle: "60px" },
+    extra_large: { cardText: "28px", authorName: "28px", timestamp: "19px", headerTitle: "72px" },
   }[textSizeScale];
 
   // Design Systems for Poster Canvas
   const themeSpecs = {
+    desktop_app: {
+      name: "Baan 7 Desktop Live App Slate",
+      canvasBg: "linear-gradient(135deg, #10192d 0%, #1a2642 50%, #0d1424 100%)",
+      headerBg: "rgba(26, 38, 66, 0.95)",
+      headerBorder: "1.5px solid rgba(59, 106, 191, 0.35)",
+      titleColor: "#ffffff",
+      subtitleColor: "#a3b8dd",
+      badgeBg: "#3b6abf",
+      badgeText: "#ffffff",
+      studentCardBg: "#E2EAFB", // Live App Light Ice Blue
+      studentCardBorder: "1.5px solid rgba(59, 106, 191, 0.25)",
+      studentCardTextColor: "#0D1A36",
+      studentCardSubText: "rgba(13, 26, 54, 0.65)",
+      staffCardBg: "#FFE5EC", // Live App Soft Pastel Rose
+      staffCardBorder: "1.5px solid rgba(242, 100, 117, 0.35)",
+      staffCardTextColor: "#0D1A36",
+      staffCardSubText: "rgba(13, 26, 54, 0.65)",
+      accentBadgeBg: "rgba(59, 106, 191, 0.15)",
+      accentBadgeText: "#3b6abf",
+      likesBadgeBg: "#F26475",
+      likesBadgeText: "#ffffff",
+      heroCardBg: "linear-gradient(135deg, #FFE5EC 0%, #FFF0F4 100%)",
+      heroCardBorder: "2.5px solid #F26475",
+      tapeColor: "rgba(255, 223, 137, 0.55)",
+    },
     baan7_classic: {
       name: "Baan 7 Warm Ivory & Chocolate",
       canvasBg: "linear-gradient(135deg, #2b1a13 0%, #1f120c 40%, #170d08 100%)",
@@ -437,10 +467,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       subtitleColor: "#e4e2e1",
       badgeBg: "#7c563f",
       badgeText: "#fcf9f8",
-      cardBg: "rgba(43, 26, 19, 0.95)",
-      cardBorder: "1.5px solid rgba(253, 202, 173, 0.3)",
-      cardTextColor: "#fcf9f8",
-      cardSubText: "#c5e0e6",
+      studentCardBg: "rgba(43, 26, 19, 0.95)",
+      studentCardBorder: "1.5px solid rgba(253, 202, 173, 0.3)",
+      studentCardTextColor: "#fcf9f8",
+      studentCardSubText: "#c5e0e6",
+      staffCardBg: "rgba(124, 86, 63, 0.95)",
+      staffCardBorder: "1.5px solid #fdcaad",
+      staffCardTextColor: "#fcf9f8",
+      staffCardSubText: "#fdcaad",
       accentBadgeBg: "rgba(73, 98, 104, 0.35)",
       accentBadgeText: "#c5e0e6",
       likesBadgeBg: "rgba(239, 68, 68, 0.3)",
@@ -458,10 +492,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       subtitleColor: "#94a3b8",
       badgeBg: "#496268",
       badgeText: "#ffffff",
-      cardBg: "rgba(17, 28, 56, 0.95)",
-      cardBorder: "1.5px solid rgba(73, 98, 104, 0.3)",
-      cardTextColor: "#f8fafc",
-      cardSubText: "#94a3b8",
+      studentCardBg: "rgba(17, 28, 56, 0.95)",
+      studentCardBorder: "1.5px solid rgba(73, 98, 104, 0.3)",
+      studentCardTextColor: "#f8fafc",
+      studentCardSubText: "#94a3b8",
+      staffCardBg: "rgba(30, 48, 88, 0.95)",
+      staffCardBorder: "1.5px solid #38bdf8",
+      staffCardTextColor: "#f8fafc",
+      staffCardSubText: "#38bdf8",
       accentBadgeBg: "rgba(56, 189, 248, 0.2)",
       accentBadgeText: "#38bdf8",
       likesBadgeBg: "rgba(244, 63, 94, 0.3)",
@@ -479,10 +517,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       subtitleColor: "#574235",
       badgeBg: "#7c563f",
       badgeText: "#ffffff",
-      cardBg: "#ffffff",
-      cardBorder: "1.5px solid rgba(124, 86, 63, 0.25)",
-      cardTextColor: "#1b1c1c",
-      cardSubText: "#72787a",
+      studentCardBg: "#ffffff",
+      studentCardBorder: "1.5px solid rgba(124, 86, 63, 0.25)",
+      studentCardTextColor: "#1b1c1c",
+      studentCardSubText: "#72787a",
+      staffCardBg: "#fff5f5",
+      staffCardBorder: "1.5px solid #ba1a1a",
+      staffCardTextColor: "#1b1c1c",
+      staffCardSubText: "#ba1a1a",
       accentBadgeBg: "rgba(73, 98, 104, 0.15)",
       accentBadgeText: "#496268",
       likesBadgeBg: "rgba(186, 26, 26, 0.15)",
@@ -500,10 +542,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       subtitleColor: "#d97706",
       badgeBg: "#f59e0b",
       badgeText: "#181512",
-      cardBg: "rgba(36, 31, 26, 0.95)",
-      cardBorder: "1.5px solid rgba(245, 158, 11, 0.3)",
-      cardTextColor: "#fffbeb",
-      cardSubText: "#d97706",
+      studentCardBg: "rgba(36, 31, 26, 0.95)",
+      studentCardBorder: "1.5px solid rgba(245, 158, 11, 0.3)",
+      studentCardTextColor: "#fffbeb",
+      studentCardSubText: "#d97706",
+      staffCardBg: "rgba(69, 52, 34, 0.95)",
+      staffCardBorder: "1.5px solid #fbbf24",
+      staffCardTextColor: "#fffbeb",
+      staffCardSubText: "#fbbf24",
       accentBadgeBg: "rgba(245, 158, 11, 0.2)",
       accentBadgeText: "#fbbf24",
       likesBadgeBg: "rgba(245, 158, 11, 0.3)",
@@ -525,15 +571,15 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="xl">
         <Dialog.Backdrop bg="blackAlpha.850" backdropFilter="blur(10px)" />
         <Dialog.Positioner zIndex={2300}>
-          <Dialog.Content maxW="1500px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
+          <Dialog.Content maxW="1550px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
             <Dialog.Header p={5} borderBottom="1px solid rgba(255,255,255,0.1)">
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Full-Size High-Res Memory Board Studio ({posts.length} Cards)
+                    Full-Size Desktop-Style Memory Board Studio ({posts.length} Cards)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Exports complete 1-piece high-resolution poster with zero bottom clipping.
+                    Exports high-resolution desktop live app cards in 4K resolution up to 8 columns.
                   </Text>
                 </Box>
 
@@ -546,7 +592,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     size="xs"
                     variant="outline"
                     colorPalette="blue"
-                    onClick={() => setZoomLevel((z) => Math.max(50, z - 25))}
+                    onClick={() => setZoomLevel((z) => Math.max(40, z - 20))}
                   >
                     <FiZoomOut /> {zoomLevel}%
                   </Button>
@@ -590,23 +636,33 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex direction={{ base: "column", lg: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Format Mode:
+                          Format Preset:
                         </Text>
                         <Button
                           size="xs"
-                          variant={preset === "mega_wall_2400" && pageSize === "all" ? "solid" : "outline"}
+                          variant={preset === "desktop_4k_3840" ? "solid" : "outline"}
                           colorPalette="amber"
-                          onClick={() => handlePresetSelect("mega_wall_2400")}
+                          onClick={() => handlePresetSelect("desktop_4k_3840")}
                           borderRadius="lg"
                           px={3}
                         >
+                          <FiMonitor style={{ marginRight: 4 }} />
+                          4K Super Wide Wall (3840px • 6-8 Cols)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={preset === "mega_wall_2400" ? "solid" : "outline"}
+                          colorPalette="teal"
+                          onClick={() => handlePresetSelect("mega_wall_2400")}
+                          borderRadius="lg"
+                        >
                           <FiGrid style={{ marginRight: 4 }} />
-                          Full 82-Card Mega Wall (Auto-Height)
+                          Mega Wall (2400px • 5 Cols)
                         </Button>
                         <Button
                           size="xs"
                           variant={preset === "widescreen_16_9" ? "solid" : "outline"}
-                          colorPalette="teal"
+                          colorPalette="blue"
                           onClick={() => handlePresetSelect("widescreen_16_9")}
                           borderRadius="lg"
                         >
@@ -616,22 +672,12 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         <Button
                           size="xs"
                           variant={preset === "desktop_1920" ? "solid" : "outline"}
-                          colorPalette="blue"
+                          colorPalette="purple"
                           onClick={() => handlePresetSelect("desktop_1920")}
                           borderRadius="lg"
                         >
                           <FiMonitor style={{ marginRight: 4 }} />
-                          Desktop 4K Poster
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={preset === "ig_story" ? "solid" : "outline"}
-                          colorPalette="purple"
-                          onClick={() => handlePresetSelect("ig_story")}
-                          borderRadius="lg"
-                        >
-                          <FiSmartphone style={{ marginRight: 4 }} />
-                          IG Story Mobile
+                          Desktop HD (1920px)
                         </Button>
                       </HStack>
 
@@ -646,7 +692,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                           px={5}
                         >
-                          <FiDownload /> Export Full Image PNG
+                          <FiDownload /> Export Full Desktop PNG
                         </Button>
                         <Button
                           colorPalette="teal"
@@ -662,66 +708,26 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                       </HStack>
                     </Flex>
 
-                    {/* Row 2: Sheet Pagination & Slicing */}
+                    {/* Row 2: Grid Columns & Text Sizes */}
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Cards Display:
+                          Columns (More Columns = Wider Poster):
                         </Text>
-                        <Button
-                          size="xs"
-                          variant={pageSize === "all" ? "solid" : "outline"}
-                          colorPalette="amber"
-                          onClick={() => {
-                            setPageSize("all");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="md"
-                        >
-                          All {posts.length} Cards (Full Poster)
-                        </Button>
-                        {( [8, 9, 12, 16, 18, 20, 24] as const).map((opt) => (
+                        {([2, 3, 4, 5, 6, 7, 8] as const).map((cols) => (
                           <Button
-                            key={String(opt)}
+                            key={cols}
                             size="xs"
-                            variant={pageSize === opt ? "solid" : "outline"}
-                            colorPalette="teal"
-                            onClick={() => {
-                              setPageSize(opt);
-                              setCurrentPage(1);
-                            }}
+                            variant={gridColumns === cols ? "solid" : "outline"}
+                            colorPalette={cols >= 6 ? "amber" : "teal"}
+                            onClick={() => setGridColumns(cols)}
                             borderRadius="md"
                           >
-                            {opt} / Slide Sheet
+                            {cols} Cols {cols >= 6 ? "(Ultra Wide)" : ""}
                           </Button>
                         ))}
-
-                        {isPaginated && (
-                          <HStack gap={2} ml={3}>
-                            <Text fontSize="xs" fontWeight="bold" color="gray.300">
-                              Sheet {activePage} of {totalPages}
-                            </Text>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              disabled={activePage <= 1}
-                              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            >
-                              <FiChevronLeft /> Prev
-                            </Button>
-                            <Button
-                              size="xs"
-                              variant="outline"
-                              disabled={activePage >= totalPages}
-                              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                            >
-                              Next <FiChevronRight />
-                            </Button>
-                          </HStack>
-                        )}
                       </HStack>
 
-                      {/* Text Scaling & Density */}
                       <HStack gap={2}>
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
                           Text Size:
@@ -736,84 +742,25 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             borderRadius="md"
                             textTransform="capitalize"
                           >
-                            {sz === "extra_large" ? "Jumbo 26px Text" : sz === "large" ? "Large 22px" : "Medium 19px"}
-                          </Button>
-                        ))}
-
-                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={2} mr={1}>
-                          Cols:
-                        </Text>
-                        {([2, 3, 4, 5, 6] as const).map((cols) => (
-                          <Button
-                            key={cols}
-                            size="xs"
-                            variant={gridColumns === cols ? "solid" : "outline"}
-                            colorPalette="purple"
-                            onClick={() => setGridColumns(cols)}
-                            borderRadius="md"
-                          >
-                            {cols}
+                            {sz === "extra_large" ? "Jumbo 28px Text" : sz === "large" ? "Large 24px" : "Medium 20px"}
                           </Button>
                         ))}
                       </HStack>
                     </Flex>
 
-                    {/* Row 3: Avatars, DPI Quality, & Themes */}
+                    {/* Row 3: Theme, Avatars, & Quality Controls */}
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="gray.300" mr={1}>
-                          Fetch Filter:
-                        </Text>
-                        <Button
-                          size="xs"
-                          variant={typeFilter === "all" ? "solid" : "outline"}
-                          colorPalette="teal"
-                          onClick={() => {
-                            setTypeFilter("all");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="full"
-                          px={2.5}
-                        >
-                          <FiFilter style={{ marginRight: 2 }} />
-                          All Cards
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={typeFilter === "memory" ? "solid" : "outline"}
-                          colorPalette="amber"
-                          onClick={() => {
-                            setTypeFilter("memory");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="full"
-                          px={2.5}
-                        >
-                          Memory
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={typeFilter === "board" ? "solid" : "outline"}
-                          colorPalette="blue"
-                          onClick={() => {
-                            setTypeFilter("board");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="full"
-                          px={2.5}
-                        >
-                          Board
-                        </Button>
-
-                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={3} mr={1}>
-                          Theme:
+                          Theme Style:
                         </Text>
                         {(
                           [
-                            { id: "baan7_classic", label: "Chocolate" },
-                            { id: "midnight_lagoon", label: "Lagoon" },
-                            { id: "vintage_scrapbook", label: "Scrapbook" },
-                            { id: "golden_gala", label: "Gala" },
+                            { id: "desktop_app", label: "Live App Slate (#E2EAFB)" },
+                            { id: "baan7_classic", label: "Chocolate Warm" },
+                            { id: "midnight_lagoon", label: "Midnight Lagoon" },
+                            { id: "vintage_scrapbook", label: "Vintage Scrapbook" },
+                            { id: "golden_gala", label: "Golden Gala" },
                           ] as const
                         ).map((t) => (
                           <Button
@@ -848,22 +795,17 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           </Button>
                         ))}
 
-                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={2} mr={1}>
-                          Avatar Display:
-                        </Text>
-                        {(["full", "compact", "hidden"] as const).map((mode) => (
-                          <Button
-                            key={mode}
-                            size="xs"
-                            variant={avatarMode === mode ? "solid" : "outline"}
-                            colorPalette="purple"
-                            onClick={() => setAvatarMode(mode)}
-                            borderRadius="md"
-                            textTransform="capitalize"
-                          >
-                            {mode} Profile Pic
-                          </Button>
-                        ))}
+                        <Button
+                          size="xs"
+                          variant={enablePolaroidTilt ? "solid" : "outline"}
+                          colorPalette="amber"
+                          onClick={() => setEnablePolaroidTilt(!enablePolaroidTilt)}
+                          borderRadius="md"
+                          ml={2}
+                        >
+                          <FiLayers style={{ marginRight: 3 }} />
+                          {enablePolaroidTilt ? "Live Card Tilt: ON" : "Flat Cards"}
+                        </Button>
 
                         <Button
                           size="xs"
@@ -871,21 +813,9 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           colorPalette="teal"
                           onClick={() => setHighlightTopLiked(!highlightTopLiked)}
                           borderRadius="md"
-                          ml={2}
                         >
                           <FiGrid style={{ marginRight: 3 }} />
-                          {highlightTopLiked ? "Hero Highlights: ON" : "OFF"}
-                        </Button>
-
-                        <Button
-                          size="xs"
-                          variant={enablePolaroidTilt ? "solid" : "outline"}
-                          colorPalette="gray"
-                          onClick={() => setEnablePolaroidTilt(!enablePolaroidTilt)}
-                          borderRadius="md"
-                        >
-                          <FiLayers style={{ marginRight: 3 }} />
-                          {enablePolaroidTilt ? "Tilt: ON" : "OFF"}
+                          {highlightTopLiked ? "Hero Top Highlights: ON" : "OFF"}
                         </Button>
 
                         <Button
@@ -995,7 +925,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         ref={posterRef}
                         w={canvasWidth}
                         minH={canvasHeight}
-                        p={ preset === "widescreen_16_9" ? 12 : preset === "mega_wall_2400" ? 14 : 10 }
+                        p={ preset === "desktop_4k_3840" ? 14 : preset === "widescreen_16_9" ? 12 : 10 }
                         style={{
                           background: themeSpecs.canvasBg,
                           transform: `scale(${effectiveScale})`,
@@ -1006,7 +936,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         borderRadius="2xl"
                         boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.7)"
                         fontFamily='"Plus Jakarta Sans", system-ui, sans-serif'
-                        color={themeSpecs.cardTextColor}
+                        color={themeSpecs.titleColor}
                         position="relative"
                         display="flex"
                         flexDirection="column"
@@ -1014,7 +944,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                       >
                         {/* Poster Header */}
                         <Box
-                          p={preset === "widescreen_16_9" ? 8 : 7}
+                          p={preset === "desktop_4k_3840" ? 9 : 8}
                           borderRadius="2xl"
                           style={{
                             background: themeSpecs.headerBg,
@@ -1024,7 +954,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           mb={7}
                         >
                           <Flex justify="space-between" align="center">
-                            <Box maxW={preset === "widescreen_16_9" ? "1800px" : "1000px"}>
+                            <Box maxW={preset === "desktop_4k_3840" ? "2600px" : "1800px"}>
                               <HStack gap={2.5} mb={3}>
                                 <Badge
                                   px={4}
@@ -1038,10 +968,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   BAAN 7 OFFICIAL MEMORY WALL 2026
                                 </Badge>
                                 <Badge variant="outline" colorPalette="amber" px={3} py={1.5} borderRadius="full" fontSize="sm">
-                                  {preset === "widescreen_16_9" && isPaginated
-                                    ? `16:9 WIDESCREEN SLIDE ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
+                                  {preset === "desktop_4k_3840"
+                                    ? `4K SUPER WIDE WALL • ${gridColumns} COLUMNS (${posts.length} CARDS)`
                                     : isPaginated
-                                    ? `SHEET ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
+                                    ? `SLIDE ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
                                     : `FULL SIZE COMPLETE POSTER (${posts.length} CARDS)`}
                                 </Badge>
                               </HStack>
@@ -1056,7 +986,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 Ween 2026 Memory Board Recap
                               </Heading>
 
-                              <Text fontSize={preset === "widescreen_16_9" ? "lg" : "md"} mt={3} lineHeight="1.6" style={{ color: themeSpecs.subtitleColor }}>
+                              <Text fontSize={preset === "desktop_4k_3840" ? "xl" : "lg"} mt={3} lineHeight="1.6" style={{ color: themeSpecs.subtitleColor }}>
                                 {customNote}
                               </Text>
                             </Box>
@@ -1069,14 +999,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 borderRadius="2xl"
                                 textAlign="center"
                                 style={{
-                                  background: themeSpecs.cardBg,
-                                  border: themeSpecs.cardBorder,
+                                  background: themeSpecs.headerBg,
+                                  border: themeSpecs.headerBorder,
                                 }}
                               >
-                                <Text fontSize={preset === "widescreen_16_9" ? "4xl" : "3xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                                <Text fontSize={preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                                   {posts.length}
                                 </Text>
-                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
+                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
                                   TOTAL MEMORIES
                                 </Text>
                               </Box>
@@ -1087,14 +1017,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 borderRadius="2xl"
                                 textAlign="center"
                                 style={{
-                                  background: themeSpecs.cardBg,
-                                  border: themeSpecs.cardBorder,
+                                  background: themeSpecs.headerBg,
+                                  border: themeSpecs.headerBorder,
                                 }}
                               >
-                                <Text fontSize={preset === "widescreen_16_9" ? "4xl" : "3xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                                <Text fontSize={preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                                   {totalLikes}
                                 </Text>
-                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.cardSubText }}>
+                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
                                   TOTAL LIKES
                                 </Text>
                               </Box>
@@ -1102,61 +1032,75 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           </Flex>
                         </Box>
 
-                        {/* Posts Grid Layout (Unclipped Natural Row Flow) */}
-                        <SimpleGrid columns={gridColumns} gap={ preset === "widescreen_16_9" ? 6 : 6 } mb={8}>
+                        {/* Posts Grid Layout (Matching Live App MemoryCard Style) */}
+                        <SimpleGrid columns={gridColumns} gap={6} mb={8}>
                           {displayedPosts.map((item, index) => {
+                            const isStaff = item.author.role !== "student";
+                            const prefix = isStaff ? "P' " : "N' ";
                             const isHero = highlightTopLiked && index < 3 && item.likes > 0;
                             const tilt = getTiltAngle(index);
+
+                            // Match exact Desktop App card background colors
+                            const cardBg = isStaff ? themeSpecs.staffCardBg : themeSpecs.studentCardBg;
+                            const cardBorder = isStaff ? themeSpecs.staffCardBorder : themeSpecs.studentCardBorder;
+                            const textColor = isStaff ? themeSpecs.staffCardTextColor : themeSpecs.studentCardTextColor;
+                            const subTextColor = isStaff ? themeSpecs.staffCardSubText : themeSpecs.studentCardSubText;
+
+                            const authorDisplayName = item.is_anonymous
+                              ? "Anonymous"
+                              : `${prefix}${item.author.nickname || "Student"}`;
 
                             return (
                               <Box
                                 key={item.id}
-                                p={preset === "widescreen_16_9" ? 6 : 5}
-                                minH="220px"
+                                p={preset === "desktop_4k_3840" ? 7 : 6}
+                                minH="240px"
                                 borderRadius="2xl"
                                 style={{
-                                  background: isHero ? themeSpecs.heroCardBg : themeSpecs.cardBg,
-                                  border: isHero ? themeSpecs.heroCardBorder : themeSpecs.cardBorder,
+                                  background: isHero ? themeSpecs.heroCardBg : cardBg,
+                                  border: isHero ? themeSpecs.heroCardBorder : cardBorder,
+                                  color: textColor,
                                   transform: tilt,
                                   transition: "all 0.2s ease",
                                 }}
-                                boxShadow="md"
+                                boxShadow="0 4px 20px -4px rgba(0, 0, 0, 0.25)"
                                 display="flex"
                                 flexDirection="column"
                                 justifyContent="space-between"
                                 position="relative"
                               >
-                                {/* Decorative Tape Top Center */}
+                                {/* Decorative Tape Top Center (Desktop App Polaroid Tape) */}
                                 {enablePolaroidTilt && (
                                   <Box
                                     position="absolute"
                                     top="-10px"
                                     left="50%"
                                     style={{ transform: "translateX(-50%)" }}
-                                    w="60px"
-                                    h="14px"
+                                    w="64px"
+                                    h="16px"
                                     borderRadius="2px"
                                     bg={themeSpecs.tapeColor}
+                                    boxShadow="0 1px 3px rgba(0,0,0,0.1)"
                                   />
                                 )}
 
                                 <Box>
                                   {/* Author & Header Info */}
-                                  <Flex justify="space-between" align="center" mb={3}>
+                                  <Flex justify="space-between" align="center" mb={3.5}>
                                     <HStack gap={3}>
                                       {avatarMode === "full" && (
                                         <UserAvatar
                                           src={item.author.profile_pic_url}
-                                          name={item.is_anonymous ? "Anonymous" : item.author.nickname ?? "Student"}
+                                          name={authorDisplayName}
                                           avatarColor={item.author.avatar_color}
-                                          size="sm"
+                                          size="md"
                                         />
                                       )}
 
                                       {avatarMode === "compact" && (
                                         <Box
-                                          w="12px"
-                                          h="12px"
+                                          w="14px"
+                                          h="14px"
                                           borderRadius="full"
                                           bg={item.author.avatar_color || "#496268"}
                                           flexShrink={0}
@@ -1165,8 +1109,8 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
                                       <Box>
                                         <HStack gap={1.5}>
-                                          <Text fontSize={fontSizes.authorName} fontWeight="bold" lineHeight="1.2">
-                                            {item.is_anonymous ? "Anonymous" : item.author.nickname || "Student"}
+                                          <Text fontSize={fontSizes.authorName} fontWeight="700" lineHeight="1.2" color={textColor}>
+                                            {authorDisplayName}
                                           </Text>
                                           {isHero && (
                                             <Badge colorPalette="amber" size="xs" fontSize="xs" borderRadius="xs">
@@ -1176,7 +1120,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                         </HStack>
 
                                         {item.author.faculty && (
-                                          <Text fontSize="xs" style={{ color: themeSpecs.cardSubText }}>
+                                          <Text fontSize="xs" fontWeight="500" style={{ color: subTextColor }}>
                                             {item.author.faculty}
                                           </Text>
                                         )}
@@ -1184,7 +1128,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                     </HStack>
 
                                     <Badge
-                                      px={3}
+                                      px={3.5}
                                       py={1}
                                       borderRadius="full"
                                       fontSize="xs"
@@ -1202,10 +1146,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   {/* Memory Content Text with Highlight Tag Parsing */}
                                   <Text
                                     fontSize={fontSizes.cardText}
-                                    lineHeight="1.6"
-                                    mb={3}
+                                    lineHeight="1.65"
+                                    mb={3.5}
                                     whiteSpace="pre-wrap"
                                     fontWeight={isHero ? "700" : "500"}
+                                    color={textColor}
                                   >
                                     {parseFormattedContent(item.content)}
                                   </Text>
@@ -1215,9 +1160,9 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                     <Box
                                       borderRadius="xl"
                                       overflow="hidden"
-                                      mb={3}
-                                      maxH="220px"
-                                      border="1px solid rgba(255,255,255,0.1)"
+                                      mb={3.5}
+                                      maxH="260px"
+                                      border="1.5px solid rgba(0,0,0,0.1)"
                                     >
                                       <Image
                                         src={item.image_url}
@@ -1232,7 +1177,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 </Box>
 
                                 {/* Card Footer Timestamp */}
-                                <Text fontSize={fontSizes.timestamp} textAlign="right" style={{ color: themeSpecs.cardSubText }} mt={2}>
+                                <Text fontSize={fontSizes.timestamp} textAlign="right" fontWeight="500" style={{ color: subTextColor }} mt={2}>
                                   {new Date(item.created_at).toLocaleDateString("en-US", {
                                     month: "short",
                                     day: "numeric",
@@ -1257,11 +1202,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         >
                           <Text>Curated by Baan 7 Moderator Team • Ween 2026</Text>
                           <Text>
-                            {preset === "widescreen_16_9" && isPaginated
-                              ? `16:9 Widescreen Slide ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
+                            {preset === "desktop_4k_3840"
+                              ? `4K Super Wide Desktop Board (${gridColumns} Columns) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
                               : isPaginated
                               ? `Sheet ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
-                              : `Complete Full Size Poster (${posts.length} Cards) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
+                              : `Complete Desktop Style Poster (${posts.length} Cards) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
                           </Text>
                         </Flex>
                       </Box>
