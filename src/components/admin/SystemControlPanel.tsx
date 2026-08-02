@@ -11,6 +11,7 @@ interface SystemControlPanelProps {
     key: "enable_memory_board" | "vibecheck_enabled" | "enable_hype_board",
     currentVal: boolean
   ) => void;
+  onOpenPosterModal?: () => void;
 }
 
 export function SystemControlPanel({
@@ -21,6 +22,7 @@ export function SystemControlPanel({
   globalMuteActive,
   handleSetHypeMode,
   handleToggleConfig,
+  onOpenPosterModal,
 }: SystemControlPanelProps) {
 
   return (
@@ -331,6 +333,58 @@ export function SystemControlPanel({
             </HStack>
           </Button>
         </Flex>
+
+        {/* Memory Board Mega-Poster Studio Export */}
+        {onOpenPosterModal && (
+          <Flex
+            align="center"
+            justify="space-between"
+            p={4}
+            bg="var(--c-ivory)"
+            borderRadius="xl"
+            border="1px solid"
+            borderColor="border.subtle"
+          >
+            <Box>
+              <Text
+                fontFamily="heading"
+                fontWeight="700"
+                color="brand.900"
+                fontSize="sm"
+              >
+                Memory Board Canvas Studio
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Capture all memory cards in 1 high-resolution infographic poster for print or social media export.
+              </Text>
+            </Box>
+            <Button
+              type="button"
+              bg="var(--c-lagoon)"
+              color="white"
+              onClick={onOpenPosterModal}
+              cursor="pointer"
+              h={{ base: "44px", md: "40px" }}
+              py={2}
+              px={5}
+              borderRadius="lg"
+              fontWeight="700"
+              fontSize="xs"
+              transition="all 0.2s ease"
+            >
+              <HStack gap={1.5}>
+                <Box
+                  as="span"
+                  className="material-symbols-outlined"
+                  fontSize="16px"
+                >
+                  photo_library
+                </Box>
+                OPEN STUDIO
+              </HStack>
+            </Button>
+          </Flex>
+        )}
 
         {/* Global Mute Status Indicator */}
         {globalMuteActive && (

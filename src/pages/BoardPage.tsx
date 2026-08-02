@@ -35,6 +35,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { compressImage } from "../utils/image";
 import { UserAvatar } from "../components/UserAvatar";
 import { LikedByModal } from "../components/board/LikedByModal";
+import { MemoryBoardPosterModal } from "../components/admin/MemoryBoardPosterModal";
 import { FACULTIES } from "../lib/constants";
 import { immich } from "../lib/immich";
 import gsap from "gsap";
@@ -639,6 +640,7 @@ export function BoardPage() {
   const [inspectedUser, setInspectedUser] = useState<User | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [isInspectorLoading, setIsInspectorLoading] = useState(false);
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [memoryImage, setMemoryImage] = useState<File | null>(null);
   const memoryGridRef = useRef<HTMLDivElement>(null);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
@@ -1404,6 +1406,18 @@ export function BoardPage() {
               label="Memory Board"
             />
           </HStack>
+
+          {isModerator && (
+            <Button
+              size="sm"
+              colorPalette="blue"
+              variant="outline"
+              borderRadius="full"
+              onClick={() => setIsPosterModalOpen(true)}
+            >
+              Mega Poster (Mod)
+            </Button>
+          )}
         </Flex>
       )}
 
@@ -3258,6 +3272,11 @@ export function BoardPage() {
           </Dialog.Positioner>
         </Portal>
       </Dialog.Root>
+
+      <MemoryBoardPosterModal
+        isOpen={isPosterModalOpen}
+        onClose={() => setIsPosterModalOpen(false)}
+      />
     </Box>
   );
 }

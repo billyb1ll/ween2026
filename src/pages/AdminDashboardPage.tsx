@@ -46,6 +46,7 @@ import { UserInspectModal } from "../components/admin/UserInspectModal";
 import { STAFF_ROLES } from "../lib/constants";
 import { AlbumMappingAdmin } from "../components/admin/AlbumMappingAdmin";
 import { ImmichPhotoPickerModal } from "../components/admin/ImmichPhotoPickerModal";
+import { MemoryBoardPosterModal } from "../components/admin/MemoryBoardPosterModal";
 
 export interface DBUser {
   student_id: string;
@@ -317,6 +318,7 @@ export function AdminDashboardPage() {
   const [featuredPhotoUrls, setFeaturedPhotoUrls] = useState<string[]>([]);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [isImmichModalOpen, setIsImmichModalOpen] = useState(false);
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
   const [, setSavingPhotos] = useState(false);
 
   // User Inspector states
@@ -2260,6 +2262,7 @@ export function AdminDashboardPage() {
               globalMuteActive={globalMuteActive}
               handleSetHypeMode={handleSetHypeMode}
               handleToggleConfig={handleToggleConfig}
+              onOpenPosterModal={() => setIsPosterModalOpen(true)}
             />
 
             {/* 2. Emergency Broadcast */}
@@ -4696,6 +4699,11 @@ export function AdminDashboardPage() {
           }
         }}
         currentUrls={featuredPhotoUrls}
+      />
+
+      <MemoryBoardPosterModal
+        isOpen={isPosterModalOpen}
+        onClose={() => setIsPosterModalOpen(false)}
       />
     </Box>
   );
