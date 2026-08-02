@@ -149,11 +149,12 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const posterRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState<number>(1300);
+  const [posterHeight, setPosterHeight] = useState<number>(1440);
 
   const [theme, setTheme] = useState<PosterTheme>("baan7_classic");
-  const [preset, setPreset] = useState<CanvasPreset>("widescreen_16_9");
+  const [preset, setPreset] = useState<CanvasPreset>("mega_wall_2400"); // Default to Full Size Mega Wall!
   const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large");
-  const [pageSize, setPageSize] = useState<PageSizeOption>(12);
+  const [pageSize, setPageSize] = useState<PageSizeOption>("all"); // Default to ALL cards for Full Size Image!
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [typeFilter, setTypeFilter] = useState<PostTypeFilter>("all");
@@ -163,7 +164,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(false);
   const [highlightTopLiked, setHighlightTopLiked] = useState<boolean>(true);
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("full");
-  const [gridColumns, setGridColumns] = useState<number>(4);
+  const [gridColumns, setGridColumns] = useState<number>(5);
   const [sortBy, setSortBy] = useState<"likes" | "newest">("likes");
   const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -174,13 +175,27 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         if (entry.contentRect.width > 0) {
-          setContainerWidth(entry.contentRect.width - 32); // 32px padding
+          setContainerWidth(entry.contentRect.width - 32);
         }
       }
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [isOpen]);
+
+  // Measure poster natural height dynamically for unclipped auto-height containers
+  useEffect(() => {
+    if (!posterRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setPosterHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(posterRef.current);
+    return () => observer.disconnect();
+  }, [isOpen, preset, textSizeScale, gridColumns, pageSize, currentPage, typeFilter]);
 
   // Fetch ALL cards from Supabase with robust multi-type & fallback queries
   const { data: posts = [], isLoading, error: fetchError, refetch } = useQuery<MemoryPostItem[]>({
@@ -295,12 +310,17 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       setPageSize(12);
       setCurrentPage(1);
       setExportDpi(3);
+    } else if (selectedPreset === "mega_wall_2400") {
+      setGridColumns(5);
+      setTextSizeScale("extra_large");
+      setAvatarMode("full");
+      setPageSize("all"); // Full 82-Card Poster!
+      setExportDpi(4);
     } else if (selectedPreset === "desktop_1920") {
       setGridColumns(3);
       setTextSizeScale("extra_large");
       setAvatarMode("full");
-      setPageSize(9);
-      setCurrentPage(1);
+      setPageSize("all");
       setExportDpi(3);
     } else if (selectedPreset === "ig_story") {
       setGridColumns(2);
@@ -309,12 +329,6 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       setPageSize(8);
       setCurrentPage(1);
       setExportDpi(3);
-    } else if (selectedPreset === "mega_wall_2400") {
-      setGridColumns(5);
-      setTextSizeScale("large");
-      setAvatarMode("compact");
-      setPageSize("all");
-      setExportDpi(4);
     } else if (selectedPreset === "hd_poster") {
       setGridColumns(3);
       setTextSizeScale("large");
@@ -328,7 +342,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     if (!posterRef.current) return;
     setIsExporting(true);
     try {
-      const pageSuffix = isPaginated ? `-slide-${activePage}` : "";
+      const pageSuffix = isPaginated ? `-slide-${activePage}` : "-full-poster";
       await downloadElementAsPng(posterRef.current, {
         fileName: `baan7-memory-poster-${preset}${pageSuffix}-${Date.now()}.png`,
         pixelRatio: exportDpi,
@@ -336,7 +350,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       });
       toaster.create({
         title: "Export Successful",
-        description: `Super Clear High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
+        description: `Full Size High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
         type: "success",
       });
     } catch (err) {
@@ -355,7 +369,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     if (!posterRef.current) return;
     setIsExporting(true);
     try {
-      const pageSuffix = isPaginated ? `-slide-${activePage}` : "";
+      const pageSuffix = isPaginated ? `-slide-${activePage}` : "-full-poster";
       const res = await uploadElementToSupabaseStorage(posterRef.current, "memory-cards", {
         fileName: `poster-${preset}${pageSuffix}-${Date.now()}.png`,
         pixelRatio: exportDpi,
@@ -390,18 +404,20 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       ? 1080
       : 1500;
 
-  const canvasHeightNum = preset === "widescreen_16_9" ? 1440 : undefined;
+  // Fixed height ONLY when in 16:9 Paginated mode. For Full Poster mode, height is "auto" (unclipped)!
+  const canvasHeightNum = preset === "widescreen_16_9" && isPaginated ? 1440 : undefined;
 
   const canvasWidth = `${canvasWidthNum}px`;
   const canvasHeight = canvasHeightNum ? `${canvasHeightNum}px` : "auto";
 
-  // Calculate Auto-Fit Scale Ratio for Studio Preview (Zero Cropping!)
+  // Calculate Auto-Fit Scale Ratio for Studio Preview
   const baseFitScale = containerWidth > 0 ? containerWidth / canvasWidthNum : 0.5;
   const effectiveScale = baseFitScale * (zoomLevel / 100);
 
-  // Scaled Outer Box Dimensions for Pixel-Perfect Layout
+  // Scaled Outer Box Dimensions for Pixel-Perfect Layout (Unclipped Vertically)
+  const targetHeight = canvasHeightNum || posterHeight;
   const scaledOuterWidth = `${canvasWidthNum * effectiveScale}px`;
-  const scaledOuterHeight = canvasHeightNum ? `${canvasHeightNum * effectiveScale}px` : "auto";
+  const scaledOuterHeight = `${targetHeight * effectiveScale}px`;
 
   // BOOSTED READABLE FONT SIZES
   const fontSizes = {
@@ -514,10 +530,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Memory Board Studio (Auto-Fit & Zero Cropping)
+                    Full-Size High-Res Memory Board Studio ({posts.length} Cards)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Studio preview automatically scales to fit your browser window with zero edge cropping.
+                    Exports complete 1-piece high-resolution poster with zero bottom clipping.
                   </Text>
                 </Box>
 
@@ -570,72 +586,42 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   data-export-ignore="true"
                 >
                   <VStack align="stretch" gap={3}>
-                    {/* Row 1: Post Type Filter & Format Presets */}
+                    {/* Row 1: Format Presets & Actions */}
                     <Flex direction={{ base: "column", lg: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Fetch Filter:
+                          Format Mode:
                         </Text>
                         <Button
                           size="xs"
-                          variant={typeFilter === "all" ? "solid" : "outline"}
-                          colorPalette="teal"
-                          onClick={() => {
-                            setTypeFilter("all");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="lg"
-                        >
-                          <FiFilter style={{ marginRight: 3 }} />
-                          All Card Types (Memory + Board)
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={typeFilter === "memory" ? "solid" : "outline"}
+                          variant={preset === "mega_wall_2400" && pageSize === "all" ? "solid" : "outline"}
                           colorPalette="amber"
-                          onClick={() => {
-                            setTypeFilter("memory");
-                            setCurrentPage(1);
-                          }}
+                          onClick={() => handlePresetSelect("mega_wall_2400")}
                           borderRadius="lg"
+                          px={3}
                         >
-                          Memory Only
+                          <FiGrid style={{ marginRight: 4 }} />
+                          Full 82-Card Mega Wall (Auto-Height)
                         </Button>
-                        <Button
-                          size="xs"
-                          variant={typeFilter === "board" ? "solid" : "outline"}
-                          colorPalette="blue"
-                          onClick={() => {
-                            setTypeFilter("board");
-                            setCurrentPage(1);
-                          }}
-                          borderRadius="lg"
-                        >
-                          Board Only
-                        </Button>
-
-                        <Text fontSize="xs" fontWeight="bold" color="#fdcaad" ml={3} mr={1}>
-                          Preset:
-                        </Text>
                         <Button
                           size="xs"
                           variant={preset === "widescreen_16_9" ? "solid" : "outline"}
-                          colorPalette="amber"
+                          colorPalette="teal"
                           onClick={() => handlePresetSelect("widescreen_16_9")}
                           borderRadius="lg"
                         >
                           <FiTv style={{ marginRight: 4 }} />
-                          16:9 Widescreen
+                          16:9 Widescreen Slide
                         </Button>
                         <Button
                           size="xs"
                           variant={preset === "desktop_1920" ? "solid" : "outline"}
-                          colorPalette="teal"
+                          colorPalette="blue"
                           onClick={() => handlePresetSelect("desktop_1920")}
                           borderRadius="lg"
                         >
                           <FiMonitor style={{ marginRight: 4 }} />
-                          Desktop 4K
+                          Desktop 4K Poster
                         </Button>
                         <Button
                           size="xs"
@@ -645,17 +631,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                         >
                           <FiSmartphone style={{ marginRight: 4 }} />
-                          IG Story
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={preset === "mega_wall_2400" ? "solid" : "outline"}
-                          colorPalette="blue"
-                          onClick={() => handlePresetSelect("mega_wall_2400")}
-                          borderRadius="lg"
-                        >
-                          <FiGrid style={{ marginRight: 4 }} />
-                          Mega Wall
+                          IG Story Mobile
                         </Button>
                       </HStack>
 
@@ -670,7 +646,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                           px={5}
                         >
-                          <FiDownload /> Export High-Res PNG
+                          <FiDownload /> Export Full Image PNG
                         </Button>
                         <Button
                           colorPalette="teal"
@@ -690,25 +666,33 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Cards Per Slide (Readability Boost):
+                          Cards Display:
                         </Text>
-                        {(["all", 8, 9, 12, 16, 18, 20, 24] as const).map((opt) => (
+                        <Button
+                          size="xs"
+                          variant={pageSize === "all" ? "solid" : "outline"}
+                          colorPalette="amber"
+                          onClick={() => {
+                            setPageSize("all");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="md"
+                        >
+                          All {posts.length} Cards (Full Poster)
+                        </Button>
+                        {( [8, 9, 12, 16, 18, 20, 24] as const).map((opt) => (
                           <Button
                             key={String(opt)}
                             size="xs"
                             variant={pageSize === opt ? "solid" : "outline"}
-                            colorPalette={opt === 8 || opt === 12 ? "amber" : "teal"}
+                            colorPalette="teal"
                             onClick={() => {
                               setPageSize(opt);
                               setCurrentPage(1);
                             }}
                             borderRadius="md"
                           >
-                            {opt === "all"
-                              ? `All ${posts.length} Cards`
-                              : opt === 8 || opt === 12
-                              ? `${opt} Cards (Super Clear)`
-                              : `${opt} Cards / Sheet`}
+                            {opt} / Slide Sheet
                           </Button>
                         ))}
 
@@ -778,6 +762,50 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="gray.300" mr={1}>
+                          Fetch Filter:
+                        </Text>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "all" ? "solid" : "outline"}
+                          colorPalette="teal"
+                          onClick={() => {
+                            setTypeFilter("all");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="full"
+                          px={2.5}
+                        >
+                          <FiFilter style={{ marginRight: 2 }} />
+                          All Cards
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "memory" ? "solid" : "outline"}
+                          colorPalette="amber"
+                          onClick={() => {
+                            setTypeFilter("memory");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="full"
+                          px={2.5}
+                        >
+                          Memory
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "board" ? "solid" : "outline"}
+                          colorPalette="blue"
+                          onClick={() => {
+                            setTypeFilter("board");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="full"
+                          px={2.5}
+                        >
+                          Board
+                        </Button>
+
+                        <Text fontSize="xs" fontWeight="bold" color="gray.300" ml={3} mr={1}>
                           Theme:
                         </Text>
                         {(
@@ -805,7 +833,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Export DPI Quality:
+                          Export Quality:
                         </Text>
                         {([2, 3, 4] as const).map((dpi) => (
                           <Button
@@ -939,7 +967,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     </HStack>
                   </Box>
                 ) : (
-                  /* ─── SCROLLABLE & RESPONSIVE AUTO-FIT PREVIEW CONTAINER ─── */
+                  /* ─── SCROLLABLE & RESPONSIVE UNCLIPPED PREVIEW CONTAINER ─── */
                   <Box
                     ref={containerRef}
                     w="100%"
@@ -953,7 +981,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     justifyContent="center"
                     alignItems="flex-start"
                   >
-                    {/* Responsive Scaler Wrapper (Zero Cropping!) */}
+                    {/* Scaled Outer Bounding Box (Matching Natural Height!) */}
                     <Box
                       style={{
                         width: scaledOuterWidth,
@@ -966,7 +994,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                       <Box
                         ref={posterRef}
                         w={canvasWidth}
-                        h={canvasHeight}
+                        minH={canvasHeight}
                         p={ preset === "widescreen_16_9" ? 12 : preset === "mega_wall_2400" ? 14 : 10 }
                         style={{
                           background: themeSpecs.canvasBg,
@@ -979,9 +1007,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.7)"
                         fontFamily='"Plus Jakarta Sans", system-ui, sans-serif'
                         color={themeSpecs.cardTextColor}
-                        position="absolute"
-                        top={0}
-                        left={0}
+                        position="relative"
                         display="flex"
                         flexDirection="column"
                         justifyContent="space-between"
@@ -1012,11 +1038,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   BAAN 7 OFFICIAL MEMORY WALL 2026
                                 </Badge>
                                 <Badge variant="outline" colorPalette="amber" px={3} py={1.5} borderRadius="full" fontSize="sm">
-                                  {preset === "widescreen_16_9"
+                                  {preset === "widescreen_16_9" && isPaginated
                                     ? `16:9 WIDESCREEN SLIDE ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
                                     : isPaginated
                                     ? `SHEET ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
-                                    : `COMPLETE MEGA WALL (${posts.length} CARDS)`}
+                                    : `FULL SIZE COMPLETE POSTER (${posts.length} CARDS)`}
                                 </Badge>
                               </HStack>
 
@@ -1076,8 +1102,8 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           </Flex>
                         </Box>
 
-                        {/* Posts Grid Layout */}
-                        <SimpleGrid columns={gridColumns} gap={ preset === "widescreen_16_9" ? 6 : 6 } flex={1}>
+                        {/* Posts Grid Layout (Unclipped Natural Row Flow) */}
+                        <SimpleGrid columns={gridColumns} gap={ preset === "widescreen_16_9" ? 6 : 6 } mb={8}>
                           {displayedPosts.map((item, index) => {
                             const isHero = highlightTopLiked && index < 3 && item.likes > 0;
                             const tilt = getTiltAngle(index);
@@ -1086,6 +1112,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                               <Box
                                 key={item.id}
                                 p={preset === "widescreen_16_9" ? 6 : 5}
+                                minH="220px"
                                 borderRadius="2xl"
                                 style={{
                                   background: isHero ? themeSpecs.heroCardBg : themeSpecs.cardBg,
@@ -1222,7 +1249,6 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         <Flex
                           justify="space-between"
                           align="center"
-                          mt={8}
                           pt={5}
                           borderTop={themeSpecs.headerBorder}
                           fontSize="md"
@@ -1231,11 +1257,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         >
                           <Text>Curated by Baan 7 Moderator Team • Ween 2026</Text>
                           <Text>
-                            {preset === "widescreen_16_9"
+                            {preset === "widescreen_16_9" && isPaginated
                               ? `16:9 Widescreen Slide ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
                               : isPaginated
                               ? `Sheet ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
-                              : `Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
+                              : `Complete Full Size Poster (${posts.length} Cards) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
                           </Text>
                         </Flex>
                       </Box>
