@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Flex,
@@ -147,13 +147,16 @@ function parseFormattedContent(text: string): React.ReactNode {
 
 export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterModalProps) {
   const posterRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(1300);
+
   const [theme, setTheme] = useState<PosterTheme>("baan7_classic");
   const [preset, setPreset] = useState<CanvasPreset>("widescreen_16_9");
   const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large");
   const [pageSize, setPageSize] = useState<PageSizeOption>(12);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [typeFilter, setTypeFilter] = useState<PostTypeFilter>("all"); // Default to ALL cards!
+  const [typeFilter, setTypeFilter] = useState<PostTypeFilter>("all");
   const [customNote, setCustomNote] = useState<string>(
     "Thank you everyone for contributing your heartwarming memories to Baan 7. Here is a complete recap of all memory cards captured together."
   );
@@ -165,11 +168,24 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
+  // Measure container width for auto-fit responsive scaling
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 0) {
+          setContainerWidth(entry.contentRect.width - 32); // 32px padding
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [isOpen]);
+
   // Fetch ALL cards from Supabase with robust multi-type & fallback queries
   const { data: posts = [], isLoading, error: fetchError, refetch } = useQuery<MemoryPostItem[]>({
     queryKey: ["all_memory_posts_poster", sortBy, typeFilter],
     queryFn: async () => {
-      // Primary Attempt: Relational join query with limit 1000
       let query = supabase
         .from("posts")
         .select(
@@ -182,7 +198,6 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       } else if (typeFilter === "board") {
         query = query.eq("type", "board");
       } else {
-        // "all": match memory, board, quote or null type
         query = query.or("type.eq.memory,type.eq.board,type.eq.quote,type.is.null");
       }
 
@@ -196,7 +211,6 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
       const { data, error } = await query;
 
-      // Fallback Strategy: If relational join fails or returns null, query posts and users separately
       if (error || !data) {
         console.warn("[PosterFetch] Primary join query failed/empty, running fallback query...", error);
         let fallbackQuery = supabase.from("posts").select("*").eq("is_hidden", false);
@@ -208,7 +222,6 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
         const { data: rawPosts, error: postErr } = await fallbackQuery;
         if (postErr) throw postErr;
 
-        // Fetch users map for author fallback
         const { data: rawUsers } = await supabase.from("users").select("student_id, nickname, avatar_color, role, profile_pic_url, faculty");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const userMap = new Map<string, any>((rawUsers ?? []).map((u: any) => [u.student_id, u]));
@@ -365,19 +378,30 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     }
   };
 
-  // Preset Width, Height & Font Size Mappings
-  const canvasWidth =
+  // Preset Width & Height Numerical Constants
+  const canvasWidthNum =
     preset === "widescreen_16_9"
-      ? "2560px"
+      ? 2560
       : preset === "mega_wall_2400"
-      ? "2400px"
+      ? 2400
       : preset === "desktop_1920"
-      ? "1920px"
+      ? 1920
       : preset === "ig_story"
-      ? "1080px"
-      : "1500px";
+      ? 1080
+      : 1500;
 
-  const canvasHeight = preset === "widescreen_16_9" ? "1440px" : "auto";
+  const canvasHeightNum = preset === "widescreen_16_9" ? 1440 : undefined;
+
+  const canvasWidth = `${canvasWidthNum}px`;
+  const canvasHeight = canvasHeightNum ? `${canvasHeightNum}px` : "auto";
+
+  // Calculate Auto-Fit Scale Ratio for Studio Preview (Zero Cropping!)
+  const baseFitScale = containerWidth > 0 ? containerWidth / canvasWidthNum : 0.5;
+  const effectiveScale = baseFitScale * (zoomLevel / 100);
+
+  // Scaled Outer Box Dimensions for Pixel-Perfect Layout
+  const scaledOuterWidth = `${canvasWidthNum * effectiveScale}px`;
+  const scaledOuterHeight = canvasHeightNum ? `${canvasHeightNum * effectiveScale}px` : "auto";
 
   // BOOSTED READABLE FONT SIZES
   const fontSizes = {
@@ -485,22 +509,22 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="xl">
         <Dialog.Backdrop bg="blackAlpha.850" backdropFilter="blur(10px)" />
         <Dialog.Positioner zIndex={2300}>
-          <Dialog.Content maxW="1440px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
+          <Dialog.Content maxW="1500px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
             <Dialog.Header p={5} borderBottom="1px solid rgba(255,255,255,0.1)">
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Memory Board Super-Readable Studio ({posts.length} Cards Fetched)
+                    Memory Board Studio (Auto-Fit & Zero Cropping)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Filter by post type, set layout density, or zoom in up to 175% to inspect card details.
+                    Studio preview automatically scales to fit your browser window with zero edge cropping.
                   </Text>
                 </Box>
 
                 {/* Studio Interactive Zoom & Data Controls */}
                 <HStack gap={2}>
                   <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                    Studio Zoom:
+                    Zoom:
                   </Text>
                   <Button
                     size="xs"
@@ -524,7 +548,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     colorPalette="amber"
                     onClick={() => setZoomLevel(100)}
                   >
-                    <FiMaximize2 /> Reset
+                    <FiMaximize2 /> Fit Screen
                   </Button>
 
                   <Button size="xs" variant="solid" colorPalette="teal" onClick={() => refetch()} ml={2}>
@@ -535,7 +559,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
               </Flex>
             </Dialog.Header>
 
-            <Dialog.Body p={5} maxH="84vh" overflowY="auto">
+            <Dialog.Body p={5} maxH="85vh" overflowY="auto">
               <VStack align="stretch" gap={5}>
                 {/* Control Panel Bar */}
                 <Box
@@ -915,21 +939,27 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     </HStack>
                   </Box>
                 ) : (
-                  /* ─── SCROLLABLE & ZOOMABLE CANVAS PREVIEW CONTAINER ─── */
+                  /* ─── SCROLLABLE & RESPONSIVE AUTO-FIT PREVIEW CONTAINER ─── */
                   <Box
+                    ref={containerRef}
                     w="100%"
                     overflow="auto"
                     borderRadius="2xl"
                     p={4}
-                    bg="blackAlpha.600"
+                    bg="blackAlpha.700"
                     border="1px solid rgba(255,255,255,0.08)"
                     maxH="68vh"
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="flex-start"
                   >
+                    {/* Responsive Scaler Wrapper (Zero Cropping!) */}
                     <Box
                       style={{
-                        transform: `scale(${zoomLevel / 100})`,
-                        transformOrigin: "top left",
-                        transition: "transform 0.2s ease-in-out",
+                        width: scaledOuterWidth,
+                        height: scaledOuterHeight,
+                        position: "relative",
+                        flexShrink: 0,
                       }}
                     >
                       {/* ─── POSTER CANVAS DOM NODE TO CAPTURE ─── */}
@@ -938,13 +968,20 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         w={canvasWidth}
                         h={canvasHeight}
                         p={ preset === "widescreen_16_9" ? 12 : preset === "mega_wall_2400" ? 14 : 10 }
-                        style={{ background: themeSpecs.canvasBg }}
+                        style={{
+                          background: themeSpecs.canvasBg,
+                          transform: `scale(${effectiveScale})`,
+                          transformOrigin: "top left",
+                          width: canvasWidth,
+                          height: canvasHeight,
+                        }}
                         borderRadius="2xl"
                         boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.7)"
                         fontFamily='"Plus Jakarta Sans", system-ui, sans-serif'
                         color={themeSpecs.cardTextColor}
-                        position="relative"
-                        overflow="hidden"
+                        position="absolute"
+                        top={0}
+                        left={0}
                         display="flex"
                         flexDirection="column"
                         justifyContent="space-between"
