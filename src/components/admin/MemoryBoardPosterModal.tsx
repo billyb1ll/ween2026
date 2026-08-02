@@ -62,8 +62,8 @@ interface MemoryBoardPosterModalProps {
 
 type PosterTheme = "desktop_app" | "baan7_classic" | "midnight_lagoon" | "vintage_scrapbook" | "golden_gala";
 type AvatarMode = "compact" | "hidden" | "full";
-type CanvasPreset = "desktop_4k_3840" | "mega_wall_2400" | "widescreen_16_9" | "desktop_1920" | "ig_story" | "hd_poster";
-type TextSizeScale = "medium" | "large" | "extra_large";
+type CanvasPreset = "billboard_8k_7680" | "desktop_4k_3840" | "mega_wall_2400" | "widescreen_16_9" | "desktop_1920" | "ig_story" | "hd_poster";
+type TextSizeScale = "medium" | "large" | "extra_large" | "ultra_jumbo";
 type PageSizeOption = "all" | 8 | 9 | 12 | 16 | 18 | 20 | 24;
 type PostTypeFilter = "all" | "memory" | "board";
 
@@ -148,10 +148,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [containerWidth, setContainerWidth] = useState<number>(1300);
   const [posterHeight, setPosterHeight] = useState<number>(1440);
 
-  const [theme, setTheme] = useState<PosterTheme>("desktop_app"); // Default to Live Desktop Board Theme!
-  const [preset, setPreset] = useState<CanvasPreset>("desktop_4k_3840"); // Default to 3840px 4K Super Wide Wall!
+  const [theme, setTheme] = useState<PosterTheme>("desktop_app");
+  const [preset, setPreset] = useState<CanvasPreset>("desktop_4k_3840"); // Default to 4K Super Wide Wall!
   const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large");
-  const [pageSize, setPageSize] = useState<PageSizeOption>("all"); // Default to ALL cards for Full Size Image!
+  const [pageSize, setPageSize] = useState<PageSizeOption>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [typeFilter, setTypeFilter] = useState<PostTypeFilter>("all");
@@ -161,9 +161,9 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [enablePolaroidTilt, setEnablePolaroidTilt] = useState<boolean>(true);
   const [highlightTopLiked, setHighlightTopLiked] = useState<boolean>(true);
   const [avatarMode, setAvatarMode] = useState<AvatarMode>("hidden");
-  const [gridColumns, setGridColumns] = useState<number>(6); // 6 columns default for 4K Super Wide Board!
+  const [gridColumns, setGridColumns] = useState<number>(6);
   const [sortBy, setSortBy] = useState<"likes" | "newest">("likes");
-  const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
+  const [exportDpi, setExportDpi] = useState<2 | 3 | 4 | 5>(4); // Default to 4x High-DPI 4K/8K resolution!
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Measure container width for auto-fit responsive scaling
@@ -300,7 +300,13 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   // Handle Preset Selection
   const handlePresetSelect = (selectedPreset: CanvasPreset) => {
     setPreset(selectedPreset);
-    if (selectedPreset === "desktop_4k_3840") {
+    if (selectedPreset === "billboard_8k_7680") {
+      setGridColumns(8);
+      setTextSizeScale("ultra_jumbo");
+      setAvatarMode("hidden");
+      setPageSize("all");
+      setExportDpi(5); // 5x Ultra 8K DPI!
+    } else if (selectedPreset === "desktop_4k_3840") {
       setGridColumns(6);
       setTextSizeScale("extra_large");
       setAvatarMode("hidden");
@@ -353,7 +359,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       });
       toaster.create({
         title: "Export Successful",
-        description: `Full Desktop-Style High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
+        description: `Ultra High-Res PNG (${exportDpi}x DPI, 100% Quality) saved (${displayedPosts.length} cards).`,
         type: "success",
       });
     } catch (err) {
@@ -397,7 +403,9 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
   // Preset Width & Height Numerical Constants
   const canvasWidthNum =
-    preset === "desktop_4k_3840"
+    preset === "billboard_8k_7680"
+      ? 7680
+      : preset === "desktop_4k_3840"
       ? 3840
       : preset === "widescreen_16_9"
       ? 2560
@@ -424,11 +432,12 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const scaledOuterWidth = `${canvasWidthNum * effectiveScale}px`;
   const scaledOuterHeight = `${targetHeight * effectiveScale}px`;
 
-  // BOOSTED READABLE FONT SIZES FOR BIGGER WALLS
+  // BOOSTED READABLE FONT SIZES FOR 4K / 8K BILLBOARDS
   const fontSizes = {
     medium: { cardText: "20px", authorName: "20px", timestamp: "15px", headerTitle: "50px" },
     large: { cardText: "24px", authorName: "24px", timestamp: "17px", headerTitle: "60px" },
     extra_large: { cardText: "28px", authorName: "28px", timestamp: "19px", headerTitle: "72px" },
+    ultra_jumbo: { cardText: "36px", authorName: "36px", timestamp: "24px", headerTitle: "88px" },
   }[textSizeScale];
 
   // Design Systems for Poster Canvas
@@ -442,11 +451,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       subtitleColor: "#a3b8dd",
       badgeBg: "#3b6abf",
       badgeText: "#ffffff",
-      studentCardBg: "#E2EAFB", // Live App Light Ice Blue
+      studentCardBg: "#E2EAFB",
       studentCardBorder: "1.5px solid rgba(59, 106, 191, 0.25)",
       studentCardTextColor: "#0D1A36",
       studentCardSubText: "rgba(13, 26, 54, 0.65)",
-      staffCardBg: "#FFE5EC", // Live App Soft Pastel Rose
+      staffCardBg: "#FFE5EC",
       staffCardBorder: "1.5px solid rgba(242, 100, 117, 0.35)",
       staffCardTextColor: "#0D1A36",
       staffCardSubText: "rgba(13, 26, 54, 0.65)",
@@ -571,15 +580,15 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       <Dialog.Root open={isOpen} onOpenChange={(e) => !e.open && onClose()} size="xl">
         <Dialog.Backdrop bg="blackAlpha.850" backdropFilter="blur(10px)" />
         <Dialog.Positioner zIndex={2300}>
-          <Dialog.Content maxW="1550px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
+          <Dialog.Content maxW="1600px" bg="#170d08" border="1px solid rgba(253,202,173,0.2)" borderRadius="2xl">
             <Dialog.Header p={5} borderBottom="1px solid rgba(255,255,255,0.1)">
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Full-Size Desktop-Style Memory Board Studio ({posts.length} Cards)
+                    Ultra-High Resolution Memory Board Studio ({posts.length} Cards)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Exports high-resolution desktop live app cards in 4K resolution up to 8 columns.
+                    Export print-ready 4K and 8K Ultra HD posters up to 7680px with 5x High-DPI quality.
                   </Text>
                 </Box>
 
@@ -592,7 +601,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     size="xs"
                     variant="outline"
                     colorPalette="blue"
-                    onClick={() => setZoomLevel((z) => Math.max(40, z - 20))}
+                    onClick={() => setZoomLevel((z) => Math.max(25, z - 25))}
                   >
                     <FiZoomOut /> {zoomLevel}%
                   </Button>
@@ -600,7 +609,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     size="xs"
                     variant="outline"
                     colorPalette="blue"
-                    onClick={() => setZoomLevel((z) => Math.min(175, z + 25))}
+                    onClick={() => setZoomLevel((z) => Math.min(200, z + 25))}
                   >
                     <FiZoomIn /> Zoom In
                   </Button>
@@ -636,12 +645,23 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex direction={{ base: "column", lg: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Format Preset:
+                          Resolution Preset:
                         </Text>
                         <Button
                           size="xs"
-                          variant={preset === "desktop_4k_3840" ? "solid" : "outline"}
+                          variant={preset === "billboard_8k_7680" ? "solid" : "outline"}
                           colorPalette="amber"
+                          onClick={() => handlePresetSelect("billboard_8k_7680")}
+                          borderRadius="lg"
+                          px={3}
+                        >
+                          <FiMonitor style={{ marginRight: 4 }} />
+                          8K Ultra Billboard (7680px • 8-10 Cols)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={preset === "desktop_4k_3840" ? "solid" : "outline"}
+                          colorPalette="teal"
                           onClick={() => handlePresetSelect("desktop_4k_3840")}
                           borderRadius="lg"
                           px={3}
@@ -652,32 +672,22 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         <Button
                           size="xs"
                           variant={preset === "mega_wall_2400" ? "solid" : "outline"}
-                          colorPalette="teal"
+                          colorPalette="blue"
                           onClick={() => handlePresetSelect("mega_wall_2400")}
                           borderRadius="lg"
                         >
                           <FiGrid style={{ marginRight: 4 }} />
-                          Mega Wall (2400px • 5 Cols)
+                          Mega Wall (2400px)
                         </Button>
                         <Button
                           size="xs"
                           variant={preset === "widescreen_16_9" ? "solid" : "outline"}
-                          colorPalette="blue"
+                          colorPalette="purple"
                           onClick={() => handlePresetSelect("widescreen_16_9")}
                           borderRadius="lg"
                         >
                           <FiTv style={{ marginRight: 4 }} />
-                          16:9 Widescreen Slide
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant={preset === "desktop_1920" ? "solid" : "outline"}
-                          colorPalette="purple"
-                          onClick={() => handlePresetSelect("desktop_1920")}
-                          borderRadius="lg"
-                        >
-                          <FiMonitor style={{ marginRight: 4 }} />
-                          Desktop HD (1920px)
+                          16:9 Widescreen
                         </Button>
                       </HStack>
 
@@ -692,7 +702,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                           px={5}
                         >
-                          <FiDownload /> Export Full Desktop PNG
+                          <FiDownload /> Export Ultra High-Res PNG ({exportDpi}x DPI)
                         </Button>
                         <Button
                           colorPalette="teal"
@@ -712,18 +722,18 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     <Flex direction={{ base: "column", md: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Columns (More Columns = Wider Poster):
+                          Columns (More Columns = Wider Wall):
                         </Text>
-                        {([2, 3, 4, 5, 6, 7, 8] as const).map((cols) => (
+                        {([2, 3, 4, 5, 6, 7, 8, 9, 10] as const).map((cols) => (
                           <Button
                             key={cols}
                             size="xs"
                             variant={gridColumns === cols ? "solid" : "outline"}
-                            colorPalette={cols >= 6 ? "amber" : "teal"}
+                            colorPalette={cols >= 8 ? "amber" : cols >= 6 ? "teal" : "blue"}
                             onClick={() => setGridColumns(cols)}
                             borderRadius="md"
                           >
-                            {cols} Cols {cols >= 6 ? "(Ultra Wide)" : ""}
+                            {cols} Cols {cols >= 8 ? "(8K Wide)" : ""}
                           </Button>
                         ))}
                       </HStack>
@@ -732,17 +742,17 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
                           Text Size:
                         </Text>
-                        {(["medium", "large", "extra_large"] as const).map((sz) => (
+                        {(["medium", "large", "extra_large", "ultra_jumbo"] as const).map((sz) => (
                           <Button
                             key={sz}
                             size="xs"
                             variant={textSizeScale === sz ? "solid" : "outline"}
-                            colorPalette={sz === "extra_large" ? "amber" : "blue"}
+                            colorPalette={sz === "ultra_jumbo" ? "amber" : sz === "extra_large" ? "teal" : "blue"}
                             onClick={() => setTextSizeScale(sz)}
                             borderRadius="md"
                             textTransform="capitalize"
                           >
-                            {sz === "extra_large" ? "Jumbo 28px Text" : sz === "large" ? "Large 24px" : "Medium 20px"}
+                            {sz === "ultra_jumbo" ? "8K Jumbo 36px" : sz === "extra_large" ? "Extra 28px" : sz === "large" ? "Large 24px" : "20px"}
                           </Button>
                         ))}
                       </HStack>
@@ -780,18 +790,18 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Export Quality:
+                          Export DPI Quality Multiplier:
                         </Text>
-                        {([2, 3, 4] as const).map((dpi) => (
+                        {([2, 3, 4, 5] as const).map((dpi) => (
                           <Button
                             key={dpi}
                             size="xs"
                             variant={exportDpi === dpi ? "solid" : "outline"}
-                            colorPalette={dpi === 4 ? "amber" : "blue"}
+                            colorPalette={dpi === 5 ? "amber" : dpi === 4 ? "teal" : "blue"}
                             onClick={() => setExportDpi(dpi)}
                             borderRadius="md"
                           >
-                            {dpi === 4 ? "4K Max (4x)" : dpi === 3 ? "Ultra HD (3x)" : "Standard (2x)"}
+                            {dpi === 5 ? "8K Ultra Max (5x DPI)" : dpi === 4 ? "4K High (4x DPI)" : dpi === 3 ? "Ultra HD (3x)" : "Standard (2x)"}
                           </Button>
                         ))}
 
@@ -925,7 +935,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         ref={posterRef}
                         w={canvasWidth}
                         minH={canvasHeight}
-                        p={ preset === "desktop_4k_3840" ? 14 : preset === "widescreen_16_9" ? 12 : 10 }
+                        p={ preset === "billboard_8k_7680" ? 18 : preset === "desktop_4k_3840" ? 14 : 10 }
                         style={{
                           background: themeSpecs.canvasBg,
                           transform: `scale(${effectiveScale})`,
@@ -944,7 +954,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                       >
                         {/* Poster Header */}
                         <Box
-                          p={preset === "desktop_4k_3840" ? 9 : 8}
+                          p={preset === "billboard_8k_7680" ? 12 : preset === "desktop_4k_3840" ? 9 : 8}
                           borderRadius="2xl"
                           style={{
                             background: themeSpecs.headerBg,
@@ -954,22 +964,24 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           mb={7}
                         >
                           <Flex justify="space-between" align="center">
-                            <Box maxW={preset === "desktop_4k_3840" ? "2600px" : "1800px"}>
+                            <Box maxW={preset === "billboard_8k_7680" ? "5200px" : preset === "desktop_4k_3840" ? "2600px" : "1800px"}>
                               <HStack gap={2.5} mb={3}>
                                 <Badge
                                   px={4}
                                   py={1.5}
                                   borderRadius="full"
-                                  fontSize="sm"
+                                  fontSize={preset === "billboard_8k_7680" ? "xl" : "sm"}
                                   fontWeight="bold"
                                   letterSpacing="0.05em"
                                   style={{ background: themeSpecs.badgeBg, color: themeSpecs.badgeText }}
                                 >
                                   BAAN 7 OFFICIAL MEMORY WALL 2026
                                 </Badge>
-                                <Badge variant="outline" colorPalette="amber" px={3} py={1.5} borderRadius="full" fontSize="sm">
-                                  {preset === "desktop_4k_3840"
-                                    ? `4K SUPER WIDE WALL • ${gridColumns} COLUMNS (${posts.length} CARDS)`
+                                <Badge variant="outline" colorPalette="amber" px={3} py={1.5} borderRadius="full" fontSize={preset === "billboard_8k_7680" ? "xl" : "sm"}>
+                                  {preset === "billboard_8k_7680"
+                                    ? `8K ULTRA BILLBOARD (7680px) • ${gridColumns} COLUMNS (${posts.length} CARDS • ${exportDpi}x DPI)`
+                                    : preset === "desktop_4k_3840"
+                                    ? `4K SUPER WIDE WALL (3840px) • ${gridColumns} COLUMNS (${posts.length} CARDS • ${exportDpi}x DPI)`
                                     : isPaginated
                                     ? `SLIDE ${activePage} OF ${totalPages} (${displayedPosts.length} CARDS)`
                                     : `FULL SIZE COMPLETE POSTER (${posts.length} CARDS)`}
@@ -986,7 +998,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 Ween 2026 Memory Board Recap
                               </Heading>
 
-                              <Text fontSize={preset === "desktop_4k_3840" ? "xl" : "lg"} mt={3} lineHeight="1.6" style={{ color: themeSpecs.subtitleColor }}>
+                              <Text fontSize={preset === "billboard_8k_7680" ? "2xl" : preset === "desktop_4k_3840" ? "xl" : "lg"} mt={3} lineHeight="1.6" style={{ color: themeSpecs.subtitleColor }}>
                                 {customNote}
                               </Text>
                             </Box>
@@ -994,8 +1006,8 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             {/* Event Stats Counter */}
                             <HStack gap={5}>
                               <Box
-                                px={7}
-                                py={4}
+                                px={8}
+                                py={5}
                                 borderRadius="2xl"
                                 textAlign="center"
                                 style={{
@@ -1003,17 +1015,17 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   border: themeSpecs.headerBorder,
                                 }}
                               >
-                                <Text fontSize={preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                                <Text fontSize={preset === "billboard_8k_7680" ? "6xl" : preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                                   {posts.length}
                                 </Text>
-                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
+                                <Text fontSize={preset === "billboard_8k_7680" ? "md" : "xs"} fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
                                   TOTAL MEMORIES
                                 </Text>
                               </Box>
 
                               <Box
-                                px={7}
-                                py={4}
+                                px={8}
+                                py={5}
                                 borderRadius="2xl"
                                 textAlign="center"
                                 style={{
@@ -1021,10 +1033,10 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                   border: themeSpecs.headerBorder,
                                 }}
                               >
-                                <Text fontSize={preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
+                                <Text fontSize={preset === "billboard_8k_7680" ? "6xl" : preset === "desktop_4k_3840" ? "5xl" : "4xl"} fontWeight="800" style={{ color: themeSpecs.titleColor }}>
                                   {totalLikes}
                                 </Text>
-                                <Text fontSize="xs" fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
+                                <Text fontSize={preset === "billboard_8k_7680" ? "md" : "xs"} fontWeight="bold" style={{ color: themeSpecs.subtitleColor }}>
                                   TOTAL LIKES
                                 </Text>
                               </Box>
@@ -1033,14 +1045,13 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         </Box>
 
                         {/* Posts Grid Layout (Matching Live App MemoryCard Style) */}
-                        <SimpleGrid columns={gridColumns} gap={6} mb={8}>
+                        <SimpleGrid columns={gridColumns} gap={preset === "billboard_8k_7680" ? 8 : 6} mb={8}>
                           {displayedPosts.map((item, index) => {
                             const isStaff = item.author.role !== "student";
                             const prefix = isStaff ? "P' " : "N' ";
                             const isHero = highlightTopLiked && index < 3 && item.likes > 0;
                             const tilt = getTiltAngle(index);
 
-                            // Match exact Desktop App card background colors
                             const cardBg = isStaff ? themeSpecs.staffCardBg : themeSpecs.studentCardBg;
                             const cardBorder = isStaff ? themeSpecs.staffCardBorder : themeSpecs.studentCardBorder;
                             const textColor = isStaff ? themeSpecs.staffCardTextColor : themeSpecs.studentCardTextColor;
@@ -1053,8 +1064,8 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                             return (
                               <Box
                                 key={item.id}
-                                p={preset === "desktop_4k_3840" ? 7 : 6}
-                                minH="240px"
+                                p={preset === "billboard_8k_7680" ? 8 : preset === "desktop_4k_3840" ? 7 : 6}
+                                minH={preset === "billboard_8k_7680" ? "300px" : "240px"}
                                 borderRadius="2xl"
                                 style={{
                                   background: isHero ? themeSpecs.heroCardBg : cardBg,
@@ -1069,15 +1080,15 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                 justifyContent="space-between"
                                 position="relative"
                               >
-                                {/* Decorative Tape Top Center (Desktop App Polaroid Tape) */}
+                                {/* Decorative Tape Top Center */}
                                 {enablePolaroidTilt && (
                                   <Box
                                     position="absolute"
                                     top="-10px"
                                     left="50%"
                                     style={{ transform: "translateX(-50%)" }}
-                                    w="64px"
-                                    h="16px"
+                                    w={preset === "billboard_8k_7680" ? "90px" : "64px"}
+                                    h={preset === "billboard_8k_7680" ? "22px" : "16px"}
                                     borderRadius="2px"
                                     bg={themeSpecs.tapeColor}
                                     boxShadow="0 1px 3px rgba(0,0,0,0.1)"
@@ -1120,7 +1131,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                         </HStack>
 
                                         {item.author.faculty && (
-                                          <Text fontSize="xs" fontWeight="500" style={{ color: subTextColor }}>
+                                          <Text fontSize={preset === "billboard_8k_7680" ? "sm" : "xs"} fontWeight="500" style={{ color: subTextColor }}>
                                             {item.author.faculty}
                                           </Text>
                                         )}
@@ -1131,7 +1142,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                       px={3.5}
                                       py={1}
                                       borderRadius="full"
-                                      fontSize="xs"
+                                      fontSize={preset === "billboard_8k_7680" ? "sm" : "xs"}
                                       fontWeight="bold"
                                       style={{
                                         background: themeSpecs.likesBadgeBg,
@@ -1161,7 +1172,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                       borderRadius="xl"
                                       overflow="hidden"
                                       mb={3.5}
-                                      maxH="260px"
+                                      maxH={preset === "billboard_8k_7680" ? "360px" : "260px"}
                                       border="1.5px solid rgba(0,0,0,0.1)"
                                     >
                                       <Image
@@ -1196,16 +1207,16 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           align="center"
                           pt={5}
                           borderTop={themeSpecs.headerBorder}
-                          fontSize="md"
+                          fontSize={preset === "billboard_8k_7680" ? "xl" : "md"}
                           fontWeight="600"
                           style={{ color: themeSpecs.subtitleColor }}
                         >
                           <Text>Curated by Baan 7 Moderator Team • Ween 2026</Text>
                           <Text>
-                            {preset === "desktop_4k_3840"
-                              ? `4K Super Wide Desktop Board (${gridColumns} Columns) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
-                              : isPaginated
-                              ? `Sheet ${activePage} of ${totalPages} • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
+                            {preset === "billboard_8k_7680"
+                              ? `8K Ultra Billboard (7680px • ${gridColumns} Columns • ${exportDpi}x High-DPI) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
+                              : preset === "desktop_4k_3840"
+                              ? `4K Super Wide Desktop Board (${gridColumns} Columns • ${exportDpi}x High-DPI) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`
                               : `Complete Desktop Style Poster (${posts.length} Cards) • Captured on ${new Date().toLocaleDateString("en-US", { dateStyle: "medium" })}`}
                           </Text>
                         </Flex>
