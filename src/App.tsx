@@ -296,12 +296,15 @@ function AppContent() {
 
 
 
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <UserProvider>
         <BrowserRouter>
           <AppContent />
+          <SpeedInsights />
         </BrowserRouter>
       </UserProvider>
     </QueryClientProvider>
