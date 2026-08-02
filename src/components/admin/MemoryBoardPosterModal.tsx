@@ -36,6 +36,8 @@ import {
   FiZoomIn,
   FiZoomOut,
   FiMaximize2,
+  FiFilter,
+  FiAlertCircle,
 } from "react-icons/fi";
 
 interface MemoryPostItem {
@@ -45,6 +47,7 @@ interface MemoryPostItem {
   likes: number;
   created_at: string;
   is_anonymous: boolean;
+  type?: string;
   author: {
     student_id: string;
     nickname: string | null;
@@ -65,6 +68,7 @@ type AvatarMode = "compact" | "hidden" | "full";
 type CanvasPreset = "widescreen_16_9" | "mega_wall_2400" | "desktop_1920" | "ig_story" | "hd_poster";
 type TextSizeScale = "medium" | "large" | "extra_large";
 type PageSizeOption = "all" | 8 | 9 | 12 | 16 | 18 | 20 | 24;
+type PostTypeFilter = "all" | "memory" | "board";
 
 /**
  * Parser for custom highlight tags like [h-blue]text[/h-blue], [h-gold], [h-pink], [h-green], [b], [i]
@@ -145,10 +149,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const posterRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<PosterTheme>("baan7_classic");
   const [preset, setPreset] = useState<CanvasPreset>("widescreen_16_9");
-  const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large"); // Default to Extra Large Super Readable!
-  const [pageSize, setPageSize] = useState<PageSizeOption>(12); // Default to 12 cards per slide for huge readable text!
+  const [textSizeScale, setTextSizeScale] = useState<TextSizeScale>("extra_large");
+  const [pageSize, setPageSize] = useState<PageSizeOption>(12);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [zoomLevel, setZoomLevel] = useState<number>(100); // Studio preview zoom state (50% - 150%)
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [typeFilter, setTypeFilter] = useState<PostTypeFilter>("all"); // Default to ALL cards!
   const [customNote, setCustomNote] = useState<string>(
     "Thank you everyone for contributing your heartwarming memories to Baan 7. Here is a complete recap of all memory cards captured together."
   );
@@ -160,26 +165,76 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
   const [exportDpi, setExportDpi] = useState<2 | 3 | 4>(3);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  // Fetch ALL non-hidden memory posts from Supabase
-  const { data: posts = [], isLoading, refetch } = useQuery<MemoryPostItem[]>({
-    queryKey: ["all_memory_posts_poster", sortBy],
+  // Fetch ALL cards from Supabase with robust multi-type & fallback queries
+  const { data: posts = [], isLoading, error: fetchError, refetch } = useQuery<MemoryPostItem[]>({
+    queryKey: ["all_memory_posts_poster", sortBy, typeFilter],
     queryFn: async () => {
-      const query = supabase
+      // Primary Attempt: Relational join query with limit 1000
+      let query = supabase
         .from("posts")
         .select(
-          "id, content, image_url, likes, created_at, is_anonymous, author:users(student_id, nickname, avatar_color, role, profile_pic_url, faculty)"
+          "id, content, image_url, likes, created_at, is_anonymous, type, author:users(student_id, nickname, avatar_color, role, profile_pic_url, faculty)"
         )
-        .eq("type", "memory")
         .eq("is_hidden", false);
 
-      if (sortBy === "likes") {
-        query.order("likes", { ascending: false }).order("created_at", { ascending: false });
+      if (typeFilter === "memory") {
+        query = query.eq("type", "memory");
+      } else if (typeFilter === "board") {
+        query = query.eq("type", "board");
       } else {
-        query.order("created_at", { ascending: false });
+        // "all": match memory, board, quote or null type
+        query = query.or("type.eq.memory,type.eq.board,type.eq.quote,type.is.null");
       }
 
+      if (sortBy === "likes") {
+        query = query.order("likes", { ascending: false }).order("created_at", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
+
+      query = query.limit(1000);
+
       const { data, error } = await query;
-      if (error) throw error;
+
+      // Fallback Strategy: If relational join fails or returns null, query posts and users separately
+      if (error || !data) {
+        console.warn("[PosterFetch] Primary join query failed/empty, running fallback query...", error);
+        let fallbackQuery = supabase.from("posts").select("*").eq("is_hidden", false);
+        if (typeFilter !== "all") {
+          fallbackQuery = fallbackQuery.eq("type", typeFilter);
+        }
+        fallbackQuery = fallbackQuery.order(sortBy === "likes" ? "likes" : "created_at", { ascending: false }).limit(1000);
+
+        const { data: rawPosts, error: postErr } = await fallbackQuery;
+        if (postErr) throw postErr;
+
+        // Fetch users map for author fallback
+        const { data: rawUsers } = await supabase.from("users").select("student_id, nickname, avatar_color, role, profile_pic_url, faculty");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const userMap = new Map<string, any>((rawUsers ?? []).map((u: any) => [u.student_id, u]));
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (rawPosts ?? []).map((p: any) => {
+          const u = userMap.get(p.student_id) || {};
+          return {
+            id: p.id,
+            content: p.content,
+            image_url: p.image_url,
+            likes: p.likes ?? 0,
+            created_at: p.created_at,
+            is_anonymous: p.is_anonymous ?? false,
+            type: p.type ?? "memory",
+            author: {
+              student_id: p.student_id ?? "",
+              nickname: u.nickname ?? "Guest",
+              avatar_color: u.avatar_color ?? "#496268",
+              role: u.role ?? "student",
+              profile_pic_url: u.profile_pic_url ?? null,
+              faculty: u.faculty ?? null,
+            },
+          };
+        });
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (data ?? []).map((p: any) => ({
@@ -189,6 +244,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
         likes: p.likes ?? 0,
         created_at: p.created_at,
         is_anonymous: p.is_anonymous ?? false,
+        type: p.type ?? "memory",
         author: {
           student_id: p.author?.student_id ?? "",
           nickname: p.author?.nickname ?? "Guest",
@@ -200,7 +256,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       }));
     },
     enabled: isOpen,
-    staleTime: 30000,
+    staleTime: 15000,
   });
 
   const totalLikes = posts.reduce((sum, item) => sum + (item.likes || 0), 0);
@@ -223,7 +279,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
       setGridColumns(4);
       setTextSizeScale("extra_large");
       setAvatarMode("full");
-      setPageSize(12); // 3 rows of 4 cards = 12 huge readable cards per 16:9 slide!
+      setPageSize(12);
       setCurrentPage(1);
       setExportDpi(3);
     } else if (selectedPreset === "desktop_1920") {
@@ -309,7 +365,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
     }
   };
 
-  // Preset Width, Height & Font Size Mappings (BOOSTED for Super Readability)
+  // Preset Width, Height & Font Size Mappings
   const canvasWidth =
     preset === "widescreen_16_9"
       ? "2560px"
@@ -323,7 +379,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
 
   const canvasHeight = preset === "widescreen_16_9" ? "1440px" : "auto";
 
-  // BOOSTED READABLE FONT SIZES (Up to 26px Card Body Text!)
+  // BOOSTED READABLE FONT SIZES
   const fontSizes = {
     medium: { cardText: "19px", authorName: "19px", timestamp: "14px", headerTitle: "46px" },
     large: { cardText: "22px", authorName: "22px", timestamp: "16px", headerTitle: "54px" },
@@ -434,14 +490,14 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
               <Flex justify="space-between" align="center" w="100%">
                 <Box>
                   <Dialog.Title fontSize="xl" fontWeight="bold" color="#fdcaad" fontFamily="Georgia, serif">
-                    Memory Board Super-Readable Studio ({posts.length} Memories)
+                    Memory Board Super-Readable Studio ({posts.length} Cards Fetched)
                   </Dialog.Title>
                   <Text fontSize="xs" color="gray.400" mt={0.5}>
-                    Use Interactive Studio Zoom controls to inspect cards up close in real-time preview.
+                    Filter by post type, set layout density, or zoom in up to 175% to inspect card details.
                   </Text>
                 </Box>
 
-                {/* Studio Interactive Zoom Controls */}
+                {/* Studio Interactive Zoom & Data Controls */}
                 <HStack gap={2}>
                   <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
                     Studio Zoom:
@@ -468,11 +524,11 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                     colorPalette="amber"
                     onClick={() => setZoomLevel(100)}
                   >
-                    <FiMaximize2 /> Reset 100%
+                    <FiMaximize2 /> Reset
                   </Button>
 
-                  <Button size="xs" variant="ghost" color="gray.300" onClick={() => refetch()} ml={2}>
-                    <FiRefreshCw /> Refresh Data
+                  <Button size="xs" variant="solid" colorPalette="teal" onClick={() => refetch()} ml={2}>
+                    <FiRefreshCw /> Fetch & Refresh
                   </Button>
                   <Dialog.CloseTrigger color="gray.400" />
                 </HStack>
@@ -490,11 +546,52 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   data-export-ignore="true"
                 >
                   <VStack align="stretch" gap={3}>
-                    {/* Row 1: Format Presets & Actions */}
+                    {/* Row 1: Post Type Filter & Format Presets */}
                     <Flex direction={{ base: "column", lg: "row" }} gap={3} justify="space-between" align="center">
                       <HStack gap={2} flexWrap="wrap">
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
-                          Canvas Format Preset:
+                          Fetch Filter:
+                        </Text>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "all" ? "solid" : "outline"}
+                          colorPalette="teal"
+                          onClick={() => {
+                            setTypeFilter("all");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="lg"
+                        >
+                          <FiFilter style={{ marginRight: 3 }} />
+                          All Card Types (Memory + Board)
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "memory" ? "solid" : "outline"}
+                          colorPalette="amber"
+                          onClick={() => {
+                            setTypeFilter("memory");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="lg"
+                        >
+                          Memory Only
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant={typeFilter === "board" ? "solid" : "outline"}
+                          colorPalette="blue"
+                          onClick={() => {
+                            setTypeFilter("board");
+                            setCurrentPage(1);
+                          }}
+                          borderRadius="lg"
+                        >
+                          Board Only
+                        </Button>
+
+                        <Text fontSize="xs" fontWeight="bold" color="#fdcaad" ml={3} mr={1}>
+                          Preset:
                         </Text>
                         <Button
                           size="xs"
@@ -504,7 +601,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                         >
                           <FiTv style={{ marginRight: 4 }} />
-                          16:9 Widescreen (2560x1440)
+                          16:9 Widescreen
                         </Button>
                         <Button
                           size="xs"
@@ -514,7 +611,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                         >
                           <FiMonitor style={{ marginRight: 4 }} />
-                          Desktop 4K (1920px)
+                          Desktop 4K
                         </Button>
                         <Button
                           size="xs"
@@ -524,7 +621,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                         >
                           <FiSmartphone style={{ marginRight: 4 }} />
-                          IG Story / Mobile (1080px)
+                          IG Story
                         </Button>
                         <Button
                           size="xs"
@@ -534,7 +631,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                           borderRadius="lg"
                         >
                           <FiGrid style={{ marginRight: 4 }} />
-                          Mega Wall (2400px)
+                          Mega Wall
                         </Button>
                       </HStack>
 
@@ -571,7 +668,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                         <Text fontSize="xs" fontWeight="bold" color="#fdcaad" mr={1}>
                           Cards Per Slide (Readability Boost):
                         </Text>
-                        {(["all", 8, 12, 16, 18, 20, 24] as const).map((opt) => (
+                        {(["all", 8, 9, 12, 16, 18, 20, 24] as const).map((opt) => (
                           <Button
                             key={String(opt)}
                             size="xs"
@@ -772,9 +869,51 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                   <Flex justify="center" align="center" py={16}>
                     <Spinner size="xl" color="#fdcaad" />
                     <Text ml={4} color="gray.300" fontSize="sm">
-                      Fetching all {posts.length} memory cards from database...
+                      Fetching all cards from database...
                     </Text>
                   </Flex>
+                ) : fetchError ? (
+                  /* Error Diagnostics Banner */
+                  <Box p={6} bg="rgba(239, 68, 68, 0.15)" borderRadius="2xl" border="1px solid rgba(239, 68, 68, 0.4)">
+                    <HStack gap={3} mb={3}>
+                      <FiAlertCircle color="#fca5a5" size={24} />
+                      <Heading fontSize="md" color="#fca5a5">
+                        Database Fetch Error
+                      </Heading>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.300" mb={4}>
+                      {fetchError instanceof Error ? fetchError.message : "Failed to load posts from Supabase."}
+                    </Text>
+                    <Button size="sm" colorPalette="amber" onClick={() => refetch()}>
+                      <FiRefreshCw /> Retry Fetching Cards
+                    </Button>
+                  </Box>
+                ) : posts.length === 0 ? (
+                  /* Empty State Diagnostics Box */
+                  <Box p={8} bg="rgba(43, 26, 19, 0.6)" borderRadius="2xl" border="1px solid rgba(253, 202, 173, 0.2)" textAlign="center">
+                    <FiAlertCircle color="#fdcaad" size={32} style={{ margin: "0 auto 12px" }} />
+                    <Heading fontSize="lg" color="#fdcaad" mb={2}>
+                      No Cards Found for Filter: &quot;{typeFilter}&quot;
+                    </Heading>
+                    <Text fontSize="sm" color="gray.300" mb={6} maxW="600px" mx="auto">
+                      There are currently 0 posts matching this post type. Click below to fetch all cards across all database types.
+                    </Text>
+                    <HStack justify="center" gap={3}>
+                      <Button
+                        colorPalette="teal"
+                        size="sm"
+                        onClick={() => {
+                          setTypeFilter("all");
+                          refetch();
+                        }}
+                      >
+                        <FiFilter /> Switch to &quot;All Card Types&quot;
+                      </Button>
+                      <Button colorPalette="amber" variant="outline" size="sm" onClick={() => refetch()}>
+                        <FiRefreshCw /> Refresh Data
+                      </Button>
+                    </HStack>
+                  </Box>
                 ) : (
                   /* ─── SCROLLABLE & ZOOMABLE CANVAS PREVIEW CONTAINER ─── */
                   <Box
@@ -996,7 +1135,7 @@ export function MemoryBoardPosterModal({ isOpen, onClose }: MemoryBoardPosterMod
                                     </Badge>
                                   </Flex>
 
-                                  {/* Memory Content Text with Highlight Tag Parsing & Boosted Font Size */}
+                                  {/* Memory Content Text with Highlight Tag Parsing */}
                                   <Text
                                     fontSize={fontSizes.cardText}
                                     lineHeight="1.6"
