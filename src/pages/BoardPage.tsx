@@ -634,7 +634,6 @@ export function BoardPage() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(6);
-  const [prevVisibleCount, setPrevVisibleCount] = useState(6);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [onlineCount, setOnlineCount] = useState(1);
   const [inspectedUser, setInspectedUser] = useState<User | null>(null);
@@ -727,38 +726,38 @@ export function BoardPage() {
             );
           }
 
-          // ScrollTrigger.batch for Memory Board Grid Cards
+          // ScrollTrigger.batch for Memory Board Grid Cards (Smooth Infinite Scroll)
           if (cardNodes && cardNodes.length > 0) {
-            ScrollTrigger.batch(cardNodes, {
-              start: "top 90%",
-              interval: 0.08,
-              batchMax: isMobile ? 2 : 4,
-              onEnter: (batch) => {
-                gsap.fromTo(
-                  batch,
-                  { opacity: 0, y: 32, scale: 0.94 },
-                  {
-                    opacity: 1,
-                    y: 0,
-                    scale: 1,
-                    duration: 0.55,
-                    stagger: isMobile ? 0.06 : 0.09,
-                    ease: "power3.out",
-                    overwrite: "auto",
-                  }
-                );
-              },
-              onLeaveBack: (batch) => {
-                gsap.to(batch, {
-                  opacity: 0,
-                  y: 20,
-                  scale: 0.96,
-                  duration: 0.3,
-                  stagger: 0.04,
-                  overwrite: "auto",
-                });
-              },
-            });
+            const unAnimatedCards = Array.from(cardNodes).filter(
+              (node) => node.getAttribute("data-animated") !== "true"
+            );
+
+            if (unAnimatedCards.length > 0) {
+              ScrollTrigger.batch(unAnimatedCards, {
+                start: "top 92%",
+                interval: 0.06,
+                batchMax: isMobile ? 2 : 4,
+                once: true,
+                onEnter: (batch) => {
+                  gsap.fromTo(
+                    batch,
+                    { opacity: 0, y: 28, scale: 0.95 },
+                    {
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      duration: 0.5,
+                      stagger: isMobile ? 0.05 : 0.08,
+                      ease: "power2.out",
+                      overwrite: "auto",
+                      onComplete: () => {
+                        batch.forEach((el) => el.setAttribute("data-animated", "true"));
+                      },
+                    }
+                  );
+                },
+              });
+            }
           }
         }
       );
@@ -1287,13 +1286,11 @@ export function BoardPage() {
   const handleSwitchTab = (tab: BoardTab) => {
     setActiveTab(tab);
     setVisibleCount(6);
-    setPrevVisibleCount(6);
   };
 
   const handleLoadMore = () => {
     setIsFetchingMore(true);
     setTimeout(() => {
-      setPrevVisibleCount(visibleCount);
       setVisibleCount((prev) => prev + 6);
       setIsFetchingMore(false);
     }, 1200);
@@ -2093,7 +2090,6 @@ export function BoardPage() {
                         onClick={() => {
                           setActiveCategory(cat.value);
                           setVisibleCount(6);
-                          setPrevVisibleCount(6);
                         }}
                         px={4}
                         py={2}
@@ -2690,39 +2686,8 @@ export function BoardPage() {
                               h="100%"
                               display="flex"
                             >
-                              <motion.div
-                                layout
-                                initial={
-                                  shouldReduceMotion
-                                    ? { opacity: 0 }
-                                    : { y: 20, opacity: 0 }
-                                }
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={
-                                  shouldReduceMotion
-                                    ? { duration: 0.2 }
-                                    : {
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 20,
-                                        delay: Math.min(
-                                          Math.max(
-                                            0,
-                                            index - prevVisibleCount,
-                                          ) * 0.05,
-                                          0.3,
-                                        ),
-                                      }
-                                }
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                }}
-                              >
-                        <MemoryCard
+                              <Box w="100%" h="100%" display="flex" flexDirection="column">
+                                <MemoryCard
                                   post={post}
                                   index={index}
                                   onLike={handleLikePost}
@@ -2733,7 +2698,7 @@ export function BoardPage() {
                                   isWide={isWide}
                                   isTall={isTall}
                                 />
-                              </motion.div>
+                              </Box>
                             </Box>
                           );
                         })}
