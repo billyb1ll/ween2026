@@ -277,10 +277,10 @@ export function SystemControlPanel({
               alignSelf="flex-start"
             >
               {galleryForceUnlock
-                ? "● OVERRIDE"
+                ? "OVERRIDE"
                 : galleryRequireMemoryPost
-                ? `🔒 REQ ${galleryRequiredMemoryCount}`
-                : "○ OPEN"}
+                ? `REQ ${galleryRequiredMemoryCount}`
+                : "OPEN"}
             </Badge>
           </Flex>
 
