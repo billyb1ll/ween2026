@@ -1,3 +1,4 @@
+
 import {
   Badge,
   Box,
@@ -42,6 +43,9 @@ export function GalleryPage() {
 
   // System Config & User Memory Post Count
   const [isMemoryBoardActive, setIsMemoryBoardActive] = useState<boolean>(true);
+  const [galleryRequireMemoryPost, setGalleryRequireMemoryPost] = useState<boolean>(true);
+  const [galleryRequiredMemoryCount, setGalleryRequiredMemoryCount] = useState<number>(1);
+  const [galleryForceUnlock, setGalleryForceUnlock] = useState<boolean>(false);
   const [userMemoryPostCount, setUserMemoryPostCount] = useState<number>(0);
   const [checkingMemoryPosts, setCheckingMemoryPosts] = useState<boolean>(false);
 
@@ -58,20 +62,43 @@ export function GalleryPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Apply config rows fetched from system_config
+  const applyGalleryConfigs = React.useCallback(
+    (configs: Array<{ key: string; value: boolean; int_value?: number | null }>) => {
+      const memory = configs.find((c) => c.key === "enable_memory_board");
+      if (memory !== undefined) setIsMemoryBoardActive(Boolean(memory.value));
+
+      const reqPost = configs.find((c) => c.key === "gallery_require_memory_post");
+      if (reqPost !== undefined) setGalleryRequireMemoryPost(Boolean(reqPost.value));
+
+      const reqCount = configs.find((c) => c.key === "gallery_required_memory_count");
+      if (reqCount?.int_value !== null && reqCount?.int_value !== undefined) {
+        setGalleryRequiredMemoryCount(reqCount.int_value);
+      }
+
+      const forceUnlock = configs.find((c) => c.key === "gallery_force_unlock");
+      if (forceUnlock !== undefined) setGalleryForceUnlock(Boolean(forceUnlock.value));
+    },
+    [],
+  );
+
   // Fetch Memory Board config & user memory post count
+  // Performance: only select the 4 keys we need, not the entire system_config table
   useEffect(() => {
     let active = true;
     const checkMemoryStatus = async () => {
       try {
-        const { data: configData } = await supabase
+        const { data: configs } = await supabase
           .from("system_config")
-          .select("value")
-          .eq("key", "enable_memory_board")
-          .maybeSingle();
+          .select("key, value, int_value")
+          .in("key", [
+            "enable_memory_board",
+            "gallery_require_memory_post",
+            "gallery_required_memory_count",
+            "gallery_force_unlock",
+          ]);
 
-        if (configData !== null && configData !== undefined && active) {
-          setIsMemoryBoardActive(Boolean(configData.value));
-        }
+        if (configs && active) applyGalleryConfigs(configs);
 
         if (user && user.role === "student" && active) {
           setCheckingMemoryPosts(true);
@@ -96,7 +123,29 @@ export function GalleryPage() {
     return () => {
       active = false;
     };
-  }, [user, location.key]);
+  }, [user, location.key, applyGalleryConfigs]);
+
+  // Real-time: re-fetch gallery config when admin broadcasts a config change
+  useEffect(() => {
+    const syncChannel = supabase.channel("gallery:system_config_sync");
+    syncChannel
+      .on("broadcast", { event: "config_change" }, async () => {
+        const { data: configs } = await supabase
+          .from("system_config")
+          .select("key, value, int_value")
+          .in("key", [
+            "enable_memory_board",
+            "gallery_require_memory_post",
+            "gallery_required_memory_count",
+            "gallery_force_unlock",
+          ]);
+        if (configs) applyGalleryConfigs(configs);
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(syncChannel);
+    };
+  }, [applyGalleryConfigs]);
 
   // Lightbox from global context
   const { openLightbox, virtuosoRef } = useGalleryLightbox();
@@ -173,9 +222,11 @@ export function GalleryPage() {
     user?.role === "admin" ||
     user?.role === "superadmin";
   const isUnlocked =
+    galleryForceUnlock ||
+    !galleryRequireMemoryPost ||
     !isMemoryBoardActive ||
     isStaffOrMod ||
-    (userMemoryPostCount !== null && userMemoryPostCount >= 1);
+    (userMemoryPostCount !== null && userMemoryPostCount >= galleryRequiredMemoryCount);
 
   if (
     loadingMappings ||
@@ -394,7 +445,7 @@ export function GalleryPage() {
                   >
                     push_pin
                   </Box>
-                  SHARE 1 MEMORY TO UNLOCK
+                  SHARE {galleryRequiredMemoryCount} {galleryRequiredMemoryCount === 1 ? "MEMORY" : "MEMORIES"} TO UNLOCK
                 </Badge>
                 <Heading
                   as="h3"
@@ -405,7 +456,7 @@ export function GalleryPage() {
                   Unlock the Full Gallery!
                 </Heading>
                 <Text fontSize="sm" color="fg.muted" lineHeight={1.6}>
-                  Pin at least 1 memory photo or sticky note on the Baan 7
+                  Pin at least {galleryRequiredMemoryCount} memory photo{galleryRequiredMemoryCount > 1 ? "s" : ""} or sticky note{galleryRequiredMemoryCount > 1 ? "s" : ""} on the Baan 7
                   Memory Board to reveal all high-res orientation photos.
                 </Text>
               </VStack>

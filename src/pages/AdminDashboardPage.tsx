@@ -277,6 +277,9 @@ export function AdminDashboardPage() {
   const [newStudentId, setNewStudentId] = useState("");
   const [newRole, setNewRole] = useState("student");
   const [enableMemoryBoard, setEnableMemoryBoard] = useState(true);
+  const [galleryRequireMemoryPost, setGalleryRequireMemoryPost] = useState(true);
+  const [galleryRequiredMemoryCount, setGalleryRequiredMemoryCount] = useState(1);
+  const [galleryForceUnlock, setGalleryForceUnlock] = useState(false);
   const [eventTitle, setEventTitle] = useState("First Meet");
   const [eventTime, setEventTime] = useState("");
   const [updatingEvent, setUpdatingEvent] = useState(false);
@@ -404,6 +407,14 @@ export function AdminDashboardPage() {
 
       Promise.resolve().then(() => {
         if (memory) setEnableMemoryBoard(memory.value);
+        const galleryRequire = configsData.find((c) => c.key === "gallery_require_memory_post");
+        if (galleryRequire !== undefined) setGalleryRequireMemoryPost(galleryRequire.value);
+        const galleryReqCount = configsData.find((c) => c.key === "gallery_required_memory_count");
+        if (galleryReqCount !== undefined && galleryReqCount.int_value !== null && galleryReqCount.int_value !== undefined) {
+          setGalleryRequiredMemoryCount(galleryReqCount.int_value);
+        }
+        const galleryForce = configsData.find((c) => c.key === "gallery_force_unlock");
+        if (galleryForce !== undefined) setGalleryForceUnlock(galleryForce.value);
         if (vibecheck) setVibecheckEnabled(vibecheck.value);
         const liveChat = configsData.find((c) => c.key === "enable_hype_board");
         if (liveChat) setLivechatEnabled(liveChat.value);
@@ -1390,13 +1401,20 @@ export function AdminDashboardPage() {
 
   // Handle Config Toggle
   const handleToggleConfig = async (
-    key: "enable_memory_board" | "vibecheck_enabled" | "enable_hype_board",
+    key:
+      | "enable_memory_board"
+      | "vibecheck_enabled"
+      | "enable_hype_board"
+      | "gallery_require_memory_post"
+      | "gallery_force_unlock",
     currentVal: boolean,
   ) => {
     const newVal = !currentVal;
     if (key === "enable_memory_board") setEnableMemoryBoard(newVal);
     if (key === "vibecheck_enabled") setVibecheckEnabled(newVal);
     if (key === "enable_hype_board") setLivechatEnabled(newVal);
+    if (key === "gallery_require_memory_post") setGalleryRequireMemoryPost(newVal);
+    if (key === "gallery_force_unlock") setGalleryForceUnlock(newVal);
 
     try {
       const { error } = await supabase.rpc("admin_update_system_config", {
@@ -1411,6 +1429,8 @@ export function AdminDashboardPage() {
           if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
           if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
           if (key === "enable_hype_board") setLivechatEnabled(currentVal);
+          if (key === "gallery_require_memory_post") setGalleryRequireMemoryPost(currentVal);
+          if (key === "gallery_force_unlock") setGalleryForceUnlock(currentVal);
           return;
         }
         throw error;
@@ -1429,6 +1449,8 @@ export function AdminDashboardPage() {
         if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
         if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
         if (key === "enable_hype_board") setLivechatEnabled(currentVal);
+        if (key === "gallery_require_memory_post") setGalleryRequireMemoryPost(currentVal);
+        if (key === "gallery_force_unlock") setGalleryForceUnlock(currentVal);
         return;
       }
       toaster.create({
@@ -1438,6 +1460,44 @@ export function AdminDashboardPage() {
       if (key === "enable_memory_board") setEnableMemoryBoard(currentVal);
       if (key === "vibecheck_enabled") setVibecheckEnabled(currentVal);
       if (key === "enable_hype_board") setLivechatEnabled(currentVal);
+      if (key === "gallery_require_memory_post") setGalleryRequireMemoryPost(currentVal);
+      if (key === "gallery_force_unlock") setGalleryForceUnlock(currentVal);
+    }
+  };
+
+  // Handle Numeric Config Update
+  const handleUpdateIntConfig = async (
+    key: "gallery_required_memory_count",
+    newVal: number,
+  ) => {
+    if (key === "gallery_required_memory_count") setGalleryRequiredMemoryCount(newVal);
+
+    try {
+      const { error } = await supabase.rpc("admin_update_system_config", {
+        p_admin_id: user?.student_id,
+        p_admin_pin: getAdminPin(),
+        p_key: key,
+        p_int_value: newVal,
+      });
+
+      if (error) {
+        if (checkAdminError(error)) return;
+        throw error;
+      }
+
+      await logAuditAction("update_config", key, `Updated ${key} to ${newVal}`);
+      await broadcastConfigSync("config_change", { key, int_value: newVal });
+      toaster.create({
+        title: "Threshold Updated",
+        description: `Required memory post count updated to ${newVal}.`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error(err);
+      toaster.create({
+        title: "Failed to update threshold",
+        type: "error",
+      });
     }
   };
 
@@ -2260,8 +2320,12 @@ export function AdminDashboardPage() {
               vibecheckEnabled={vibecheckEnabled}
               livechatEnabled={livechatEnabled}
               globalMuteActive={globalMuteActive}
+              galleryRequireMemoryPost={galleryRequireMemoryPost}
+              galleryRequiredMemoryCount={galleryRequiredMemoryCount}
+              galleryForceUnlock={galleryForceUnlock}
               handleSetHypeMode={handleSetHypeMode}
               handleToggleConfig={handleToggleConfig}
+              handleUpdateIntConfig={handleUpdateIntConfig}
               onOpenPosterModal={() => setIsPosterModalOpen(true)}
             />
 

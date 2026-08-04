@@ -6,10 +6,22 @@ interface SystemControlPanelProps {
   vibecheckEnabled: boolean;
   livechatEnabled: boolean;
   globalMuteActive: boolean;
+  galleryRequireMemoryPost?: boolean;
+  galleryRequiredMemoryCount?: number;
+  galleryForceUnlock?: boolean;
   handleSetHypeMode: (mode: "active" | "slow_3s" | "read_only") => void;
   handleToggleConfig: (
-    key: "enable_memory_board" | "vibecheck_enabled" | "enable_hype_board",
+    key:
+      | "enable_memory_board"
+      | "vibecheck_enabled"
+      | "enable_hype_board"
+      | "gallery_require_memory_post"
+      | "gallery_force_unlock",
     currentVal: boolean
+  ) => void;
+  handleUpdateIntConfig?: (
+    key: "gallery_required_memory_count",
+    newVal: number
   ) => void;
   onOpenPosterModal?: () => void;
 }
@@ -20,8 +32,12 @@ export function SystemControlPanel({
   vibecheckEnabled,
   livechatEnabled,
   globalMuteActive,
+  galleryRequireMemoryPost = true,
+  galleryRequiredMemoryCount = 1,
+  galleryForceUnlock = false,
   handleSetHypeMode,
   handleToggleConfig,
+  handleUpdateIntConfig,
   onOpenPosterModal,
 }: SystemControlPanelProps) {
 
@@ -222,6 +238,157 @@ export function SystemControlPanel({
             </HStack>
           </Button>
         </Flex>
+
+        {/* Gallery Access & Unlock Controls */}
+        <Box
+          p={4}
+          bg="var(--c-ivory)"
+          borderRadius="xl"
+          border="1px solid"
+          borderColor="border.subtle"
+        >
+          <Flex align="flex-start" justify="space-between" gap={2} mb={3} flexWrap="wrap">
+            <Box flex="1" minW={0}>
+              <Text
+                fontFamily="heading"
+                fontWeight="700"
+                color="brand.900"
+                fontSize="sm"
+              >
+                Gallery Unlock & Access Control
+              </Text>
+              <Text fontSize="xs" color="fg.muted">
+                Manage student access rules to reveal full-resolution orientation photo gallery.
+              </Text>
+            </Box>
+            <Badge
+              flexShrink={0}
+              colorPalette={
+                galleryForceUnlock
+                  ? "green"
+                  : galleryRequireMemoryPost
+                  ? "yellow"
+                  : "blue"
+              }
+              fontSize="xs"
+              px={2}
+              py={0.5}
+              borderRadius="full"
+              alignSelf="flex-start"
+            >
+              {galleryForceUnlock
+                ? "● OVERRIDE"
+                : galleryRequireMemoryPost
+                ? `🔒 REQ ${galleryRequiredMemoryCount}`
+                : "○ OPEN"}
+            </Badge>
+          </Flex>
+
+          <VStack gap={3} align="stretch">
+            {/* Toggle 1: Require Memory Post */}
+            <Flex align="center" justify="space-between" gap={3} p={3} bg="var(--c-white)" borderRadius="lg">
+              <Box flex="1" minW={0}>
+                <Text fontSize="xs" fontWeight="700" color="brand.900">
+                  Require Memory Post to Unlock
+                </Text>
+                <Text fontSize="xs" color="fg.muted">
+                  Gates full photo gallery behind student memory board submissions.
+                </Text>
+              </Box>
+              <Button
+                type="button"
+                size="sm"
+                flexShrink={0}
+                aria-pressed={galleryRequireMemoryPost}
+                bg={galleryRequireMemoryPost ? "var(--c-lagoon)" : "var(--c-muted)"}
+                color="white"
+                onClick={() =>
+                  handleToggleConfig(
+                    "gallery_require_memory_post",
+                    galleryRequireMemoryPost
+                  )
+                }
+                cursor="pointer"
+                borderRadius="md"
+                fontWeight="700"
+                fontSize="xs"
+              >
+                {galleryRequireMemoryPost ? "REQUIRED" : "OFF"}
+              </Button>
+            </Flex>
+
+            {/* Selector 2: Required Memory Post Count */}
+            {galleryRequireMemoryPost && !galleryForceUnlock && (
+              <Box p={3} bg="var(--c-white)" borderRadius="lg">
+                <Flex align="center" justify="space-between" mb={2}>
+                  <Text fontSize="xs" fontWeight="700" color="brand.900">
+                    Required Memory Posts
+                  </Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--c-lagoon)">
+                    {galleryRequiredMemoryCount} {galleryRequiredMemoryCount === 1 ? "Post" : "Posts"}
+                  </Text>
+                </Flex>
+                <Flex gap={2}>
+                  {[1, 2, 3, 5].map((cnt) => (
+                    <Button
+                      key={cnt}
+                      type="button"
+                      size="xs"
+                      flex={1}
+                      bg={
+                        galleryRequiredMemoryCount === cnt
+                          ? "var(--c-lagoon)"
+                          : "var(--c-ivory)"
+                      }
+                      color={
+                        galleryRequiredMemoryCount === cnt
+                          ? "white"
+                          : "brand.900"
+                      }
+                      fontWeight="700"
+                      borderRadius="md"
+                      onClick={() => handleUpdateIntConfig?.("gallery_required_memory_count", cnt)}
+                    >
+                      {cnt} {cnt === 1 ? "Post" : "Posts"}
+                    </Button>
+                  ))}
+                </Flex>
+              </Box>
+            )}
+
+            {/* Toggle 3: Force Unlock Override */}
+            <Flex align="center" justify="space-between" gap={3} p={3} bg="var(--c-white)" borderRadius="lg">
+              <Box flex="1" minW={0}>
+                <Text fontSize="xs" fontWeight="700" color="brand.900">
+                  Force Unlock (Emergency Override)
+                </Text>
+                <Text fontSize="xs" color="fg.muted" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  Bypasses all memory post conditions and unlocks gallery for all students immediately.
+                </Text>
+              </Box>
+              <Button
+                type="button"
+                size="sm"
+                flexShrink={0}
+                aria-pressed={galleryForceUnlock}
+                bg={galleryForceUnlock ? "var(--c-lagoon)" : "var(--c-muted)"}
+                color="white"
+                onClick={() =>
+                  handleToggleConfig(
+                    "gallery_force_unlock",
+                    galleryForceUnlock
+                  )
+                }
+                cursor="pointer"
+                borderRadius="md"
+                fontWeight="700"
+                fontSize="xs"
+              >
+                {galleryForceUnlock ? "UNLOCKED" : "DISABLED"}
+              </Button>
+            </Flex>
+          </VStack>
+        </Box>
 
         {/* Vibe Check Toggle — Binary Switch */}
         <Flex
